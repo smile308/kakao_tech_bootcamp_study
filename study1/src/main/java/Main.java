@@ -14,14 +14,17 @@ class Product {
         this.brand=brand;
     }
 
+    //상품명을 반환
     public String getProductName(){
         return this.productName;
     }
 
+    //상품ID를 반환
     public String getId() {
         return this.id;
     }
 
+    //상품 브랜드를 반환
     public String getBrand() {
         return this.brand;
     }
@@ -39,10 +42,12 @@ class Cosmetic extends Product {
         this.scent=scent;
     }
 
+    //피부 타입 반환
     public String getSkinType() {
         return this.skinType;
     }
 
+    //향기 유무 반환
     public boolean getScent() {
         return this.scent;
     }
@@ -59,6 +64,7 @@ class Cloth extends Product {
         this.clothCategory=clothCategory;
     }
 
+    //옷 종류 반환
     public String getClothCategory(){
         return this.clothCategory;
     }
@@ -75,6 +81,7 @@ class Food extends Product {
         this.vegan=vegan;
     }
 
+    //비건 여부 반환;
     public boolean getVegan(){
         return this.vegan;
     }
@@ -91,6 +98,7 @@ class Makeup extends Cosmetic {
         this.makeupCategory=makeupCategory;
     }
 
+    //색조 종류 반환;
     public String getMakeupCategory() {
         return makeupCategory;
     }
@@ -106,6 +114,7 @@ class Skincare extends Cosmetic {
         this.skincareCategory=skincareCategory;
     }
 
+    //피부 타입 반환
     public String getSkincareCategory(){
         return this.skincareCategory;
     }
@@ -129,13 +138,12 @@ class Market {
         this.priceMap.put(productId,price);
     }
 
-
-
     //priceMap에서 productId에 해당하는 값을 반환하고 없으면 -1을 반환 -1의 경우 오류 처리에 사용
     public int getPrice (String productId){
         return priceMap.getOrDefault(productId,-1);
     }
 
+    //Market의 이름을 반환
     public String getMarketName(){
         return this.marketName;
     }
@@ -160,6 +168,7 @@ public class Main{
         System.out.println("어떤 상품을 구매하시겠습니까? 번호로 입력해 주세요.");
         System.out.println("1.화장품, 2.옷, 3.식품");
 
+        //유저 상품 종류 선택
         int insert =sc.nextInt();
 
         //cosmeticCategory : 색조,기초 제품 구분
@@ -171,8 +180,10 @@ public class Main{
         //입력값에 따라 제품군 출력
         switch (insert) {
             case 1: {
+                //유저가 보게 될 안내창
                 System.out.println("어떤 화장품을 구매하시겠습니까? 번호로 입력해 주세요.");
                 System.out.println("1.색조, 2.기초");
+                //화장품 내부에서 소분류 선택
                 cosmeticCategory = sc.nextInt();
                 sc.nextLine();
                 System.out.println("구매하실 제품의 ID를 입력해주세요");
@@ -225,12 +236,17 @@ public class Main{
                 }
                 break;
             }
+            default :
+            {
+                System.out.println("에러가 발생했습니다.");
+                return;
+            }
         }
 
         //제품 아이디 입력
         String insertId=sc.nextLine();
+        //정상 작동 여부 확인
         boolean isActive = false;
-        //ProductList 전체를 훑음
         for (Product p : productList){
             //insertId와 제품의 아이디가 동일할 때 제품명 출력
             if(p.getId().equals(insertId)) {
@@ -245,6 +261,7 @@ public class Main{
                         System.out.println(m.getMarketName() + "에서 판매중인 가격은 " + m.getPrice(insertId) + "입니다.");
                     }
             }
+            //에러 확인
             if (isActive == true) {
                 System.out.println("상품 가격 비교가 끝났습니다. 즐거운 쇼핑 되세요.");
             }
