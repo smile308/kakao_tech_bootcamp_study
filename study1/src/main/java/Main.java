@@ -21,6 +21,10 @@ class Product {
     public String getId() {
         return this.id;
     }
+
+    public String getBrand() {
+        return this.brand;
+    }
 }
 
 class Cosmetic extends Product {
@@ -34,6 +38,14 @@ class Cosmetic extends Product {
         this.skinType=skinType;
         this.scent=scent;
     }
+
+    public String getSkinType() {
+        return this.skinType;
+    }
+
+    public boolean getScent() {
+        return this.scent;
+    }
 }
 
 class Cloth extends Product {
@@ -45,6 +57,10 @@ class Cloth extends Product {
     {
         super(productName, id, brand);
         this.clothCategory=clothCategory;
+    }
+
+    public String getClothCategory(){
+        return this.clothCategory;
     }
 }
 
@@ -59,6 +75,9 @@ class Food extends Product {
         this.vegan=vegan;
     }
 
+    public boolean getVegan(){
+        return this.vegan;
+    }
 }
 
 class Makeup extends Cosmetic {
@@ -71,6 +90,10 @@ class Makeup extends Cosmetic {
         super(productName, id, brand, skinType, scent);
         this.makeupCategory=makeupCategory;
     }
+
+    public String getMakeupCategory() {
+        return makeupCategory;
+    }
 }
 
 class Skincare extends Cosmetic {
@@ -81,6 +104,10 @@ class Skincare extends Cosmetic {
     public Skincare(String productName, String id, String brand, String skinType, boolean scent, String skincareCategory) {
         super(productName, id, brand, skinType, scent);
         this.skincareCategory=skincareCategory;
+    }
+
+    public String getSkincareCategory(){
+        return this.skincareCategory;
     }
 }
 
@@ -103,9 +130,14 @@ class Market {
     }
 
 
+
     //priceMap에서 productId에 해당하는 값을 반환하고 없으면 -1을 반환 -1의 경우 오류 처리에 사용
     public int getPrice (String productId){
         return priceMap.getOrDefault(productId,-1);
+    }
+
+    public String getMarketName(){
+        return this.marketName;
     }
 
 }
@@ -144,13 +176,14 @@ public class Main{
                 cosmeticCategory = sc.nextInt();
                 sc.nextLine();
                 System.out.println("구매하실 제품의 ID를 입력해주세요");
+
                 switch (cosmeticCategory) {
                     //색조 제품일 경우
                     case 1: {
                         //색조 제품 리스트 출력
                         for (Product p : productList) {
                             if (p instanceof Makeup) {
-                                System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                                System.out.println(number + ".제품명:" + p.getProductName() + " ID:"+p.getId()+" 브랜드:"+p.getBrand()+" 피부 타입:"+((Makeup) p).getSkinType()+" 향 유무:"+((Makeup) p).getScent()+" 종류:"+((Makeup) p).getMakeupCategory());
                                 number++;
                             }
                         }
@@ -161,7 +194,7 @@ public class Main{
                         //기초 제품들 리스트 출력
                         for (Product p : productList) {
                             if (p instanceof Skincare) {
-                                System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                                System.out.println(number + ".제품명:" + p.getProductName() + " ID:"+p.getId()+" 브랜드:"+p.getBrand()+" 피부 타입:"+((Skincare) p).getSkinType()+" 향 유무:"+((Skincare) p).getScent() + " 종류:"+((Skincare) p).getSkincareCategory());
                                 number++;
                             }
                         }
@@ -175,7 +208,8 @@ public class Main{
                 //의류 제품 리스트 출력
                 for (Product p : productList) {
                     if (p instanceof Cloth) {
-                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId() + " 종류:"+((Cloth) p).getClothCategory());
+                        number++;
                     }
                 }
                 break;
@@ -185,20 +219,44 @@ public class Main{
                 //식품 제품 리스트 출력
                 for (Product p : productList) {
                     if (p instanceof Food) {
-                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId()+" 비건 여부:"+((Food)p).getVegan());
+                        number++;
                     }
                 }
                 break;
             }
         }
 
-
+        //제품 아이디 입력
+        String insertId=sc.nextLine();
+        boolean isActive = false;
+        //ProductList 전체를 훑음
+        for (Product p : productList){
+            //insertId와 제품의 아이디가 동일할 때 제품명 출력
+            if(p.getId().equals(insertId)) {
+                System.out.println("선택하신 상품:" + p.getProductName() + "의 가격을 비교해드리겠습니다.");
+                isActive=true;
+            }
+        }
+        //marketList 전체를 훑으며 ID가 같은 가격일 때 가격을 출력
+            for(Market m : marketList){
+                    int price = m.getPrice(insertId);
+                    if (price != -1) {
+                        System.out.println(m.getMarketName() + "에서 판매중인 가격은 " + m.getPrice(insertId) + "입니다.");
+                    }
+            }
+            if (isActive == true) {
+                System.out.println("상품 가격 비교가 끝났습니다. 즐거운 쇼핑 되세요.");
+            }
+            else{
+                System.out.println("에러가 발생했습니다. 다시 이용해 주세요.");
+            }
 
     }
 
 
     private static void initProducts(List<Product> list){
-        //id의 경우 id에 제품 브랜드와 카테고리 등 다른 정보들을 포함하는 형태로 추후에 규칙을가지고 자세하게 설정하면 더 좋을 것 같음
+        //제품 정보를 Product에 저장
         list.add(new Makeup("카야 피그", "M001","롬앤", "지성", true, "립"));
         list.add(new Makeup("던 핑크", "M002","투슬래시포", "건성", false, "블러셔"));
         list.add(new Makeup("킬커버", "M003","클리오", "지성", true, "쿠션"));
@@ -233,7 +291,7 @@ public class Main{
         Market musinsa = new Market("무신사");
         musinsa.addProductPrice("M001", 11000);
         musinsa.addProductPrice("M002", 22000);
-        musinsa.addProductPrice("M001", 33000);
+        musinsa.addProductPrice("M003", 33000);
         musinsa.addProductPrice("S001", 25000);
         musinsa.addProductPrice("S002", 3000);
         musinsa.addProductPrice("S003", 20000);
