@@ -138,52 +138,62 @@ public class Main{
 
         //입력값에 따라 제품군 출력
         switch (insert) {
-            case 1:
-            {
+            case 1: {
                 System.out.println("어떤 화장품을 구매하시겠습니까? 번호로 입력해 주세요.");
                 System.out.println("1.색조, 2.기초");
-                cosmeticCategory=sc.nextInt();
+                cosmeticCategory = sc.nextInt();
                 sc.nextLine();
-                System.out.println("제품 번호를 선택해주세요");
-                switch(cosmeticCategory)
-                {
+                System.out.println("구매하실 제품의 ID를 입력해주세요");
+                switch (cosmeticCategory) {
                     //색조 제품일 경우
-                    case 1:
-                    {
+                    case 1: {
                         //색조 제품 리스트 출력
-                        for (Product p : productList){
-                            if (p instanceof Makeup){
-                                System.out.println(number +"."+ p.getProductName());
+                        for (Product p : productList) {
+                            if (p instanceof Makeup) {
+                                System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
                                 number++;
                             }
                         }
                         break;
                     }
                     //기초 제품일 경우
-                    case 2:
-                    {
+                    case 2: {
                         //기초 제품들 리스트 출력
-                        for(Product p : productList)
-                        {
-                            if ( p instanceof Skincare)
-                            {
-                                System.out.println(number+"."+p.getProductName());
+                        for (Product p : productList) {
+                            if (p instanceof Skincare) {
+                                System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
                                 number++;
                             }
                         }
                         break;
                     }
                 }
+                break;
             }
-            case 2:
-            {
-
+            case 2: {
+                System.out.println("구매하실 제품의 ID를 입력해주세요");
+                //의류 제품 리스트 출력
+                for (Product p : productList) {
+                    if (p instanceof Cloth) {
+                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                    }
+                }
+                break;
             }
-            case 3:
-            {
-
+            case 3: {
+                System.out.println("구매하실 제품의 ID를 입력해주세요");
+                //식품 제품 리스트 출력
+                for (Product p : productList) {
+                    if (p instanceof Food) {
+                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId());
+                    }
+                }
+                break;
             }
         }
+
+
+
     }
 
 
