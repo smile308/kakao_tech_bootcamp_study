@@ -45,7 +45,8 @@ public class Main{
                         //색조 제품 리스트 출력
                         for (Product p : productList) {
                             if (p instanceof Makeup) {
-                                System.out.println(number + ".제품명:" + p.getProductName() + " ID:"+p.getId()+" 브랜드:"+p.getBrand()+" 피부 타입:"+((Makeup) p).getSkinType()+" 향 유무:"+((Makeup) p).getScent()+" 종류:"+((Makeup) p).getMakeupCategory());
+                                System.out.print(number+".");
+                                p.getDisplayInfo();
                                 number++;
                             }
                         }
@@ -56,7 +57,8 @@ public class Main{
                         //기초 제품들 리스트 출력
                         for (Product p : productList) {
                             if (p instanceof Skincare) {
-                                System.out.println(number + ".제품명:" + p.getProductName() + " ID:"+p.getId()+" 브랜드:"+p.getBrand()+" 피부 타입:"+((Skincare) p).getSkinType()+" 향 유무:"+((Skincare) p).getScent() + " 종류:"+((Skincare) p).getSkincareCategory());
+                                System.out.print(number+".");
+                                p.getDisplayInfo();
                                 number++;
                             }
                         }
@@ -70,7 +72,8 @@ public class Main{
                 //의류 제품 리스트 출력
                 for (Product p : productList) {
                     if (p instanceof Cloth) {
-                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId() + " 종류:"+((Cloth) p).getClothCategory());
+                        System.out.print(number+".");
+                        p.getDisplayInfo();
                         number++;
                     }
                 }
@@ -81,7 +84,8 @@ public class Main{
                 //식품 제품 리스트 출력
                 for (Product p : productList) {
                     if (p instanceof Food) {
-                        System.out.println(number + "." + p.getProductName() + " ID:"+p.getId()+" 비건 여부:"+((Food)p).getVegan());
+                        System.out.print(number+".");
+                        p.getDisplayInfo();
                         number++;
                     }
                 }

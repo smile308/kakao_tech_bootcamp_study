@@ -4,12 +4,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Market {
-    //marketName : 마켓 이름(올리브영,지그재그,무신사)
+
     //priceMap <상품ID,가격>
     private String marketName;
     private Map<String,Integer> priceMap = new HashMap<>();
 
-    //마켓 이름을 정하는 생성자
     public Market(String marketName)
     {
         this.marketName=marketName;
@@ -26,7 +25,6 @@ public class Market {
         return priceMap.getOrDefault(productId,-1);
     }
 
-    //Market의 이름을 반환
     public String getMarketName(){
         return this.marketName;
     }

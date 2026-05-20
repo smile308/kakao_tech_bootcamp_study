@@ -6,7 +6,6 @@ public class Product {
     private String id;
     private String brand;
 
-    //값을 넣기 위한 생성자
     public Product(String productName, String id, String brand)
     {
         this.productName=productName;
@@ -14,17 +13,19 @@ public class Product {
         this.brand=brand;
     }
 
-    //상품명을 반환
+    //상품 정보 출력 메서드
+    public void getDisplayInfo(){
+        System.out.print("제품명: "+this.productName+"상품ID: "+this.id+"브랜드:"+this.brand);
+    }
+
     public String getProductName(){
         return this.productName;
     }
 
-    //상품ID를 반환
     public String getId() {
         return this.id;
     }
 
-    //상품 브랜드를 반환
     public String getBrand() {
         return this.brand;
     }
