@@ -14,14 +14,6 @@ public class Cosmetic extends Product {
     public void getDisplayInfo()
     {
         super.getDisplayInfo();
-        System.out.print("피부 타입: "+this.skinType+"향기 유무: "+this.isScent);
-    }
-
-    public String getSkinType() {
-        return this.skinType;
-    }
-
-    public boolean getScent() {
-        return this.isScent;
+        System.out.print(" 피부 타입: "+this.skinType+" 향기 유무: "+this.isScent);
     }
 }

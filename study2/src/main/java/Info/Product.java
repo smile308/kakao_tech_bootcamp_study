@@ -15,7 +15,7 @@ public class Product {
 
     //상품 정보 출력 메서드
     public void getDisplayInfo(){
-        System.out.print("제품명: "+this.productName+"상품ID: "+this.id+"브랜드:"+this.brand);
+        System.out.print("제품명: "+this.productName+" 상품ID: "+this.id+" 브랜드: "+this.brand);
     }
 
     public String getProductName(){
@@ -26,7 +26,4 @@ public class Product {
         return this.id;
     }
 
-    public String getBrand() {
-        return this.brand;
-    }
 }

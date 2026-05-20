@@ -11,9 +11,6 @@ public class Skincare extends Cosmetic {
     @Override
     public void getDisplayInfo(){
         super.getDisplayInfo();
-        System.out.println("종류: "+this.skincareCategory);
-    }
-    public String getSkincareCategory(){
-        return this.skincareCategory;
+        System.out.println(" 종류: "+this.skincareCategory);
     }
 }

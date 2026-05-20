@@ -12,10 +12,6 @@ public class Food extends Product {
     @Override
     public void getDisplayInfo(){
         super.getDisplayInfo();
-        System.out.println("비건 여부 :"+this.vegan);
-    }
-
-    public boolean getVegan(){
-        return this.vegan;
+        System.out.println(" 비건 여부: "+this.vegan);
     }
 }

@@ -13,10 +13,6 @@ public class Cloth extends Product {
     @Override
     public void getDisplayInfo(){
         super.getDisplayInfo();
-        System.out.println("종류: "+this.clothCategory);
-    }
-
-    public String getClothCategory(){
-        return this.clothCategory;
+        System.out.println(" 종류: "+this.clothCategory);
     }
 }

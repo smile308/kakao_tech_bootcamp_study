@@ -1,5 +1,5 @@
 import Info.*;
-
+import Thread.*;
 import java.util.*;
 
 public class Main{
@@ -110,15 +110,31 @@ public class Main{
             }
         }
         //marketList 전체를 훑으며 ID가 같은 가격일 때 가격을 출력
-            for(Market m : marketList){
-                    int price = m.getPrice(insertId);
-                    if (price != -1) {
-                        System.out.println(m.getMarketName() + "에서 판매중인 가격은 " + m.getPrice(insertId) + "입니다.");
-                    }
-            }
-            //에러 확인
+
+
+        Runnable compareTask = new PriceCompare(marketList,insertId);
+        Thread compareThread = new Thread(compareTask);
+        Runnable waitTask = new Wait(compareThread);
+        Thread waitThread = new Thread(waitTask);
+
+
+        waitThread.start();
+        compareThread.start();
+
+        //스레드 종료까지 기다림
+        try {
+            waitThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        try {
+            compareThread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        //에러 확인
             if (isActive == true) {
-                System.out.println("상품 가격 비교가 끝났습니다. 즐거운 쇼핑 되세요.");
+                System.out.println("즐거운 쇼핑 되세요.");
             }
             else{
                 System.out.println("에러가 발생했습니다. 다시 이용해 주세요.");

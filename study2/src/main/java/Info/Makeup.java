@@ -12,10 +12,6 @@ public class Makeup extends Cosmetic {
     @Override
     public void getDisplayInfo(){
         super.getDisplayInfo();
-        System.out.println("종류: "+this.makeupCategory);
-    }
-
-    public String getMakeupCategory() {
-        return makeupCategory;
+        System.out.println(" 종류: "+this.makeupCategory);
     }
 }
