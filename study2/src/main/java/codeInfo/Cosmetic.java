@@ -1,4 +1,4 @@
-package Info;
+package codeInfo;
 
 public class Cosmetic extends Product {
     private String skinType;
@@ -11,9 +11,9 @@ public class Cosmetic extends Product {
     }
 
     @Override
-    public void getDisplayInfo()
+    public void displayInfo()
     {
-        super.getDisplayInfo();
+        super.displayInfo();
         System.out.print(" 피부 타입: "+this.skinType+" 향기 유무: "+this.isScent);
     }
 }

@@ -1,5 +1,5 @@
-import Info.*;
-import Thread.*;
+import codeInfo.*;
+import multiTask.*;
 import java.util.*;
 
 public class Main{
@@ -27,7 +27,7 @@ public class Main{
         // number : 제품 번호 출력에 사용할 번호
         int number=1;
         sc.nextLine();
-
+        String insertId = "";
         //입력값에 따라 제품군 출력
         switch (insert) {
             case 1: {
@@ -46,9 +46,15 @@ public class Main{
                         for (Product p : productList) {
                             if (p instanceof Makeup) {
                                 System.out.print(number+".");
-                                p.getDisplayInfo();
+                                p.displayInfo();
                                 number++;
                             }
+                        }
+                        insertId=sc.nextLine();
+                        if(insertId.charAt(0)!='M')
+                        {
+                            System.out.println("잘못된 상품 코드이거나 현재 보고계신 상품이 아닙니다.");
+                            return;
                         }
                         break;
                     }
@@ -58,9 +64,15 @@ public class Main{
                         for (Product p : productList) {
                             if (p instanceof Skincare) {
                                 System.out.print(number+".");
-                                p.getDisplayInfo();
+                                p.displayInfo();
                                 number++;
                             }
+                        }
+                        insertId=sc.nextLine();
+                        if(insertId.charAt(0)!='S')
+                        {
+                            System.out.println("잘못된 상품 코드이거나 현재 보고계신 상품이 아닙니다.");
+                            return;
                         }
                         break;
                     }
@@ -73,9 +85,15 @@ public class Main{
                 for (Product p : productList) {
                     if (p instanceof Cloth) {
                         System.out.print(number+".");
-                        p.getDisplayInfo();
+                        p.displayInfo();
                         number++;
                     }
+                }
+                insertId=sc.nextLine();
+                if(insertId.charAt(0)!='C')
+                {
+                    System.out.println("잘못된 상품 코드이거나 현재 보고계신 상품이 아닙니다.");
+                    return;
                 }
                 break;
             }
@@ -85,9 +103,15 @@ public class Main{
                 for (Product p : productList) {
                     if (p instanceof Food) {
                         System.out.print(number+".");
-                        p.getDisplayInfo();
+                        p.displayInfo();
                         number++;
                     }
+                }
+                insertId=sc.nextLine();
+                if(insertId.charAt(0)!='F')
+                {
+                    System.out.println("잘못된 상품 코드이거나 현재 보고계신 상품이 아닙니다.");
+                    return;
                 }
                 break;
             }
@@ -98,8 +122,7 @@ public class Main{
             }
         }
 
-        //제품 아이디 입력
-        String insertId=sc.nextLine();
+
         //정상 작동 여부 확인
         boolean isActive = false;
         for (Product p : productList){
@@ -114,22 +137,18 @@ public class Main{
 
         Runnable compareTask = new PriceCompare(marketList,insertId);
         Thread compareThread = new Thread(compareTask);
-        Runnable waitTask = new Wait(compareThread);
-        Thread waitThread = new Thread(waitTask);
 
 
-        waitThread.start();
         compareThread.start();
+
+
 
         //스레드 종료까지 기다림
         try {
-            waitThread.join();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        try {
             compareThread.join();
+            System.out.println("비교가 끝났습니다.");
         } catch (InterruptedException e) {
+            e.printStackTrace();
             Thread.currentThread().interrupt();
         }
         //에러 확인

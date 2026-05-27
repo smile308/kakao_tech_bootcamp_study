@@ -1,4 +1,4 @@
-package Info;
+package codeInfo;
 
 public class Food extends Product {
     private boolean vegan;
@@ -10,8 +10,8 @@ public class Food extends Product {
     }
 
     @Override
-    public void getDisplayInfo(){
-        super.getDisplayInfo();
+    public void displayInfo(){
+        super.displayInfo();
         System.out.println(" 비건 여부: "+this.vegan);
     }
 }

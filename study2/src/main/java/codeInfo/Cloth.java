@@ -1,4 +1,4 @@
-package Info;
+package codeInfo;
 
 public class Cloth extends Product {
     private String clothCategory;
@@ -11,8 +11,8 @@ public class Cloth extends Product {
 
 
     @Override
-    public void getDisplayInfo(){
-        super.getDisplayInfo();
+    public void displayInfo(){
+        super.displayInfo();
         System.out.println(" 종류: "+this.clothCategory);
     }
 }

@@ -1,4 +1,4 @@
-package Info;
+package codeInfo;
 
 public class Product {
     //productName: 상품명, id : 상품 고유 코드, brand : 브랜드명
@@ -14,7 +14,7 @@ public class Product {
     }
 
     //상품 정보 출력 메서드
-    public void getDisplayInfo(){
+    public void displayInfo(){
         System.out.print("제품명: "+this.productName+" 상품ID: "+this.id+" 브랜드: "+this.brand);
     }
 

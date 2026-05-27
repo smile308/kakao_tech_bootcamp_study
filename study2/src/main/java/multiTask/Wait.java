@@ -1,5 +1,5 @@
-package Thread;
-
+package multiTask;
+//현재 쓰이는 코드가 아님
 public class Wait implements Runnable{
     private Thread sign;
 
@@ -15,7 +15,9 @@ public class Wait implements Runnable{
         try {
             sign.join();
         } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            System.out.println("중단 요청이 들어왔습니다.");
+            e.printStackTrace();
+            return ;
         }
         System.out.println("가격 비교가 끝났습니다.");
     }

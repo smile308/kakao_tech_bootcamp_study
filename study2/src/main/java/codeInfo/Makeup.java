@@ -1,4 +1,4 @@
-package Info;
+package codeInfo;
 
 public class Makeup extends Cosmetic {
     private String makeupCategory;
@@ -10,8 +10,8 @@ public class Makeup extends Cosmetic {
     }
 
     @Override
-    public void getDisplayInfo(){
-        super.getDisplayInfo();
+    public void displayInfo(){
+        super.displayInfo();
         System.out.println(" 종류: "+this.makeupCategory);
     }
 }
