@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: a9029e9f-5874-4213-8d72-4f98f9b2c6a8
+
+localResources:
+  docs:
+    - ..\springdatajpa\HELP.md
