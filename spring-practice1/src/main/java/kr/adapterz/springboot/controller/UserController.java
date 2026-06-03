@@ -1,11 +1,12 @@
 package kr.adapterz.springboot.controller;
 
+import jakarta.validation.Valid;
 import kr.adapterz.springboot.dto.UserRequestDto;
 import kr.adapterz.springboot.dto.UserResponseDto;
 import kr.adapterz.springboot.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
+import kr.adapterz.springboot.exception.NotFoundException;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -14,7 +15,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public UserResponseDto createUser(@RequestBody UserRequestDto request) {
+    public UserResponseDto createUser(@Valid @RequestBody UserRequestDto request) {
         return userService.createUser(request);
     }
 
@@ -26,7 +27,7 @@ public class UserController {
     @PutMapping("/{userId}")
     public UserResponseDto updateNickname(
             @PathVariable Long userId,
-            @RequestBody UserRequestDto request
+            @Valid @RequestBody UserRequestDto request
     ) {
         return userService.updateNickname(userId, request);
     }

@@ -9,6 +9,7 @@ import kr.adapterz.springboot.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import kr.adapterz.springboot.exception.NotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -20,7 +21,7 @@ public class PostService {
     @Transactional
     public PostResponseDto createPost(Long userId, PostRequestDto request) {
         User author = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new  NotFoundException("USER_NOT_FOUND"));
 
         Post post = new Post(
                 request.getTitle(),
@@ -35,14 +36,14 @@ public class PostService {
     @Transactional(readOnly = true)
     public PostResponseDto getPost(Long postId) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+                .orElseThrow(() -> new NotFoundException("POST_NOT_FOUND"));
         return new PostResponseDto(post);
     }
 
     @Transactional
     public PostResponseDto updatePost(Long postId, PostRequestDto request) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+                .orElseThrow(() -> new NotFoundException("POST_NOT_FOUND"));
 
         post.changeTitle(request.getTitle());
         post.changeContent(request.getContent());

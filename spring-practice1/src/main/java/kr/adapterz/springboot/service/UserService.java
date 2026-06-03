@@ -7,6 +7,7 @@ import kr.adapterz.springboot.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import kr.adapterz.springboot.exception.NotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -28,14 +29,14 @@ public class UserService {
     @Transactional(readOnly = true)
     public UserResponseDto getUser(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("USER_NOT_FOUND"));
         return new UserResponseDto(user);
     }
 
     @Transactional
     public UserResponseDto updateNickname(Long userId, UserRequestDto request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() ->  new NotFoundException("USER_NOT_FOUND"));
         user.changeNickname(request.getNickname());
         return new UserResponseDto(user);
     }

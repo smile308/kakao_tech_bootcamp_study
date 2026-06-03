@@ -1,5 +1,6 @@
 package kr.adapterz.springboot.controller;
 
+import jakarta.validation.Valid;
 import kr.adapterz.springboot.dto.PostRequestDto;
 import kr.adapterz.springboot.dto.PostResponseDto;
 import kr.adapterz.springboot.service.PostService;
@@ -16,7 +17,7 @@ public class PostController {
     @PostMapping("/users/{userId}")
     public PostResponseDto createPost(
             @PathVariable Long userId,
-            @RequestBody PostRequestDto request
+            @Valid @RequestBody PostRequestDto request
     ) {
         return postService.createPost(userId, request);
     }
@@ -29,7 +30,7 @@ public class PostController {
     @PutMapping("/{postId}")
     public PostResponseDto updatePost(
             @PathVariable Long postId,
-            @RequestBody PostRequestDto request
+            @Valid @RequestBody PostRequestDto request
     ) {
         return postService.updatePost(postId, request);
     }
