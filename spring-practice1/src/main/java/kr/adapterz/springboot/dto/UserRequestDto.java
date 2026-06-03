@@ -1,4 +1,4 @@
-package kr.adapterz.springdatajpa.dto;
+package kr.adapterz.springboot.dto;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

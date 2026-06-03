@@ -1,7 +1,7 @@
-package kr.adapterz.springdatajpa.dto;
+package kr.adapterz.springboot.dto;
 
 import lombok.Getter;
-import kr.adapterz.springdatajpa.entity.User;
+import kr.adapterz.springboot.entity.User;
 import lombok.NoArgsConstructor;
 
 @Getter
