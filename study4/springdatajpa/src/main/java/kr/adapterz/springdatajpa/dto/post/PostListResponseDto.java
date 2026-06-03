@@ -1,0 +1,34 @@
+package kr.adapterz.springdatajpa.dto.post;
+
+import kr.adapterz.springdatajpa.entity.Post;
+import kr.adapterz.springdatajpa.entity.User;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Getter
+@NoArgsConstructor
+public class PostListResponseDto {
+    private Long post_id;
+    private int report_count;
+    private String title;
+    private int like_count;
+    private int reply_count;
+    private int view_count;
+    private String date;
+    private String time;
+    private String user_name;
+    private String user_profile_image;
+    public PostListResponseDto(Post post, User user){
+        this.post_id=post.getPost_id();
+        this.report_count=post.getReport_count();
+        this.title=post.getPost_title();
+        this.like_count=post.getLike_count();
+        this.reply_count=post.getReply_count();
+        this.view_count=post.getView_count();
+        this.date= post.getDate();
+        this.time=post.getTime();
+        this.user_name=user.getNickname();
+        this.user_profile_image=user.getProfile_image();
+    }
+
+}
