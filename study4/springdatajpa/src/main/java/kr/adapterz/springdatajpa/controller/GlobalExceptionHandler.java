@@ -1,6 +1,7 @@
 package kr.adapterz.springdatajpa.controller;
 
 import kr.adapterz.springdatajpa.dto.ErrorResponseDto;
+import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
 import kr.adapterz.springdatajpa.exception.SessionException;
@@ -48,6 +49,14 @@ public class GlobalExceptionHandler {
         ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
+                .body(response);
+    }
+    //데이터가 없을 경우
+    @ExceptionHandler(DataNullException.class)
+    public ResponseEntity<ErrorResponseDto> handleDataNullException(DataNullException e){
+        ErrorResponseDto response = new ErrorResponseDto((e.getMessage()));
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
                 .body(response);
     }
 }

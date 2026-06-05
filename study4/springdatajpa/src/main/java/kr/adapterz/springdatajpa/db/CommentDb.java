@@ -5,9 +5,7 @@ import kr.adapterz.springdatajpa.entity.Comment;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Repository
 public class CommentDb implements CommentRepository {
@@ -54,8 +52,19 @@ public class CommentDb implements CommentRepository {
 
         return savedComment;
     }
+    //포스트아이디로 코멘트 찾기
+    @Override
+    public List<Comment> findByPostId(Long postId) {
+        List<Comment> result = new ArrayList<>();
 
+        for (Comment comment : store.values()) {
+            if (comment.getPost_id().equals(postId)) {
+                result.add(comment);
+            }
+        }
 
+        return result;
+    }
 
     //코멘트 삭제
     @Override

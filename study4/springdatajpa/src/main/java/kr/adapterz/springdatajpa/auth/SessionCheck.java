@@ -1,6 +1,7 @@
 package kr.adapterz.springdatajpa.auth;
 
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
+import kr.adapterz.springdatajpa.exception.SessionException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -9,7 +10,7 @@ public class SessionCheck {
 
     public void check(String access_session) {
         if (!Valid.equals(access_session)) {
-            throw new InvalidRequestException();
+            throw new SessionException();
         }
     }
 }

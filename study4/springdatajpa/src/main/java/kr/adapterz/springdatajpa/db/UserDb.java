@@ -43,7 +43,7 @@ public class UserDb implements UserRepository {
 
     //아이디로 유저 정보 찾기
     @Override
-    public Optional<User> findById(Long id) {
+    public Optional<User> findId(Long id) {
         return Optional.ofNullable(store.get(id));
     }
 

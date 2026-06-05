@@ -1,9 +1,12 @@
 package kr.adapterz.springdatajpa.dto.post;
 
+import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Getter
 @NoArgsConstructor
@@ -20,7 +23,9 @@ public class PostViewResponseDto {
     private String user_name;
     private String user_profile_image;
 
-    public PostViewResponseDto(Post post, User user){
+    //댓글들 리스트
+    private List<CommentResponseDto> comments;
+    public PostViewResponseDto(Post post, User user, List<CommentResponseDto> comments){
         this.post_id=post.getPost_id();
         this.is_fixed=post.is_fixed();
         this.post_title=post.getPost_title();
@@ -32,5 +37,6 @@ public class PostViewResponseDto {
         this.time=post.getTime();
         this.user_name=user.getNickname();
         this.user_profile_image=user.getProfile_image();
+        this.comments=comments;
     }
 }

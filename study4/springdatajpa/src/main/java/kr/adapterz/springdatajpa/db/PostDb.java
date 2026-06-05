@@ -25,13 +25,15 @@ public class PostDb implements PostRepository {
         save(new Post(
                 1L,
                 "첫 번째 게시글",
-                "첫 번째 게시글 내용입니다."
+                "첫 번째 게시글 내용입니다.",
+                "image.png1"
         ));
 
         save(new Post(
                 2L,
                 "두 번째 게시글",
-                "두 번째 게시글 내용입니다."
+                "두 번째 게시글 내용입니다.",
+                "image.png2"
         ));
     }
 
@@ -44,7 +46,8 @@ public class PostDb implements PostRepository {
                 id,
                 post.getUser_id(),
                 post.getPost_title(),
-                post.getPost_content()
+                post.getPost_content(),
+                post.getImage_file()
         );
 
         store.put(id, savedPost);
@@ -56,6 +59,12 @@ public class PostDb implements PostRepository {
     @Override
     public List<Post> findAll() {
         return new ArrayList<>(store.values());
+    }
+
+    //postid로 포스트 찾기
+    @Override
+    public Optional<Post> findId(Long postId) {
+        return Optional.ofNullable(store.get(postId));
     }
 
     //포스트 삭제

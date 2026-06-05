@@ -1,11 +1,8 @@
 package kr.adapterz.springdatajpa.controller;
 
 import jakarta.validation.Valid;
-import kr.adapterz.springdatajpa.dto.post.PostListRequestDto;
-import kr.adapterz.springdatajpa.dto.post.PostListResponseDto;
+import kr.adapterz.springdatajpa.dto.post.*;
 
-import kr.adapterz.springdatajpa.dto.post.PostRequestDto;
-import kr.adapterz.springdatajpa.dto.post.PostResponseDto;
 import kr.adapterz.springdatajpa.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -23,9 +20,14 @@ public class PostController {
     public List<PostListResponseDto> getPostList(@Valid @RequestBody PostListRequestDto request){
         return postService.getPostList(request);
     }
-
+    //게시글 추가
     @PostMapping
     public PostResponseDto createPost(@Valid @RequestBody PostRequestDto request){
         return postService.createPost(request);
+    }
+    //게시글 상세조회
+    @GetMapping("/{postId}")
+    public PostViewResponseDto getPost(@RequestBody PostViewRequestDto request) {
+        return postService.getPostView(request);
     }
 }

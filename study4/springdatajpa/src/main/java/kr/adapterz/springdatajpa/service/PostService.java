@@ -1,12 +1,13 @@
 package kr.adapterz.springdatajpa.service;
 
 import kr.adapterz.springdatajpa.auth.SessionCheck;
-import kr.adapterz.springdatajpa.dto.post.PostListRequestDto;
-import kr.adapterz.springdatajpa.dto.post.PostListResponseDto;
-import kr.adapterz.springdatajpa.dto.post.PostRequestDto;
-import kr.adapterz.springdatajpa.dto.post.PostResponseDto;
+import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
+import kr.adapterz.springdatajpa.dto.post.*;
+import kr.adapterz.springdatajpa.entity.Comment;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
+import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final SessionCheck sessionCheck;
+    private final CommentRepository commentRepository;
 
     //게시물 목록 조회
     public List<PostListResponseDto> getPostList(PostListRequestDto request) {
@@ -31,7 +33,7 @@ public class PostService {
 
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
-            User user = userRepository.findById(post.getUser_id())
+            User user = userRepository.findId(post.getUser_id())
                     .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
 
             PostListResponseDto dto = new PostListResponseDto(post, user);
@@ -55,5 +57,34 @@ public class PostService {
         postRepository.save(post);
 
         return postResponseDto;
+    }
+
+    //게시물 상세조회
+    public PostViewResponseDto getPostView(PostViewRequestDto request) {
+        sessionCheck.check(request.getAccess_session());
+
+        Post post = postRepository.findId(request.getPost_id())
+                .orElseThrow(() -> new DataNullException());
+
+        User postWriter = userRepository.findId(post.getUser_id())
+                .orElseThrow(() -> new DataNullException());
+
+        //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
+        List<Comment> comments = commentRepository.findByPostId(post.getPost_id());
+
+        List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
+
+        //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
+        for (Comment comment : comments) {
+            User commentWriter = userRepository.findId(comment.getUser_id())
+                    .orElseThrow(() -> new DataNullException());
+
+            CommentResponseDto commentResponseDto =
+                    new CommentResponseDto(comment, commentWriter);
+
+            commentResponseDtos.add(commentResponseDto);
+        }
+
+        return new PostViewResponseDto(post, postWriter, commentResponseDtos);
     }
 }
