@@ -7,6 +7,7 @@ import kr.adapterz.springdatajpa.entity.Comment;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.SessionException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
@@ -92,8 +93,17 @@ public class PostService {
     public PostFixResponseDto fixPost(PostFixRequestDto request) {
         sessionCheck.check(request.getAccess_session());
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
-
-
+        Post post = postRepository.findId(request.getPost_id())
+                .orElseThrow(()->new DataNullException());
+        //실제 작성자가 맞는지 확인
+        if (!post.getUser_id().equals(request.getUser_id())) {
+            throw new SessionException();
+        }
+        post.update(
+                request.getTitle(),
+                request.getContents(),
+                request.getImage_file()
+        );
         return postFixResponseDto;
     }
 }

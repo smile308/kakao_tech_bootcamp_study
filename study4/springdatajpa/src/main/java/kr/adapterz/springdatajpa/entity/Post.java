@@ -89,12 +89,10 @@ public class Post {
         date= String.valueOf(LocalDate.now());
         time=String.valueOf(LocalTime.now());
     }
-    public void changeTitle(String post_title){
-        this.post_title=post_title;
-    }
-
-    public void changeContent(String post_content){
-        this.post_content=post_content;
+    public void update(String title, String contents, String image_file) {
+        this.post_title = title;
+        this.post_content = contents;
+        this.image_file = image_file;
     }
 
     public void fixed(){
