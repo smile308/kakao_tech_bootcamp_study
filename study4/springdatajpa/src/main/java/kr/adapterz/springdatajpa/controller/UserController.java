@@ -1,5 +1,6 @@
 package kr.adapterz.springdatajpa.controller;
 
+import jakarta.validation.Valid;
 import kr.adapterz.springdatajpa.dto.user.UserRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +16,9 @@ import kr.adapterz.springdatajpa.service.UserService;
 public class UserController {
     private final UserService userService;
 
+    //회원가입
     @PostMapping
-    public UserResponseDto createUser(@RequestBody UserRequestDto request){
+    public UserResponseDto createUser(@Valid @RequestBody UserRequestDto request){
         return userService.createUser(request);
     }
 }

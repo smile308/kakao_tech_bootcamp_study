@@ -13,8 +13,10 @@ import java.util.Optional;
 public class CommentDb implements CommentRepository {
 
     private final Map<Long, Comment> store = new HashMap<>();
+    //comment_id에 사용될 변수
     private Long sequence = 1L;
 
+    //더미 데이터
     @PostConstruct
     public void init() {
         save(new Comment(
@@ -36,6 +38,7 @@ public class CommentDb implements CommentRepository {
         ));
     }
 
+    //데이터 저장
     @Override
     public Comment save(Comment comment) {
         Long id = sequence++;
@@ -52,13 +55,9 @@ public class CommentDb implements CommentRepository {
         return savedComment;
     }
 
-    @Override
-    public Optional<Comment> findById(Long id) {
-        return Optional.ofNullable(store.get(id));
-    }
 
 
-
+    //코멘트 삭제
     @Override
     public void deleteById(Long id) {
         store.remove(id);

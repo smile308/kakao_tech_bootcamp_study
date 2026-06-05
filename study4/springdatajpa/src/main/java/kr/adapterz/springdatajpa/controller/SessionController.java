@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SessionController {
     private final SessionService sessionService;
 
+    //세션 생성
     @PostMapping
     public SessionResponseDto createSession(@Valid @RequestBody SessionRequestDto request){
         return sessionService.createSession(request);

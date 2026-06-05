@@ -1,5 +1,8 @@
 package kr.adapterz.springdatajpa.dto.post;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -8,7 +11,10 @@ import lombok.NoArgsConstructor;
 public class PostRequestDto {
     private Long user_id;
     private String access_session;
+    @NotBlank
+    @Max(26)
     private String title;
+    @NotBlank
     private String contents;
     private String image_file;
 }

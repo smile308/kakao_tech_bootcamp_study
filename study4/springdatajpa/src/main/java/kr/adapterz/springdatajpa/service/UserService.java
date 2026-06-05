@@ -17,6 +17,13 @@ public class UserService {
         if (!request.getPassword().equals(request.getPassword_check())) {
             throw new InvalidRequestException();
         }
+        if (userRepository.existsEmail(request.getEmail())) {
+            throw new InvalidRequestException();
+        }
+
+        if (userRepository.existsNickname(request.getNickname())) {
+            throw new InvalidRequestException();
+        }
         User user = new User(
                 request.getEmail(),
                 request.getPassword(),

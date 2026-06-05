@@ -16,8 +16,10 @@ import java.util.Optional;
 public class PostDb implements PostRepository {
 
     private final Map<Long, Post> store = new HashMap<>();
+    //post_id에 활용될 변수
     private Long sequence = 1L;
 
+    //더미 데이터
     @PostConstruct
     public void init() {
         save(new Post(
@@ -33,6 +35,7 @@ public class PostDb implements PostRepository {
         ));
     }
 
+    //새로운 데이트 추가
     @Override
     public Post save(Post post) {
         Long id = sequence++;
@@ -49,12 +52,13 @@ public class PostDb implements PostRepository {
         return savedPost;
     }
 
+    //리스트 전체 반환
     @Override
     public List<Post> findAll() {
         return new ArrayList<>(store.values());
     }
 
-
+    //포스트 삭제
     @Override
     public void deleteById(Long id) {
         store.remove(id);

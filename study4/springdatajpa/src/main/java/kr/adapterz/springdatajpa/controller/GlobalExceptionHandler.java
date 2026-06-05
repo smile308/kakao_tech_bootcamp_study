@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.controller;
 import kr.adapterz.springdatajpa.dto.ErrorResponseDto;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
+import kr.adapterz.springdatajpa.exception.SessionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -39,6 +40,14 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
+    //Session 검증 오류
+    @ExceptionHandler(SessionException.class)
+    public ResponseEntity<ErrorResponseDto> handleSessioniException(SessionException e){
+        ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
                 .body(response);
     }
 }
