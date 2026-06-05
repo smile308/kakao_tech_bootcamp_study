@@ -1,10 +1,11 @@
 package kr.adapterz.springdatajpa.dto.comment;
 
+import kr.adapterz.springdatajpa.entity.Comment;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class CommentDeleteResponseDto {
-    private String message="remove_success";
+public class CommentPostResponseDto {
+    private String message="post_success";
 }

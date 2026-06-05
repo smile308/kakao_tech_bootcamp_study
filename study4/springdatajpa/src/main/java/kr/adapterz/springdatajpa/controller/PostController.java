@@ -35,4 +35,9 @@ public class PostController {
     public PostFixResponseDto fixPost(@Valid @RequestBody PostFixRequestDto request){
         return postService.fixPost(request);
     }
+    //게시글 삭제
+    @DeleteMapping("/{postId}")
+    public PostDeleteResponseDto deletePost(@RequestBody PostDeleteRequestDto request){
+        return postService.deletePost(request);
+    }
 }

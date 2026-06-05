@@ -6,4 +6,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class LikeResponseDto {
+    private String message = "like_success";
+    private int like_count;
+    public LikeResponseDto(int like_count){
+        this.like_count=like_count;
+    }
 }

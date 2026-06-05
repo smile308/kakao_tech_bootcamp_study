@@ -5,7 +5,6 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class SessionDeleteRequestDto {
-    private Long user_id;
-    private String access_session;
+public class UserPasswordResponseDto {
+    private String message ="fix_success";
 }

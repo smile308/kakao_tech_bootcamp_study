@@ -6,4 +6,5 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class CommentFixResponseDto {
+    private String message="fix_success";
 }

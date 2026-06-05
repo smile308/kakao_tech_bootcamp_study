@@ -6,4 +6,5 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostDeleteResponseDto {
+    private String message="remove_success";
 }

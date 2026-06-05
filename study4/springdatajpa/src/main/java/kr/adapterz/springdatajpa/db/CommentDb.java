@@ -2,6 +2,7 @@ package kr.adapterz.springdatajpa.db;
 
 import jakarta.annotation.PostConstruct;
 import kr.adapterz.springdatajpa.entity.Comment;
+import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import org.springframework.stereotype.Repository;
 
@@ -64,6 +65,12 @@ public class CommentDb implements CommentRepository {
         }
 
         return result;
+    }
+
+    //commentid로 코멘트 찾기
+    @Override
+    public Optional<Comment> findId(Long commentId) {
+        return Optional.ofNullable(store.get(commentId));
     }
 
     //코멘트 삭제

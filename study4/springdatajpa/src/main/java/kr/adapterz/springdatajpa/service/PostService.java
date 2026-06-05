@@ -12,7 +12,7 @@ import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.val;
+
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -105,5 +105,13 @@ public class PostService {
                 request.getImage_file()
         );
         return postFixResponseDto;
+    }
+    //게시글 삭제
+    public PostDeleteResponseDto deletePost(PostDeleteRequestDto request){
+        sessionCheck.check(request.getAccess_session());
+        PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
+        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        postRepository.deleteById(request.getPost_id());
+        return postDeleteResponseDto;
     }
 }

@@ -6,4 +6,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class UserDeleteRequestDto {
+    private Long user_id;
+    private String access_session;
 }

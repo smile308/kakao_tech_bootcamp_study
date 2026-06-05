@@ -89,13 +89,11 @@ public class Post {
         date= String.valueOf(LocalDate.now());
         time=String.valueOf(LocalTime.now());
     }
+    //게시물 수정
     public void update(String title, String contents, String image_file) {
         this.post_title = title;
         this.post_content = contents;
         this.image_file = image_file;
-    }
-
-    public void fixed(){
         is_fixed=true;
     }
 

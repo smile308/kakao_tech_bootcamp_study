@@ -6,4 +6,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class LikeCancelResponseDto {
+    private String message = "cancel_success";
+    private int like_count;
+    public LikeCancelResponseDto(int like_count){
+        this.like_count=like_count;
+    }
 }

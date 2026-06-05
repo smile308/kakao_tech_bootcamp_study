@@ -37,7 +37,7 @@ public class PostDb implements PostRepository {
         ));
     }
 
-    //새로운 데이트 추가
+    //새로운 데이터 추가
     @Override
     public Post save(Post post) {
         Long id = sequence++;

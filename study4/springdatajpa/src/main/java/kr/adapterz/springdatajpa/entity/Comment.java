@@ -53,6 +53,7 @@ public class Comment {
         this.origin_id=origin_id;
     }
 
+    //댓글 수정
     public void changeComment(String comment_content){
         this.comment_content=comment_content;
     }
