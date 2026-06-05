@@ -27,7 +27,12 @@ public class PostController {
     }
     //게시글 상세조회
     @GetMapping("/{postId}")
-    public PostViewResponseDto getPost(@RequestBody PostViewRequestDto request) {
+    public PostViewResponseDto getPostView(@RequestBody PostViewRequestDto request) {
         return postService.getPostView(request);
+    }
+    //게시글 수정
+    @PatchMapping("/{postId}")
+    public PostFixResponseDto fixPost(@Valid @RequestBody PostFixRequestDto request){
+        return postService.fixPost(request);
     }
 }

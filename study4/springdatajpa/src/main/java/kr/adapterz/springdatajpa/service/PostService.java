@@ -87,4 +87,13 @@ public class PostService {
 
         return new PostViewResponseDto(post, postWriter, commentResponseDtos);
     }
+
+    //게시물 수정
+    public PostFixResponseDto fixPost(PostFixRequestDto request) {
+        sessionCheck.check(request.getAccess_session());
+        PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
+
+
+        return postFixResponseDto;
+    }
 }
