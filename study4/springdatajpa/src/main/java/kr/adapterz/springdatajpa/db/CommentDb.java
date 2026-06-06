@@ -27,13 +27,13 @@ public class CommentDb implements CommentRepository {
         save(new Comment(
                 1L,
                 2L,
-                "첫 번째 게시글의 두 번째 댓글입니다."
+                "두 번째 게시글의 첫 번째 댓글입니다."
         ));
 
         save(new Comment(
                 2L,
                 1L,
-                "두 번째 게시글의 첫 번째 댓글입니다."
+                "첫 번째 게시글의 두 번째 댓글입니다."
         ));
     }
 
@@ -44,8 +44,8 @@ public class CommentDb implements CommentRepository {
 
         Comment savedComment = new Comment(
                 id,
-                comment.getPost_id(),
                 comment.getUser_id(),
+                comment.getPost_id(),
                 comment.getComment_content()
         );
 
