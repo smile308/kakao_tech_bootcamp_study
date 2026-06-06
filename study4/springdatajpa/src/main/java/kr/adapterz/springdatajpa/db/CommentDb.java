@@ -2,7 +2,6 @@ package kr.adapterz.springdatajpa.db;
 
 import jakarta.annotation.PostConstruct;
 import kr.adapterz.springdatajpa.entity.Comment;
-import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import org.springframework.stereotype.Repository;
 

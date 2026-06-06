@@ -35,7 +35,7 @@ public class PostService {
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
             User user = userRepository.findId(post.getUser_id())
-                    .orElseThrow(() -> new RuntimeException("USER_NOT_FOUND"));
+                    .orElseThrow(() -> new DataNullException());
 
             PostListResponseDto dto = new PostListResponseDto(post, user);
 
@@ -67,7 +67,7 @@ public class PostService {
         Post post = postRepository.findId(request.getPost_id())
                 .orElseThrow(() -> new DataNullException());
 
-        User postWriter = userRepository.findId(post.getUser_id())
+        User user = userRepository.findId(post.getUser_id())
                 .orElseThrow(() -> new DataNullException());
 
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
@@ -87,7 +87,7 @@ public class PostService {
         }
         //조회수 상승
         post.view();
-        return new PostViewResponseDto(post, postWriter, commentResponseDtos);
+        return new PostViewResponseDto(post, user, commentResponseDtos);
     }
 
     //게시물 수정

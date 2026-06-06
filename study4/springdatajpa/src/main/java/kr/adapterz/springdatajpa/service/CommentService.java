@@ -19,6 +19,7 @@ public class CommentService {
 
     //댓글 등록
     public CommentPostResponseDto commentPost(CommentPostRequestDto request){
+    //세션 검사
     sessionCheck.check(request.getAccess_session());
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
             Comment comment = new Comment(
@@ -29,6 +30,7 @@ public class CommentService {
         commentRepository.save(comment);
         return commentPostResponseDto;
     }
+
     //댓글 수정
     public CommentFixResponseDto commentFix(CommentFixRequestDto request){
         sessionCheck.check(request.getAccess_session());

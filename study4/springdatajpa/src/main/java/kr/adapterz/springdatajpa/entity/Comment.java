@@ -13,7 +13,7 @@ public class Comment {
     private String comment_content;
     private final Long origin_id;
 
-    //DB없이 생성하기 위한 생성자
+    //id없이 먼저 처리하고 후에 DB에서 id를 넣어주기 위한 생성자
     public Comment(Long user_id, Long post_id, String comment_content)
     {
         this.comment_id=null;
@@ -23,7 +23,7 @@ public class Comment {
         origin_id=null;
     }
 
-
+    //대댓글 기능 현재 미구현
     public Comment( Long user_id,Long post_id, String comment_content, Long origin_id)
     {
         this.comment_id=null;
@@ -43,7 +43,7 @@ public class Comment {
         origin_id=null;
     }
 
-    //대댓글인 경우
+    //대댓글인 경우(현재 미구현)
     public Comment(Long comment_id, Long user_id,Long post_id, String comment_content, Long origin_id)
     {
         this.comment_id=comment_id;
