@@ -40,6 +40,7 @@ public class UserService {
     //회원 탈퇴
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
+        userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException());
         userRepository.deleteById(request.getUser_id());
         return userDeleteResponseDto;
     }

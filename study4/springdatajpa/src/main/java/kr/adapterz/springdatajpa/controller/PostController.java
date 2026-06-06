@@ -47,7 +47,7 @@ public class PostController {
     }
 
     //좋아요 취소
-    @DeleteMapping("/{post_id}/cancel")
+    @DeleteMapping("/{post_id}/likes")
     public LikeCancelResponseDto cancelLike(@RequestBody LikeCancelRequestDto request){
         return postService.cancelLike(request);
     }
