@@ -40,4 +40,15 @@ public class PostController {
     public PostDeleteResponseDto deletePost(@RequestBody PostDeleteRequestDto request){
         return postService.deletePost(request);
     }
+    //좋아요
+    @PatchMapping("/{postId}/like")
+    public LikeResponseDto likePost(@RequestBody LikeRequestDto request){
+        return postService.likePost(request);
+    }
+
+    //좋아요 취소
+    @PatchMapping("/{postId}/cancel")
+    public LikeCancelResponseDto cancelLike(@RequestBody LikeCancelRequestDto request){
+        return postService.cancelLike(request);
+    }
 }

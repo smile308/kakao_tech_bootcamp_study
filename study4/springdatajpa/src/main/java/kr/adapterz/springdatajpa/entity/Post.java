@@ -97,18 +97,22 @@ public class Post {
         is_fixed=true;
     }
 
+    //신고 기능(미구현)
     public void report(){
         report_count++;
     }
 
+    //좋아요
     public void like(){
         like_count++;
     }
 
+    //좋아요 취소
     public void likeCancle(){
         like_count--;
     }
 
+    //조회수 기능
     public void view(){
         view_count++;
     }

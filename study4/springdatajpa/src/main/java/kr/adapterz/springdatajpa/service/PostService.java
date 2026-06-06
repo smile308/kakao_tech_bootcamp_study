@@ -85,7 +85,8 @@ public class PostService {
 
             commentResponseDtos.add(commentResponseDto);
         }
-
+        //조회수 상승
+        post.view();
         return new PostViewResponseDto(post, postWriter, commentResponseDtos);
     }
 
@@ -113,5 +114,25 @@ public class PostService {
         postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
         postRepository.deleteById(request.getPost_id());
         return postDeleteResponseDto;
+    }
+
+    //게시물 좋아요
+    public LikeResponseDto likePost(LikeRequestDto request){
+        sessionCheck.check(request.getAccess_session());
+        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        post.like();
+        LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLike_count());
+
+        return likeResponseDto;
+    }
+
+    //좋아요 취소
+    public LikeCancelResponseDto cancelLike(LikeCancelRequestDto request){
+        sessionCheck.check(request.getAccess_session());
+        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        post.likeCancle();
+        LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLike_count());
+
+        return likeCancelResponseDto;
     }
 }
