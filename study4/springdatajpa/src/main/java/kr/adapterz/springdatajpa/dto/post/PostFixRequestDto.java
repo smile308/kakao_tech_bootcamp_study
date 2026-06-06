@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PostFixRequestDto {
     private Long user_id;
-    private String access_session;
     private Long post_id;
     @Size(max=26)
     private String title;

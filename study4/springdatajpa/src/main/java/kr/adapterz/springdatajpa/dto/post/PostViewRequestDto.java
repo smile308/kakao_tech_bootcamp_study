@@ -7,6 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PostViewRequestDto {
     private Long user_id;
-    private String access_session;
     private Long post_id;
 }

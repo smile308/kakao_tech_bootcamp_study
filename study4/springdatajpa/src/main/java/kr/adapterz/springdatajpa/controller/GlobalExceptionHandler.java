@@ -4,7 +4,7 @@ import kr.adapterz.springdatajpa.dto.ErrorResponseDto;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
-import kr.adapterz.springdatajpa.exception.SessionException;
+import kr.adapterz.springdatajpa.exception.AuthException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,8 +44,8 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
     //Session 검증 오류
-    @ExceptionHandler(SessionException.class)
-    public ResponseEntity<ErrorResponseDto> handleSessioniException(SessionException e){
+    @ExceptionHandler(AuthException.class)
+    public ResponseEntity<ErrorResponseDto> handleAuthException(jakarta.security.auth.message.AuthException e){
         ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)

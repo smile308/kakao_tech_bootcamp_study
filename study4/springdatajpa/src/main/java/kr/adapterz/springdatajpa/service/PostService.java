@@ -1,13 +1,12 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.SessionCheck;
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.*;
 import kr.adapterz.springdatajpa.entity.Comment;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
-import kr.adapterz.springdatajpa.exception.SessionException;
+import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
@@ -23,12 +22,10 @@ import java.util.List;
 public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
-    private final SessionCheck sessionCheck;
     private final CommentRepository commentRepository;
 
     //게시물 목록 조회
-    public List<PostListResponseDto> getPostList(PostListRequestDto request) {
-        sessionCheck.check(request.getAccess_session());
+    public List<PostListResponseDto> getPostList() {
         List<Post> posts = postRepository.findAll();
         List<PostListResponseDto> result = new ArrayList<>();
 
@@ -47,7 +44,6 @@ public class PostService {
 
     // 게시물 추가
     public PostResponseDto createPost(PostRequestDto request) {
-        sessionCheck.check(request.getAccess_session());
         PostResponseDto postResponseDto= new PostResponseDto();
         Post post = new Post(
                 request.getUser_id(),
@@ -61,10 +57,9 @@ public class PostService {
     }
 
     //게시물 상세조회
-    public PostViewResponseDto getPostView(PostViewRequestDto request) {
-        sessionCheck.check(request.getAccess_session());
+    public PostViewResponseDto getPostView(Long post_id) {
 
-        Post post = postRepository.findId(request.getPost_id())
+        Post post = postRepository.findId(post_id)
                 .orElseThrow(() -> new DataNullException());
 
         User user = userRepository.findId(post.getUser_id())
@@ -92,13 +87,12 @@ public class PostService {
 
     //게시물 수정
     public PostFixResponseDto fixPost(PostFixRequestDto request) {
-        sessionCheck.check(request.getAccess_session());
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
         Post post = postRepository.findId(request.getPost_id())
                 .orElseThrow(()->new DataNullException());
         //실제 작성자가 맞는지 확인
         if (!post.getUser_id().equals(request.getUser_id())) {
-            throw new SessionException();
+            throw new AuthException();
         }
         post.update(
                 request.getTitle(),
@@ -109,7 +103,6 @@ public class PostService {
     }
     //게시글 삭제
     public PostDeleteResponseDto deletePost(PostDeleteRequestDto request){
-        sessionCheck.check(request.getAccess_session());
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
         postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
         postRepository.deleteById(request.getPost_id());
@@ -118,7 +111,6 @@ public class PostService {
 
     //게시물 좋아요
     public LikeResponseDto likePost(LikeRequestDto request){
-        sessionCheck.check(request.getAccess_session());
         Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
         post.like();
         LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLike_count());
@@ -128,7 +120,6 @@ public class PostService {
 
     //좋아요 취소
     public LikeCancelResponseDto cancelLike(LikeCancelRequestDto request){
-        sessionCheck.check(request.getAccess_session());
         Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
         post.likeCancle();
         LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLike_count());

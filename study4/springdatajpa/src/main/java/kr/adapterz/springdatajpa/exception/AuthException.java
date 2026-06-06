@@ -1,7 +1,7 @@
 package kr.adapterz.springdatajpa.exception;
 
-public class SessionException extends RuntimeException{
-    public SessionException() {
+public class AuthException extends RuntimeException{
+    public AuthException() {
         super("invalid_request");
     }
 }

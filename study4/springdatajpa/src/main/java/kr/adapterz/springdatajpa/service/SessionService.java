@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.SessionCheck;
 import kr.adapterz.springdatajpa.dto.user.SessionDeleteRequestDto;
 import kr.adapterz.springdatajpa.dto.user.SessionDeleteResponseDto;
 import kr.adapterz.springdatajpa.dto.user.SessionRequestDto;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SessionService {
     private final UserRepository userRepository;
-    private final SessionCheck sessionCheck;
 
     //로그인
     public SessionResponseDto createSession(SessionRequestDto request){
@@ -27,7 +25,6 @@ public class SessionService {
 
     //로그아웃 현재 세션을 000000으로 사용중이라 미구현
     public SessionDeleteResponseDto deleteSession(SessionDeleteRequestDto request){
-        sessionCheck.check(request.getAccess_session());
         SessionDeleteResponseDto sessionDeleteResponseDto = new SessionDeleteResponseDto();
 
         return sessionDeleteResponseDto;

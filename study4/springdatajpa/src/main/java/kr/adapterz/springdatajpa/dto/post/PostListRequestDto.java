@@ -7,6 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PostListRequestDto {
     private Long user_id;
-    private String access_session;
     private int page;
 }

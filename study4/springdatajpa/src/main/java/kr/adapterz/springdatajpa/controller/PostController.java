@@ -17,8 +17,8 @@ public class PostController {
 
     //게시글 목록 조회
     @GetMapping
-    public List<PostListResponseDto> getPostList(@Valid @RequestBody PostListRequestDto request){
-        return postService.getPostList(request);
+    public List<PostListResponseDto> getPostList(){
+        return postService.getPostList();
     }
     //게시글 추가
     @PostMapping
@@ -26,28 +26,28 @@ public class PostController {
         return postService.createPost(request);
     }
     //게시글 상세조회
-    @GetMapping("/{postId}")
-    public PostViewResponseDto getPostView(@RequestBody PostViewRequestDto request) {
-        return postService.getPostView(request);
+    @GetMapping("/{post_id}")
+    public PostViewResponseDto getPostView(@PathVariable Long post_id) {
+        return postService.getPostView(post_id);
     }
     //게시글 수정
-    @PatchMapping("/{postId}")
+    @PatchMapping("/{post_id}")
     public PostFixResponseDto fixPost(@Valid @RequestBody PostFixRequestDto request){
         return postService.fixPost(request);
     }
     //게시글 삭제
-    @DeleteMapping("/{postId}")
+    @DeleteMapping("/{post_id}")
     public PostDeleteResponseDto deletePost(@RequestBody PostDeleteRequestDto request){
         return postService.deletePost(request);
     }
     //좋아요
-    @PatchMapping("/{postId}/like")
+    @PostMapping("/{post_id}/likes")
     public LikeResponseDto likePost(@RequestBody LikeRequestDto request){
         return postService.likePost(request);
     }
 
     //좋아요 취소
-    @PatchMapping("/{postId}/cancel")
+    @DeleteMapping("/{post_id}/cancel")
     public LikeCancelResponseDto cancelLike(@RequestBody LikeCancelRequestDto request){
         return postService.cancelLike(request);
     }
