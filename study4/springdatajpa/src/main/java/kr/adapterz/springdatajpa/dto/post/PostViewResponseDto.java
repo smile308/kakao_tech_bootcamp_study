@@ -14,6 +14,8 @@ public class PostViewResponseDto {
     private Long post_id;
     private boolean is_fixed;
     private String post_title;
+    private String post_content;
+    private String image_file;
     private int like_count;
     private int report_count;
     private int reply_count;
@@ -29,6 +31,8 @@ public class PostViewResponseDto {
         this.post_id=post.getPost_id();
         this.is_fixed=post.is_fixed();
         this.post_title=post.getPost_title();
+        this.post_content=post.getPost_content();
+        this.image_file=post.getImage_file();
         this.like_count=post.getLike_count();
         this.report_count=post.getReport_count();
         this.reply_count=post.getReply_count();

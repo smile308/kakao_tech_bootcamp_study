@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
     }
     //Session 검증 오류
     @ExceptionHandler(AuthException.class)
-    public ResponseEntity<ErrorResponseDto> handleAuthException(jakarta.security.auth.message.AuthException e){
+    public ResponseEntity<ErrorResponseDto> handleAuthException(AuthException e){
         ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)

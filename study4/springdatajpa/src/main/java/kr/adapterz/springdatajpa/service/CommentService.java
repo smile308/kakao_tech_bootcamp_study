@@ -2,6 +2,7 @@ package kr.adapterz.springdatajpa.service;
 
 import kr.adapterz.springdatajpa.dto.comment.*;
 import kr.adapterz.springdatajpa.entity.Comment;
+import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
@@ -18,13 +19,15 @@ public class CommentService {
     //댓글 등록
     public CommentPostResponseDto commentPost(CommentPostRequestDto request){
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
-        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
+        Post post =postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
                     request.getUser_id(),
                     request.getPost_id(),
                     request.getComment_content()
             );
         commentRepository.save(comment);
+        //댓글 수 증가
+        post.addReply();
         return commentPostResponseDto;
     }
 
@@ -40,8 +43,11 @@ public class CommentService {
     //댓글 삭제
     public CommentDeleteResponseDto commentDelete(CommentDeleteRequestDto request){
         CommentDeleteResponseDto commentDeleteResponseDto = new CommentDeleteResponseDto();
+        Post post =postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
         commentRepository.findId(request.getComment_id()).orElseThrow(()->new DataNullException("No_Comment"));
         commentRepository.deleteById(request.getComment_id());
+        //댓글 개수 감소
+        post.deleteReply();
         return commentDeleteResponseDto;
     }
 }

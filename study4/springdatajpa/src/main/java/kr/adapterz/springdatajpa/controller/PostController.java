@@ -32,23 +32,23 @@ public class PostController {
     }
     //게시글 수정
     @PatchMapping("/{post_id}")
-    public PostFixResponseDto fixPost(@Valid @RequestBody PostFixRequestDto request){
-        return postService.fixPost(request);
+    public PostFixResponseDto fixPost(@PathVariable Long post_id,@Valid @RequestBody PostFixRequestDto request){
+        return postService.fixPost(post_id,request);
     }
     //게시글 삭제
     @DeleteMapping("/{post_id}")
-    public PostDeleteResponseDto deletePost(@RequestBody PostDeleteRequestDto request){
-        return postService.deletePost(request);
+    public PostDeleteResponseDto deletePost(@PathVariable Long post_id,@RequestBody PostDeleteRequestDto request){
+        return postService.deletePost(post_id,request);
     }
     //좋아요
     @PostMapping("/{post_id}/likes")
-    public LikeResponseDto likePost(@RequestBody LikeRequestDto request){
-        return postService.likePost(request);
+    public LikeResponseDto likePost(@PathVariable Long post_id,@RequestBody LikeRequestDto request){
+        return postService.likePost(post_id,request);
     }
 
     //좋아요 취소
     @DeleteMapping("/{post_id}/likes")
-    public LikeCancelResponseDto cancelLike(@RequestBody LikeCancelRequestDto request){
-        return postService.cancelLike(request);
+    public LikeCancelResponseDto cancelLike(@PathVariable Long post_id, @RequestBody LikeCancelRequestDto request){
+        return postService.cancelLike(post_id,request);
     }
 }

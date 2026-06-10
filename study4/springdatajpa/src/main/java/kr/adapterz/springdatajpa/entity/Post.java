@@ -101,6 +101,14 @@ public class Post {
     public void report(){
         report_count++;
     }
+    //댓글 추가
+    public void addReply(){
+        reply_count++;
+    }
+    //댓글 삭제
+    public void deleteReply(){
+        reply_count--;
+    }
 
     //좋아요
     public void like(){

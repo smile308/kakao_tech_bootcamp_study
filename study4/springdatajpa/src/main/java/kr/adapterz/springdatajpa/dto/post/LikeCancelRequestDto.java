@@ -7,5 +7,4 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LikeCancelRequestDto {
     private Long user_id;
-    private Long post_id;
 }
