@@ -17,15 +17,15 @@ public class UserService {
     public UserResponseDto createUser(UserRequestDto request){
         //비밀번호 확인
         if (!request.getPassword().equals(request.getPassword_check())) {
-            throw new InvalidRequestException();
+            throw new InvalidRequestException("Invalid_Password");
         }
         //이메일 중복 체크
         if (userRepository.existsEmail(request.getEmail())) {
-            throw new InvalidRequestException();
+            throw new InvalidRequestException("Existed_Email");
         }
         //닉네임 중복 체크
         if (userRepository.existsNickname(request.getNickname())) {
-            throw new InvalidRequestException();
+            throw new InvalidRequestException("Existed_Nickname");
         }
         User user = new User(
                 request.getEmail(),
@@ -40,7 +40,7 @@ public class UserService {
     //회원 탈퇴
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException());
+        userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
         userRepository.deleteById(request.getUser_id());
         return userDeleteResponseDto;
     }
@@ -48,9 +48,9 @@ public class UserService {
     public UserPatchResponseDto patchUser(UserPatchRequestDto request){
         //닉네임 중복 체크
         if (userRepository.existsNickname(request.getNickname())) {
-            throw new InvalidRequestException();
+            throw new InvalidRequestException("Existed_Nickname");
         }
-        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException());
+        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
         user.update(request.getNickname(),request.getProfile_image());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
@@ -59,10 +59,10 @@ public class UserService {
     public UserPasswordResponseDto setPassword(UserPasswordRequestDto request){
         //비밀번호 확인
         if (!request.getPassword().equals(request.getPassword_check())) {
-            throw new InvalidRequestException();
+            throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException());
+        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
         user.setPassword(request.getPassword());
         return userPasswordResponseDto;
     }

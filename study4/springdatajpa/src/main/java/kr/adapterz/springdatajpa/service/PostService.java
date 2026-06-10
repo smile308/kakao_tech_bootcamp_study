@@ -32,7 +32,7 @@ public class PostService {
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
             User user = userRepository.findId(post.getUser_id())
-                    .orElseThrow(() -> new DataNullException());
+                    .orElseThrow(() -> new DataNullException("No_User"));
 
             PostListResponseDto dto = new PostListResponseDto(post, user);
 
@@ -60,10 +60,10 @@ public class PostService {
     public PostViewResponseDto getPostView(Long post_id) {
 
         Post post = postRepository.findId(post_id)
-                .orElseThrow(() -> new DataNullException());
+                .orElseThrow(() -> new DataNullException("No_Post"));
 
         User user = userRepository.findId(post.getUser_id())
-                .orElseThrow(() -> new DataNullException());
+                .orElseThrow(() -> new DataNullException("No_Post_Writer"));
 
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
         List<Comment> comments = commentRepository.findByPostId(post.getPost_id());
@@ -73,7 +73,7 @@ public class PostService {
         //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
         for (Comment comment : comments) {
             User commentWriter = userRepository.findId(comment.getUser_id())
-                    .orElseThrow(() -> new DataNullException());
+                    .orElseThrow(() -> new DataNullException("No_Comment_Writer"));
 
             CommentResponseDto commentResponseDto =
                     new CommentResponseDto(comment, commentWriter);
@@ -89,10 +89,10 @@ public class PostService {
     public PostFixResponseDto fixPost(PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
         Post post = postRepository.findId(request.getPost_id())
-                .orElseThrow(()->new DataNullException());
+                .orElseThrow(()->new DataNullException("No_Post"));
         //실제 작성자가 맞는지 확인
         if (!post.getUser_id().equals(request.getUser_id())) {
-            throw new AuthException();
+            throw new AuthException("No_Auth");
         }
         post.update(
                 request.getTitle(),
@@ -104,14 +104,14 @@ public class PostService {
     //게시글 삭제
     public PostDeleteResponseDto deletePost(PostDeleteRequestDto request){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
-        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
         postRepository.deleteById(request.getPost_id());
         return postDeleteResponseDto;
     }
 
     //게시물 좋아요
     public LikeResponseDto likePost(LikeRequestDto request){
-        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
         post.like();
         LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLike_count());
 
@@ -120,7 +120,7 @@ public class PostService {
 
     //좋아요 취소
     public LikeCancelResponseDto cancelLike(LikeCancelRequestDto request){
-        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        Post post = postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
         post.likeCancle();
         LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLike_count());
 

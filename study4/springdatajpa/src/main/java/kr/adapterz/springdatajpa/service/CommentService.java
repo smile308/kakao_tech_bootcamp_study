@@ -8,8 +8,6 @@ import kr.adapterz.springdatajpa.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 
@@ -20,7 +18,7 @@ public class CommentService {
     //댓글 등록
     public CommentPostResponseDto commentPost(CommentPostRequestDto request){
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
-        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException());
+        postRepository.findId(request.getPost_id()).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
                     request.getUser_id(),
                     request.getPost_id(),
@@ -33,7 +31,7 @@ public class CommentService {
     //댓글 수정
     public CommentFixResponseDto commentFix(CommentFixRequestDto request){
         CommentFixResponseDto commentFixResponseDto = new CommentFixResponseDto();
-        Comment comment= commentRepository.findId(request.getComment_id()).orElseThrow(()-> new DataNullException());
+        Comment comment= commentRepository.findId(request.getComment_id()).orElseThrow(()-> new DataNullException("No_Comment"));
         comment.changeComment(request.getComment_content());
 
         return commentFixResponseDto;
@@ -42,7 +40,7 @@ public class CommentService {
     //댓글 삭제
     public CommentDeleteResponseDto commentDelete(CommentDeleteRequestDto request){
         CommentDeleteResponseDto commentDeleteResponseDto = new CommentDeleteResponseDto();
-        commentRepository.findId(request.getComment_id()).orElseThrow(()->new DataNullException());
+        commentRepository.findId(request.getComment_id()).orElseThrow(()->new DataNullException("No_Comment"));
         commentRepository.deleteById(request.getComment_id());
         return commentDeleteResponseDto;
     }
