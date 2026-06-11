@@ -6,26 +6,26 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/posts/comments")
+@RequestMapping("/posts/{post_id}/comments")
 @RequiredArgsConstructor
 public class CommentController {
     private final CommentService commentService;
 
     //댓글 등록
     @PostMapping
-    public CommentPostResponseDto commentPost(@RequestBody CommentPostRequestDto request){
-        return commentService.commentPost(request);
+    public CommentPostResponseDto commentPost(@PathVariable Long post_id, @RequestBody CommentPostRequestDto request){
+        return commentService.commentPost(post_id, request);
     }
 
     //댓글 삭제
     @DeleteMapping
-    public CommentDeleteResponseDto commentDelete(@RequestBody CommentDeleteRequestDto request){
-        return commentService.commentDelete(request);
+    public CommentDeleteResponseDto commentDelete(@PathVariable Long post_id,@RequestBody CommentDeleteRequestDto request){
+        return commentService.commentDelete(post_id, request);
     }
 
     //댓글 수정
     @PatchMapping
-    public CommentFixResponseDto commentFix(@RequestBody CommentFixRequestDto request){
-        return commentService.commentFix(request);
+    public CommentFixResponseDto commentFix(@PathVariable Long post_id,@RequestBody CommentFixRequestDto request){
+        return commentService.commentFix(post_id, request);
     }
 }

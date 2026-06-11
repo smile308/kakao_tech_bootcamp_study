@@ -7,6 +7,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class CommentPostRequestDto {
     private Long user_id;
-    private Long post_id;
     private String comment_content;
 }
