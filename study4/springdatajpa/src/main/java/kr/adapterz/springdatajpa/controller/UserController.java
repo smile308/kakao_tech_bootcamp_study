@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.controller;
 import jakarta.validation.Valid;
 import kr.adapterz.springdatajpa.dto.user.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import kr.adapterz.springdatajpa.service.UserService;
 
@@ -14,12 +15,14 @@ public class UserController {
 
     //회원가입
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public UserResponseDto createUser(@Valid @RequestBody UserRequestDto request){
         return userService.createUser(request);
     }
 
     //회원 탈퇴
     @DeleteMapping
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public UserDeleteResponseDto deleteUser(@RequestBody UserDeleteRequestDto request){
         return userService.deleteUser(request);
     }

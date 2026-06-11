@@ -5,6 +5,7 @@ import kr.adapterz.springdatajpa.dto.post.*;
 
 import kr.adapterz.springdatajpa.service.PostService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,6 +28,7 @@ public class PostController {
     }
     //게시글 상세조회
     @GetMapping("/{post_id}")
+    @ResponseStatus(HttpStatus.CREATED)
     public PostViewResponseDto getPostView(@PathVariable Long post_id) {
         return postService.getPostView(post_id);
     }
@@ -37,17 +39,20 @@ public class PostController {
     }
     //게시글 삭제
     @DeleteMapping("/{post_id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public PostDeleteResponseDto deletePost(@PathVariable Long post_id,@RequestBody PostDeleteRequestDto request){
         return postService.deletePost(post_id,request);
     }
     //좋아요
     @PostMapping("/{post_id}/likes")
+    @ResponseStatus(HttpStatus.CREATED)
     public LikeResponseDto likePost(@PathVariable Long post_id,@RequestBody LikeRequestDto request){
         return postService.likePost(post_id,request);
     }
 
     //좋아요 취소
     @DeleteMapping("/{post_id}/likes")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     public LikeCancelResponseDto cancelLike(@PathVariable Long post_id, @RequestBody LikeCancelRequestDto request){
         return postService.cancelLike(post_id,request);
     }
