@@ -1,16 +1,27 @@
 package kr.adapterz.springdatajpa.repository;
 
 import kr.adapterz.springdatajpa.entity.User;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-@Repository
-public interface UserRepository {
-    User save(User user);
-    Optional<User> findId(Long id);
+public interface UserRepository extends JpaRepository<User, Long> {
+
     Optional<User> findByEmailAndPassword(String email, String password);
-    boolean existsEmail(String email);
-    boolean existsNickname(String nickname);
-    void deleteById(Long id);
+
+    boolean existsByEmail(String email);
+
+    boolean existsByNickname(String nickname);
+
+    default Optional<User> findId(Long id) {
+        return findById(id);
+    }
+
+    default boolean existsEmail(String email) {
+        return existsByEmail(email);
+    }
+
+    default boolean existsNickname(String nickname) {
+        return existsByNickname(nickname);
+    }
 }

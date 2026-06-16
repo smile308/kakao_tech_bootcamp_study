@@ -1,19 +1,35 @@
 package kr.adapterz.springdatajpa.entity;
 
+import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 @Getter
-@RequiredArgsConstructor
-public class Comment {
-    private final Long comment_id;
-    private final Long user_id;
-    private final Long post_id;
-    private String comment_content;
-    private final Long origin_id;
+@Entity
+@Table(name="comments")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 
-    //id없이 먼저 처리하고 후에 DB에서 id를 넣어주기 위한 생성자
+public class Comment {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="comment_id")
+    private Long comment_id;
+
+    @Column(nullable = false)
+    private Long user_id;
+
+    @Column(nullable = false)
+    private Long post_id;
+
+    @Column(nullable = false)
+    private String comment_content;
+
+    @Column(nullable = false)
+    private Long origin_id;
+
     public Comment(Long user_id, Long post_id, String comment_content)
     {
         this.comment_id=null;
@@ -23,7 +39,6 @@ public class Comment {
         origin_id=null;
     }
 
-    //대댓글 기능 현재 미구현
     public Comment( Long user_id,Long post_id, String comment_content, Long origin_id)
     {
         this.comment_id=null;

@@ -32,7 +32,7 @@ public class PostService {
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
             User user = userRepository.findId(post.getUser_id())
-                    .orElse(new User(null, null, "삭제된 계정"));
+                    .orElse(new User(null, null, null, "삭제된 계정"));
 
             PostListResponseDto dto = new PostListResponseDto(post, user);
 
@@ -64,7 +64,7 @@ public class PostService {
                 .orElseThrow(() -> new DataNullException("No_Post"));
 
         User user = userRepository.findId(post.getUser_id())
-                .orElse(new User(null, null, "삭제된 계정"));
+                .orElse(new User(null, null, null, "삭제된 계정"));
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
         List<Comment> comments = commentRepository.findByPostId(post.getPost_id());
 
@@ -73,7 +73,7 @@ public class PostService {
         //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
         for (Comment comment : comments) {
             User commentWriter = userRepository.findId(comment.getUser_id())
-                    .orElse(new User(null, null, "삭제된 계정"));
+                    .orElse(new User(null, null, null, "삭제된 계정"));
 
             CommentResponseDto commentResponseDto =
                     new CommentResponseDto(comment, commentWriter);

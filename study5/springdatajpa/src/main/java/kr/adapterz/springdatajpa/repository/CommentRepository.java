@@ -1,17 +1,19 @@
 package kr.adapterz.springdatajpa.repository;
 
 import kr.adapterz.springdatajpa.entity.Comment;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface CommentRepository {
+public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    Comment save(Comment comment);
+    @Query("select c from Comment c where c.post_id = :postId")
+    List<Comment> findByPostId(@Param("postId") Long postId);
 
-    List<Comment> findByPostId(Long postId);
-
-    Optional<Comment> findId(Long commentId);
-
-    void deleteById(Long id);
+    default Optional<Comment> findId(Long commentId) {
+        return findById(commentId);
+    }
 }

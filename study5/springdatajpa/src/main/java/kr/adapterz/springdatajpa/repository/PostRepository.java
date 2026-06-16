@@ -1,17 +1,14 @@
 package kr.adapterz.springdatajpa.repository;
 
 import kr.adapterz.springdatajpa.entity.Post;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface PostRepository {
+public interface PostRepository extends JpaRepository<Post, Long> {
 
-    Post save(Post post);
-
-    List<Post> findAll();
-
-    Optional<Post> findId(Long postId);
-
-    void deleteById(Long id);
+    default Optional<Post> findId(Long postId) {
+        return findById(postId);
+    }
 }
