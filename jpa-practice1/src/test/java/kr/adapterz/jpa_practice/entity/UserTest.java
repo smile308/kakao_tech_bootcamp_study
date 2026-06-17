@@ -19,7 +19,7 @@ class UserTest {
     @Test
     @Rollback(false)
     void idTest() {
-        User user = new User("tester@adapterz.kr", "123aS!", "Adapterz");
+        User user = new User("tester@adapterz.kr", "123aS!", "Adapterz", UserRole.ADMIN);
         entityManager.persist(user);
     }
     @Test
@@ -30,7 +30,8 @@ class UserTest {
             User user = new User(
                     "tester" + i + "@adapterz.kr",
                     "123aS!" + i,
-                    "Adapterz" + i
+                    "Adapterz" + i,
+                    UserRole.ADMIN
             );
             entityManager.persist(user);
         }
@@ -39,7 +40,7 @@ class UserTest {
     @Test
     @Rollback(false)
     void flushTest() {
-        User user = new User("tester@adapterz.kr", "123aS!", "Adapterz");
+        User user = new User("tester@adapterz.kr", "123aS!", "Adapterz", UserRole.ADMIN);
 
         System.out.println("=== Flush (아무것도 없음) ===");
         entityManager.flush(); // 아무 것도 없음 (정상)
@@ -57,7 +58,7 @@ class UserTest {
     @Test
     @Rollback(false)
     void removeTest() {
-        User user = new User("delete@adapterz.kr", "123aS!", "DeleteUser");
+        User user = new User("delete@adapterz.kr", "123aS!", "DeleteUser", UserRole.ADMIN);
         entityManager.persist(user);
 
         entityManager.flush(); // INSERT 실행
