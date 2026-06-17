@@ -20,7 +20,7 @@ public class Post {
     @Enumerated(EnumType.STRING)
     private PostType postType;
 
-    @ManyToOne()
+    @ManyToOne (fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id") // FK(post.user_id) → user.user_id
     private User author;
 
