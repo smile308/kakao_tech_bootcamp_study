@@ -38,6 +38,42 @@ public class Post {
     private String time;
 
     //초기값 설정
+    public Post(Long user_id, String post_title, String post_content, String image_file)
+    {
+        this.post_id=null;
+        this.user_id=user_id;
+        this.post_title=post_title;
+        this.post_content=post_content;
+        this.image_file=image_file;
+
+        is_fixed=false;
+        report_count=0;
+        like_count=0;
+        reply_count=0;
+        view_count=0;
+        date= String.valueOf(LocalDate.now());
+        time=String.valueOf(LocalTime.now());
+    }
+    //이미지가 없는 경우
+
+    public Post(Long user_id, String post_title, String post_content)
+    {
+        this.post_id=null;
+        this.user_id=user_id;
+        this.post_title=post_title;
+        this.post_content=post_content;
+        this.image_file=null;
+
+        is_fixed=false;
+        report_count=0;
+        like_count=0;
+        reply_count=0;
+        view_count=0;
+        date= String.valueOf(LocalDate.now());
+        time=String.valueOf(LocalTime.now());
+    }
+
+    //초기값 설정
     public Post(Long post_id, Long user_id, String post_title, String post_content, String image_file)
     {
         this.post_id=post_id;

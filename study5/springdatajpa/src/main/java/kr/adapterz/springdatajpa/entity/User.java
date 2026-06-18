@@ -27,7 +27,22 @@ public class User {
 
     @Column(nullable = true, unique = false)
     private String profile_image;
+    //profile_image가 없는 경우 null 삽입
+    public User( String email, String password, String nickname) {
+        this.user_id = null;
+        this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+        this.profile_image = null;
+    }
 
+    public User(String email, String password, String nickname, String profile_image) {
+        this.user_id = null;
+        this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+        this.profile_image = profile_image;
+    }
 
     //profile_image가 없는 경우 null 삽입
     public User(Long user_id, String email, String password, String nickname) {
