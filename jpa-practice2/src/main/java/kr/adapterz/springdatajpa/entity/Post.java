@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 @Entity
 @Getter
 @RequiredArgsConstructor
-public class Post {
+public class Post extends AbstractAuditable{
 
     @Id @GeneratedValue
     @Column(name="post_id")

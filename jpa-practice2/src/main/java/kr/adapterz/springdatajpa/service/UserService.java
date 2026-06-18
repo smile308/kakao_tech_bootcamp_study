@@ -1,10 +1,13 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.dto.UserInfoDto;
 import org.springframework.transaction.annotation.Transactional;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +42,27 @@ public class UserService {
     @Transactional
     public void delete(Long id) {
         userRepository.delete(findById(id));
+    }
+
+    public List<User> findByNicknameKeyword(String keyword){
+        //return userRepository.findByNicknameContainingIgnoreCaseOrderByIdDesc(keyword);
+        return userRepository.searchByNickname(keyword);
+    }
+
+    public List<String> findEmailsByNickname(String nickname) {
+        return userRepository.findEmailsByNickname(nickname);
+    }
+
+    public List<UserInfoDto> findUserByNicknameWithDto(String keyword) {
+        return userRepository.findUserByNicknameWithDto(keyword);
+    }
+
+    public boolean existsByEmail(String email){
+        return userRepository.existsByEmail(email);
+    }
+
+    public long countByNickname(String nickname){
+        return userRepository.countByNickname(nickname);
     }
 
 }

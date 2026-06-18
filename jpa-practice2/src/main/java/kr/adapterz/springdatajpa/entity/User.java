@@ -11,7 +11,7 @@ import java.util.List;
 @Entity
 @Getter
 @RequiredArgsConstructor
-public class User {
+public class User extends AbstractAuditable{
     @Id
     @GeneratedValue
     @Column(name="user_id")
