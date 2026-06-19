@@ -64,6 +64,28 @@ public class UserController {
         return userService.findUserByNicknameWithDto(keyword);
     }
 
+    @GetMapping("/with-posts/n-plus-one")
+    public List<UserResponse> withPosts() {
+        return userService.findAllUsersWithNPlusOne().stream()
+                .peek(user -> {
+                    // 강제 초기화
+                    user.getPosts().size();
+                })
+                .map(UserResponse::of)
+                .toList();
+    }
+
+    @GetMapping("/with-posts/entity-graph")
+    public List<UserResponse> withPostsByEntityGraph() {
+        return userService.findAllUsersWithEntityGraph().stream()
+                .peek(user -> {
+                    // 강제 초기화
+                    user.getPosts().size();
+                })
+                .map(UserResponse::of)
+                .toList();
+    }
+
     @Data
     public static class UpdateUserRequest{
         private String nickname;

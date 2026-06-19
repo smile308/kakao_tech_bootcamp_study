@@ -61,5 +61,13 @@ public class PostService {
     public List<PostSummaryDto> findPostSummaries(String keyword) {
         return postRepository.findPostSummaries(keyword);
     }
+
+    public List<Post> findALlPostsWithNPlusOne() {
+        return postRepository.findAll();
+    }
+
+    public List<Post> findAllPostsByEntityGraph() {
+        return postRepository.findAllBy();
+    }
 }
 

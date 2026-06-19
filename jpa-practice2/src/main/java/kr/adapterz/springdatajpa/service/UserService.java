@@ -65,4 +65,13 @@ public class UserService {
         return userRepository.countByNickname(nickname);
     }
 
+    public List<User> findAllUsersWithNPlusOne() {
+        return userRepository.findAll();
+    }
+
+    public List<User> findAllUsersWithEntityGraph() {
+        return userRepository.findAllBy();
+    }
+
+
 }

@@ -2,6 +2,7 @@ package kr.adapterz.springdatajpa.repository;
 
 import kr.adapterz.springdatajpa.dto.UserInfoDto;
 import kr.adapterz.springdatajpa.entity.User;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -36,4 +37,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
 
     long countByNickname(String nickname);
+
+    @EntityGraph(attributePaths = "posts")
+    List<User> findAllBy();
 }

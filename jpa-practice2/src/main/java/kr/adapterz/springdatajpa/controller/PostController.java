@@ -60,6 +60,16 @@ public class PostController {
         return postService.findPostSummaries(keyword);
     }
 
+    @GetMapping("/all/n-plus-one")
+    public List<PostResponse> allWithNPlusOne() {
+        return postService.findALlPostsWithNPlusOne().stream().map(PostResponse::of).toList();
+    }
+
+    @GetMapping("/all/entity-graph")
+    public List<PostResponse> allWithEntityGraph() {
+        return postService.findAllPostsByEntityGraph().stream().map(PostResponse::of).toList();
+    }
+
     @Data
     public static class UpdatePostRequest {
         private String title;
