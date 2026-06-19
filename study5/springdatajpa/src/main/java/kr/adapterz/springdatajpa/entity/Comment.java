@@ -18,11 +18,13 @@ public class Comment {
     @Column(name="comment_id")
     private Long comment_id;
 
-    @Column(nullable = false)
-    private Long user_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false)
-    private Long post_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private Post post;
 
     @Column(nullable = false)
     private String comment_content;
@@ -31,19 +33,19 @@ public class Comment {
     private Long origin_id;
 
     //대댓글이 아닌 경우
-    public Comment(Long user_id, Long post_id, String comment_content)
+    public Comment(User user, Post post, String comment_content)
     {
-        this.user_id=user_id;
-        this.post_id=post_id;
+        this.user=user;
+        this.post=post;
         this.comment_content=comment_content;
         origin_id=null;
     }
 
     //대댓글인 경우(현재 미구현)
-    public Comment( Long user_id,Long post_id, String comment_content, Long origin_id)
+    public Comment(User user,Post post, String comment_content, Long origin_id)
     {
-        this.user_id=user_id;
-        this.post_id=post_id;
+        this.user=user;
+        this.post=post;
         this.comment_content=comment_content;
         this.origin_id=origin_id;
     }

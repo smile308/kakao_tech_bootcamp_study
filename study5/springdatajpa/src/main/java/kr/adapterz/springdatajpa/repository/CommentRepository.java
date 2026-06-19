@@ -10,10 +10,6 @@ import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    @Query("select c from Comment c where c.post_id = :postId")
-    List<Comment> findByPostId(@Param("postId") Long postId);
+    List<Comment> findByPost_id(Long postId);
 
-    default Optional<Comment> findById(Long commentId) {
-        return findById(commentId);
-    }
 }

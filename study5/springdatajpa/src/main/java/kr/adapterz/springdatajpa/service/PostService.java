@@ -33,9 +33,7 @@ public class PostService {
 
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
-            User user = getDisplayUser(post.getUser_id());
-
-            PostListResponseDto dto = new PostListResponseDto(post, user);
+            PostListResponseDto dto = new PostListResponseDto(post, post.getUser());
 
             result.add(dto);
         }
@@ -47,9 +45,9 @@ public class PostService {
     @Transactional
     public PostResponseDto createPost(PostRequestDto request) {
         PostResponseDto postResponseDto= new PostResponseDto();
-        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        User user = userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         Post post = new Post(
-                request.getUser_id(),
+                user,
                 request.getTitle(),
                 request.getContents(),
                 request.getImage_file()
@@ -59,22 +57,21 @@ public class PostService {
         return postResponseDto;
     }
 
-    //게시물 상세조회
+    //게시물
+    @Transactional
     public PostViewResponseDto getPostView(Long post_id) {
 
         Post post = postRepository.findById(post_id)
                 .orElseThrow(() -> new DataNullException("No_Post"));
 
-        User user = getDisplayUser(post.getUser_id());
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
-        List<Comment> comments = commentRepository.findByPostId(post.getPost_id());
+        List<Comment> comments = commentRepository.findByPost_id(post.getPost_id());
 
         List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
 
         //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
         for (Comment comment : comments) {
-            User commentWriter = userRepository.findById(comment.getUser_id())
-                    .orElse(new User(null, null, null, "삭제된 계정"));
+            User commentWriter = getDisplayUser(comment.getUser().getUser_id());
 
             CommentResponseDto commentResponseDto =
                     new CommentResponseDto(comment, commentWriter);
@@ -83,7 +80,7 @@ public class PostService {
         }
         //조회수 상승
         post.view();
-        return new PostViewResponseDto(post, user, commentResponseDtos);
+        return new PostViewResponseDto(post, post.getUser(), commentResponseDtos);
     }
 
     //게시물 수정
@@ -94,7 +91,7 @@ public class PostService {
                 .orElseThrow(()->new DataNullException("No_Post"));
 
         //실제 작성자가 맞는지 확인
-        if (!post.getUser_id().equals(request.getUser_id())) {
+        if (!post.getUser().getUser_id().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
         }
         post.update(
@@ -111,7 +108,7 @@ public class PostService {
         Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
-        if(!post.getUser_id().equals(request.getUser_id())) {
+        if(!post.getUser().getUser_id().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
         }
         post.delete();

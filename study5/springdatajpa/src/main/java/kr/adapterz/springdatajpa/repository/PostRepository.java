@@ -7,7 +7,4 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    default Optional<Post> findById(Long postId) {
-        return findById(postId);
-    }
 }

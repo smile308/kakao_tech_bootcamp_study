@@ -20,8 +20,9 @@ public class Post {
     @Column(name="post_id")
     private Long post_id;
 
-    @Column(nullable = false)
-    private Long user_id;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false, length = 26)
     private String post_title;
@@ -42,9 +43,9 @@ public class Post {
     private boolean is_deleted;
 
     //초기값 설정
-    public Post(Long user_id, String post_title, String post_content, String image_file)
+    public Post(User user, String post_title, String post_content, String image_file)
     {
-        this.user_id=user_id;
+        this.user=user;
         this.post_title=post_title;
         this.post_content=post_content;
         this.image_file=image_file;
@@ -59,9 +60,9 @@ public class Post {
     }
 
     //이미지가 없는 경우
-    public Post(Long user_id, String post_title, String post_content)
+    public Post(User user, String post_title, String post_content)
     {
-        this.user_id=user_id;
+        this.user=user;
         this.post_title=post_title;
         this.post_content=post_content;
         this.image_file=null;

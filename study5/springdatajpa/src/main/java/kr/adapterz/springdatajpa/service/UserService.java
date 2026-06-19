@@ -22,11 +22,11 @@ public class UserService {
             throw new InvalidRequestException("Invalid_Password");
         }
         //이메일 중복 체크
-        if (userRepository.existsEmail(request.getEmail())) {
+        if (userRepository.existsByEmail(request.getEmail())) {
             throw new InvalidRequestException("Existed_Email");
         }
         //닉네임 중복 체크
-        if (userRepository.existsNickname(request.getNickname())) {
+        if (userRepository.existsByNickname(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
         User user = new User(
@@ -49,7 +49,7 @@ public class UserService {
     //회원 정보 수정
     public UserPatchResponseDto patchUser(UserPatchRequestDto request){
         //닉네임 중복 체크
-        if (userRepository.existsNickname(request.getNickname())) {
+        if (userRepository.existsByNickname(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
         User user=userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
