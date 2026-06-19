@@ -63,9 +63,10 @@ public class PostService {
 
         Post post = postRepository.findById(post_id)
                 .orElseThrow(() -> new DataNullException("No_Post"));
+        User postWriter = getDisplayUser(post.getUser().getUser_id());
 
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
-        List<Comment> comments = commentRepository.findByPost_id(post.getPost_id());
+        List<Comment> comments = commentRepository.findByPost(post);
 
         List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
 
@@ -80,7 +81,7 @@ public class PostService {
         }
         //조회수 상승
         post.view();
-        return new PostViewResponseDto(post, post.getUser(), commentResponseDtos);
+        return new PostViewResponseDto(post, postWriter, commentResponseDtos);
     }
 
     //게시물 수정
