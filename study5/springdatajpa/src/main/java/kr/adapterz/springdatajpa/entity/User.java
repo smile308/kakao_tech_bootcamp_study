@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
-@SQLRestriction("is_deleted = false")
+@SQLRestriction("deleted = false")
 @Getter
 @Entity
 @Table(name = "users")
@@ -15,7 +15,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name = "user_id")
-    private Long user_id;
+    private Long userId;
 
     @Column(nullable = false)
     private String email;
@@ -26,36 +26,36 @@ public class User {
     @Column(nullable = false, length = 10)
     private String nickname;
 
-    @Column(nullable = true, unique = false)
-    private String profile_image;
-
-    private boolean is_deleted;
+    @Column(name="profile_image",nullable = true, unique = false)
+    private String profileImage;
+    @Column(name ="deleted", nullable = false)
+    private boolean deleted;
 
     //profile_image가 없는 경우 null 삽입
     public User( String email, String password, String nickname) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
-        this.profile_image = null;
-        is_deleted=false;
+        this.profileImage = null;
+        deleted=false;
     }
 
     //profile_image가 없는 경우 null 삽입
-    public User(String email, String password, String nickname, String profile_image) {
+    public User(String email, String password, String nickname, String profileImage) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
-        this.profile_image = profile_image;
-        is_deleted=false;
+        this.profileImage = profileImage;
+        deleted=false;
     }
 
-    public void update(String nickname, String profile_image) {
+    public void update(String nickname, String profileImage) {
         this.nickname = nickname;
-        this.profile_image = profile_image;
+        this.profileImage = profileImage;
     }
 
     //유저 삭제
-    public void delete(){is_deleted=true;}
+    public void delete(){deleted=true;}
 
     public void setPassword(String password)
     {

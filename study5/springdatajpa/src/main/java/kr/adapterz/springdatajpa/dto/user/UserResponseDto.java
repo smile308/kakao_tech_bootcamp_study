@@ -12,6 +12,6 @@ public class UserResponseDto {
 
     public UserResponseDto(User user){
         this.message = "signup_success";
-        this.user_id=user.getUser_id();
+        this.user_id=user.getUserId();
     }
 }

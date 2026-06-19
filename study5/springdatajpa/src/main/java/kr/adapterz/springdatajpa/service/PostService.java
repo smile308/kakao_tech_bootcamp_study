@@ -63,7 +63,7 @@ public class PostService {
 
         Post post = postRepository.findById(post_id)
                 .orElseThrow(() -> new DataNullException("No_Post"));
-        User postWriter = getDisplayUser(post.getUser().getUser_id());
+        User postWriter = getDisplayUser(post.getUser().getUserId());
 
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
         List<Comment> comments = commentRepository.findByPost(post);
@@ -72,7 +72,7 @@ public class PostService {
 
         //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
         for (Comment comment : comments) {
-            User commentWriter = getDisplayUser(comment.getUser().getUser_id());
+            User commentWriter = getDisplayUser(comment.getUser().getUserId());
 
             CommentResponseDto commentResponseDto =
                     new CommentResponseDto(comment, commentWriter);
@@ -92,7 +92,7 @@ public class PostService {
                 .orElseThrow(()->new DataNullException("No_Post"));
 
         //실제 작성자가 맞는지 확인
-        if (!post.getUser().getUser_id().equals(request.getUser_id())) {
+        if (!post.getUser().getUserId().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
         }
         post.update(
@@ -109,7 +109,7 @@ public class PostService {
         Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
-        if(!post.getUser().getUser_id().equals(request.getUser_id())) {
+        if(!post.getUser().getUserId().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
         }
         post.delete();
@@ -123,7 +123,7 @@ public class PostService {
 
         userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         post.like();
-        LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLike_count());
+        LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLikeCount());
 
         return likeResponseDto;
     }
@@ -135,7 +135,7 @@ public class PostService {
 
         userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         post.likeCancle();
-        LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLike_count());
+        LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLikeCount());
 
         return likeCancelResponseDto;
     }
@@ -146,7 +146,7 @@ public class PostService {
         Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
 
         post.report();
-        ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReport_count());
+        ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReportCount());
         return reportResponseDto;
     }
 

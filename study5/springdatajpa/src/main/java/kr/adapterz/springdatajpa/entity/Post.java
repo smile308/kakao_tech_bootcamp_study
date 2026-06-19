@@ -13,106 +13,115 @@ import org.hibernate.annotations.SQLRestriction;
 @Entity
 @Table(name="posts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLRestriction("is_deleted = false")
+@SQLRestriction("deleted = false")
 public class Post {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="post_id")
-    private Long post_id;
+    private Long postId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 26)
-    private String post_title;
+    @Column(name = "post_title", nullable = false, length = 26)
+    private String postTitle;
 
-    @Column(nullable = false)
-    private String post_content;
-
-    private String image_file;
+    @Column(name = "post_content", nullable = false)
+    private String postContent;
+    @Column(name ="image_file", nullable = true)
+    private String imageFile;
     private boolean is_fixed;
-    private int report_count;
-    private int like_count;
-    private int reply_count;
-    private int view_count;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime created_at;
+    @Column(name ="report_count", nullable = false)
+    private int reportCount;
 
-    private boolean is_deleted;
+    @Column(name ="like_count", nullable = false)
+    private int likeCount;
+
+    @Column(name ="reply_count", nullable = false)
+    private int replyCount;
+
+    @Column(name ="view_count", nullable = false)
+    private int viewCount;
+
+    @Column(name ="created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name ="deleted", nullable = false)
+    private boolean deleted;
 
     //초기값 설정
-    public Post(User user, String post_title, String post_content, String image_file)
+    public Post(User user, String postTitle, String postContent, String imageFile)
     {
         this.user=user;
-        this.post_title=post_title;
-        this.post_content=post_content;
-        this.image_file=image_file;
+        this.postTitle=postTitle;
+        this.postContent=postContent;
+        this.imageFile=imageFile;
 
         is_fixed=false;
-        report_count=0;
-        like_count=0;
-        reply_count=0;
-        view_count=0;
-        created_at = LocalDateTime.now();
-        is_deleted=false;
+        reportCount=0;
+        likeCount=0;
+        replyCount=0;
+        viewCount=0;
+        createdAt = LocalDateTime.now();
+        deleted=false;
     }
 
     //이미지가 없는 경우
-    public Post(User user, String post_title, String post_content)
+    public Post(User user, String postTitle, String postContent)
     {
         this.user=user;
-        this.post_title=post_title;
-        this.post_content=post_content;
-        this.image_file=null;
+        this.postTitle=postTitle;
+        this.postContent=postContent;
+        this.imageFile=null;
 
         is_fixed=false;
-        report_count=0;
-        like_count=0;
-        reply_count=0;
-        view_count=0;
-        created_at = LocalDateTime.now();
-        is_deleted=false;
+        reportCount=0;
+        likeCount=0;
+        replyCount=0;
+        viewCount=0;
+        createdAt = LocalDateTime.now();
+        deleted=false;
     }
 
 
     //게시물 수정
-    public void update(String title, String contents, String image_file) {
-        this.post_title = title;
-        this.post_content = contents;
-        this.image_file = image_file;
+    public void update(String title, String contents, String imageFile) {
+        this.postTitle = title;
+        this.postContent = contents;
+        this.imageFile = imageFile;
         is_fixed=true;
     }
 
     //신고 기능
     public void report(){
-        report_count++;
+        reportCount++;
     }
     //댓글 추가
     public void addReply(){
-        reply_count++;
+        replyCount++;
     }
     //댓글 삭제
     public void deleteReply(){
-        reply_count--;
+        replyCount--;
     }
 
     //좋아요
     public void like(){
-        like_count++;
+        likeCount++;
     }
 
     //좋아요 취소
     public void likeCancle(){
-        like_count--;
+        likeCount--;
     }
 
     //조회수 기능
     public void view(){
-        view_count++;
+        viewCount++;
     }
 
     //삭제
-    public void delete(){is_deleted=true;}
+    public void delete(){deleted=true;}
 }

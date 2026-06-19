@@ -16,7 +16,7 @@ public class Comment {
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="comment_id")
-    private Long comment_id;
+    private Long commentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -26,32 +26,32 @@ public class Comment {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
-    @Column(nullable = false)
-    private String comment_content;
+    @Column(name = "comment_content", nullable = false)
+    private String commentContent;
 
-    @Column(nullable = true)
-    private Long origin_id;
+    @Column(name = "origin_id", nullable = true)
+    private Long originId;
 
     //대댓글이 아닌 경우
-    public Comment(User user, Post post, String comment_content)
+    public Comment(User user, Post post, String commentContent)
     {
         this.user=user;
         this.post=post;
-        this.comment_content=comment_content;
-        origin_id=null;
+        this.commentContent=commentContent;
+        originId=null;
     }
 
     //대댓글인 경우(현재 미구현)
-    public Comment(User user,Post post, String comment_content, Long origin_id)
+    public Comment(User user,Post post, String commentContent, Long originId)
     {
         this.user=user;
         this.post=post;
-        this.comment_content=comment_content;
-        this.origin_id=origin_id;
+        this.commentContent=commentContent;
+        this.originId=originId;
     }
 
     //댓글 수정
-    public void changeComment(String comment_content){
-        this.comment_content=comment_content;
+    public void changeComment(String commentContent){
+        this.commentContent=commentContent;
     }
 }

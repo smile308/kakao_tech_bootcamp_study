@@ -14,9 +14,9 @@ public class CommentResponseDto {
     private String user_profile_image;
 
     public CommentResponseDto(Comment comment, User user) {
-        this.comment_id = comment.getComment_id();
-        this.content = comment.getComment_content();
+        this.comment_id = comment.getCommentId();
+        this.content = comment.getCommentContent();
         this.user_name = user.getNickname();
-        this.user_profile_image = user.getProfile_image();
+        this.user_profile_image = user.getProfileImage();
     }
 }

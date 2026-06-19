@@ -20,15 +20,15 @@ public class PostListResponseDto {
     private String user_name;
     private String user_profile_image;
     public PostListResponseDto(Post post, User user){
-        this.post_id=post.getPost_id();
-        this.report_count=post.getReport_count();
-        this.title=post.getPost_title();
-        this.like_count=post.getLike_count();
-        this.reply_count=post.getReply_count();
-        this.view_count=post.getView_count();
-        this.created_at=post.getCreated_at();
+        this.post_id=post.getPostId();
+        this.report_count=post.getReportCount();
+        this.title=post.getPostTitle();
+        this.like_count=post.getLikeCount();
+        this.reply_count=post.getReplyCount();
+        this.view_count=post.getViewCount();
+        this.created_at=post.getCreatedAt();
         this.user_name=user.getNickname();
-        this.user_profile_image=user.getProfile_image();
+        this.user_profile_image=user.getProfileImage();
     }
 
 }

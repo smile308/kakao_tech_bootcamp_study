@@ -15,7 +15,7 @@ public class SessionResponseDto {
     public SessionResponseDto(Session session)
     {
         this.message = "login_success";
-        this.access_session=session.getAccess_session();
-        this.user_id=session.getUser_id();
+        this.access_session=session.getAccessSession();
+        this.user_id=session.getUserId();
     }
 }

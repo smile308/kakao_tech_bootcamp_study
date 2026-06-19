@@ -1,5 +1,6 @@
 package kr.adapterz.springdatajpa.entity;
 
+import jakarta.persistence.Column;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -7,11 +8,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class Session {
 
-    private String access_session;
-    private Long user_id;
+    @Column(name ="access_session", nullable = false)
+    private String accessSession;
+    @Column(name ="user_id", nullable = false)
+    private Long userId;
     public Session(Long user_id){
-        access_session="000000";
-        this.user_id=user_id;
+        accessSession="000000";
+        this.userId=user_id;
     }
 
 }
