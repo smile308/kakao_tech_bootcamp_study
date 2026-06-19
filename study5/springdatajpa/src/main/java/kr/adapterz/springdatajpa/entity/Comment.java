@@ -30,28 +30,9 @@ public class Comment {
     @Column(nullable = false)
     private Long origin_id;
 
+    //대댓글이 아닌 경우
     public Comment(Long user_id, Long post_id, String comment_content)
     {
-        this.comment_id=null;
-        this.user_id=user_id;
-        this.post_id=post_id;
-        this.comment_content=comment_content;
-        origin_id=null;
-    }
-
-    public Comment( Long user_id,Long post_id, String comment_content, Long origin_id)
-    {
-        this.comment_id=null;
-        this.user_id=user_id;
-        this.post_id=post_id;
-        this.comment_content=comment_content;
-        this.origin_id=origin_id;
-    }
-
-    //대댓글이 아닌 경우
-    public Comment(Long comment_id, Long user_id, Long post_id, String comment_content)
-    {
-        this.comment_id=comment_id;
         this.user_id=user_id;
         this.post_id=post_id;
         this.comment_content=comment_content;
@@ -59,9 +40,8 @@ public class Comment {
     }
 
     //대댓글인 경우(현재 미구현)
-    public Comment(Long comment_id, Long user_id,Long post_id, String comment_content, Long origin_id)
+    public Comment( Long user_id,Long post_id, String comment_content, Long origin_id)
     {
-        this.comment_id=comment_id;
         this.user_id=user_id;
         this.post_id=post_id;
         this.comment_content=comment_content;
