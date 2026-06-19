@@ -56,4 +56,11 @@ public class PostController {
     public LikeCancelResponseDto cancelLike(@PathVariable Long post_id, @RequestBody LikeCancelRequestDto request){
         return postService.cancelLike(post_id,request);
     }
+
+    //게시글 신고
+    @PostMapping("/{post_id}/report")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ReportResponseDto reportPost(@PathVariable Long post_id, @RequestBody ReportRequestDto request){
+        return postService.reportPost(post_id,request);
+    }
 }

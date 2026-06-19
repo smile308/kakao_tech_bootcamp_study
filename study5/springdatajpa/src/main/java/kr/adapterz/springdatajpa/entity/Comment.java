@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 public class Comment {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="comment_id")
     private Long comment_id;
 
@@ -27,7 +27,7 @@ public class Comment {
     @Column(nullable = false)
     private String comment_content;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Long origin_id;
 
     //대댓글이 아닌 경우

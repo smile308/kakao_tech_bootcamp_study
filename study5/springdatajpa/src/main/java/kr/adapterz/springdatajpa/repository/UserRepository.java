@@ -13,7 +13,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByNickname(String nickname);
 
-    default Optional<User> findId(Long id) {
+    default Optional<User> findById(Long id) {
         return findById(id);
     }
 

@@ -13,12 +13,14 @@ import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
@@ -31,8 +33,7 @@ public class PostService {
 
         //각 게시물의 user_id로 작성자 정보 붙이기
         for (Post post : posts) {
-            User user = userRepository.findId(post.getUser_id())
-                    .orElse(new User(null, null, null, "삭제된 계정"));
+            User user = getDisplayUser(post.getUser_id());
 
             PostListResponseDto dto = new PostListResponseDto(post, user);
 
@@ -43,9 +44,10 @@ public class PostService {
     }
 
     // 게시물 추가
+    @Transactional
     public PostResponseDto createPost(PostRequestDto request) {
         PostResponseDto postResponseDto= new PostResponseDto();
-        userRepository.findId(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         Post post = new Post(
                 request.getUser_id(),
                 request.getTitle(),
@@ -60,11 +62,10 @@ public class PostService {
     //게시물 상세조회
     public PostViewResponseDto getPostView(Long post_id) {
 
-        Post post = postRepository.findId(post_id)
+        Post post = postRepository.findById(post_id)
                 .orElseThrow(() -> new DataNullException("No_Post"));
 
-        User user = userRepository.findId(post.getUser_id())
-                .orElse(new User(null, null, null, "삭제된 계정"));
+        User user = getDisplayUser(post.getUser_id());
         //postid에 해당하는 comment들의 리스트, 아직 유저 정보가 없음
         List<Comment> comments = commentRepository.findByPostId(post.getPost_id());
 
@@ -72,7 +73,7 @@ public class PostService {
 
         //각 코멘트 별로 유저의 정보를 찾아서 commentResponseDtos라는 배열에 하나하나 추가함
         for (Comment comment : comments) {
-            User commentWriter = userRepository.findId(comment.getUser_id())
+            User commentWriter = userRepository.findById(comment.getUser_id())
                     .orElse(new User(null, null, null, "삭제된 계정"));
 
             CommentResponseDto commentResponseDto =
@@ -86,10 +87,12 @@ public class PostService {
     }
 
     //게시물 수정
+    @Transactional
     public PostFixResponseDto fixPost(Long post_id, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
-        Post post = postRepository.findId(post_id)
+        Post post = postRepository.findById(post_id)
                 .orElseThrow(()->new DataNullException("No_Post"));
+
         //실제 작성자가 맞는지 확인
         if (!post.getUser_id().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
@@ -102,21 +105,25 @@ public class PostService {
         return postFixResponseDto;
     }
     //게시글 삭제
+    @Transactional
     public PostDeleteResponseDto deletePost(Long post_id, PostDeleteRequestDto request){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
-        Post post =postRepository.findId(post_id).orElseThrow(()->new DataNullException("No_Post"));
+        Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
         if(!post.getUser_id().equals(request.getUser_id())) {
             throw new AuthException("No_Auth");
         }
-        postRepository.deleteById(post_id);
+        post.delete();
         return postDeleteResponseDto;
     }
 
     //게시물 좋아요
+    @Transactional
     public LikeResponseDto likePost(Long post_id, LikeRequestDto request){
-        Post post = postRepository.findId(post_id).orElseThrow(()->new DataNullException("No_Post"));
-        userRepository.findId(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+
+        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         post.like();
         LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLike_count());
 
@@ -124,12 +131,30 @@ public class PostService {
     }
 
     //좋아요 취소
+    @Transactional
     public LikeCancelResponseDto cancelLike(Long post_id, LikeCancelRequestDto request){
-        Post post = postRepository.findId(post_id).orElseThrow(()->new DataNullException("No_Post"));
-        userRepository.findId(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+
+        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
         post.likeCancle();
         LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLike_count());
 
         return likeCancelResponseDto;
+    }
+
+    //게시글 신고
+    @Transactional
+    public ReportResponseDto reportPost (Long post_id, ReportRequestDto request){
+        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+
+        post.report();
+        ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReport_count());
+        return reportResponseDto;
+    }
+
+    //삭제된 계정 처리
+    private User getDisplayUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElse(new User(null, null, "삭제된 계정", null));
     }
 }

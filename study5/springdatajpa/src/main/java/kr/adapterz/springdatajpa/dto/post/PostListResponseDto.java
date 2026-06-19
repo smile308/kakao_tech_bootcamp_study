@@ -5,6 +5,8 @@ import kr.adapterz.springdatajpa.entity.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Getter
 @NoArgsConstructor
 public class PostListResponseDto {
@@ -14,8 +16,7 @@ public class PostListResponseDto {
     private int like_count;
     private int reply_count;
     private int view_count;
-    private String date;
-    private String time;
+    private LocalDateTime created_at;
     private String user_name;
     private String user_profile_image;
     public PostListResponseDto(Post post, User user){
@@ -25,8 +26,7 @@ public class PostListResponseDto {
         this.like_count=post.getLike_count();
         this.reply_count=post.getReply_count();
         this.view_count=post.getView_count();
-        this.date= post.getDate();
-        this.time=post.getTime();
+        this.created_at=post.getCreated_at();
         this.user_name=user.getNickname();
         this.user_profile_image=user.getProfile_image();
     }

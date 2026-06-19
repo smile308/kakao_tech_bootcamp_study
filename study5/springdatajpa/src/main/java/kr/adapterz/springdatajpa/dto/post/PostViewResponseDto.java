@@ -6,6 +6,7 @@ import kr.adapterz.springdatajpa.entity.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -20,8 +21,7 @@ public class PostViewResponseDto {
     private int report_count;
     private int reply_count;
     private int view_count;
-    private String date;
-    private String time;
+    private LocalDateTime created_at;
     private String user_name;
     private String user_profile_image;
 
@@ -37,8 +37,7 @@ public class PostViewResponseDto {
         this.report_count=post.getReport_count();
         this.reply_count=post.getReply_count();
         this.view_count=post.getView_count();
-        this.date=post.getDate();
-        this.time=post.getTime();
+        this.created_at=post.getCreated_at();
         this.user_name=user.getNickname();
         this.user_profile_image=user.getProfile_image();
         this.comments=comments;

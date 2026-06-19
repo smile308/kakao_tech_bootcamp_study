@@ -7,15 +7,16 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Entity
 @Table(name="posts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-
+@SQLRestriction("is_deleted = false")
 public class Post {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     @Column(name="post_id")
     private Long post_id;
 
@@ -34,8 +35,11 @@ public class Post {
     private int like_count;
     private int reply_count;
     private int view_count;
-    private String date;
-    private String time;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime created_at;
+
+    private boolean is_deleted;
 
     //초기값 설정
     public Post(Long user_id, String post_title, String post_content, String image_file)
@@ -50,8 +54,8 @@ public class Post {
         like_count=0;
         reply_count=0;
         view_count=0;
-        date= String.valueOf(LocalDate.now());
-        time=String.valueOf(LocalTime.now());
+        created_at = LocalDateTime.now();
+        is_deleted=false;
     }
 
     //이미지가 없는 경우
@@ -67,8 +71,8 @@ public class Post {
         like_count=0;
         reply_count=0;
         view_count=0;
-        date= String.valueOf(LocalDate.now());
-        time=String.valueOf(LocalTime.now());
+        created_at = LocalDateTime.now();
+        is_deleted=false;
     }
 
 
@@ -80,7 +84,7 @@ public class Post {
         is_fixed=true;
     }
 
-    //신고 기능(미구현)
+    //신고 기능
     public void report(){
         report_count++;
     }
@@ -107,4 +111,7 @@ public class Post {
     public void view(){
         view_count++;
     }
+
+    //삭제
+    public void delete(){is_deleted=true;}
 }

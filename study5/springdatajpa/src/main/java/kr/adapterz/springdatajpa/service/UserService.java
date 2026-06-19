@@ -7,9 +7,11 @@ import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class UserService {
     private final UserRepository userRepository;
 
@@ -40,8 +42,8 @@ public class UserService {
     //회원 탈퇴
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
-        userRepository.deleteById(request.getUser_id());
+        User user= userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
+        user.delete();
         return userDeleteResponseDto;
     }
     //회원 정보 수정
@@ -50,7 +52,7 @@ public class UserService {
         if (userRepository.existsNickname(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
-        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
+        User user=userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
         user.update(request.getNickname(),request.getProfile_image());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
@@ -62,7 +64,7 @@ public class UserService {
             throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user=userRepository.findId(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
+        User user=userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
         user.setPassword(request.getPassword());
         return userPasswordResponseDto;
     }
