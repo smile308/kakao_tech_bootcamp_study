@@ -6,5 +6,5 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class ReportRequestDto{
-    private Long user_id;
+    private Long userId;
 }

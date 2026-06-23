@@ -7,9 +7,9 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostFixRequestDto {
-    private Long user_id;
+    private Long userId;
     @Size(max=26)
     private String title;
     private String contents;
-    private String image_file;
+    private String imageFile;
 }

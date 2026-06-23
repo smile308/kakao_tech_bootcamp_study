@@ -7,11 +7,11 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class UserResponseDto {
-    private Long user_id;
+    private Long userId;
     private String message;
 
     public UserResponseDto(User user){
         this.message = "signup_success";
-        this.user_id=user.getUserId();
+        this.userId=user.getUserId();
     }
 }

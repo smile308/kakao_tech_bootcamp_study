@@ -45,12 +45,12 @@ public class PostService {
     @Transactional
     public PostResponseDto createPost(PostRequestDto request) {
         PostResponseDto postResponseDto= new PostResponseDto();
-        User user = userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        User user = userRepository.findById(request.getUserId()).orElseThrow(()->new AuthException("No_User"));
         Post post = new Post(
                 user,
                 request.getTitle(),
                 request.getContents(),
-                request.getImage_file()
+                request.getImageFile()
         );
         postRepository.save(post);
 
@@ -59,9 +59,9 @@ public class PostService {
 
     //게시물
     @Transactional
-    public PostViewResponseDto getPostView(Long post_id) {
+    public PostViewResponseDto getPostView(Long postId) {
 
-        Post post = postRepository.findById(post_id)
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
         User postWriter = getDisplayUser(post.getUser().getUserId());
 
@@ -86,30 +86,30 @@ public class PostService {
 
     //게시물 수정
     @Transactional
-    public PostFixResponseDto fixPost(Long post_id, PostFixRequestDto request) {
+    public PostFixResponseDto fixPost(Long postId, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
-        Post post = postRepository.findById(post_id)
+        Post post = postRepository.findById(postId)
                 .orElseThrow(()->new DataNullException("No_Post"));
 
         //실제 작성자가 맞는지 확인
-        if (!post.getUser().getUserId().equals(request.getUser_id())) {
+        if (!post.getUser().getUserId().equals(request.getUserId())) {
             throw new AuthException("No_Auth");
         }
         post.update(
                 request.getTitle(),
                 request.getContents(),
-                request.getImage_file()
+                request.getImageFile()
         );
         return postFixResponseDto;
     }
     //게시글 삭제
     @Transactional
-    public PostDeleteResponseDto deletePost(Long post_id, PostDeleteRequestDto request){
+    public PostDeleteResponseDto deletePost(Long postId, PostDeleteRequestDto request){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
-        Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+        Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
-        if(!post.getUser().getUserId().equals(request.getUser_id())) {
+        if(!post.getUser().getUserId().equals(request.getUserId())) {
             throw new AuthException("No_Auth");
         }
         post.delete();
@@ -118,10 +118,10 @@ public class PostService {
 
     //게시물 좋아요
     @Transactional
-    public LikeResponseDto likePost(Long post_id, LikeRequestDto request){
-        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+    public LikeResponseDto likePost(Long postId, LikeRequestDto request){
+        Post post = postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
-        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        userRepository.findById(request.getUserId()).orElseThrow(()->new AuthException("No_User"));
         post.like();
         LikeResponseDto likeResponseDto = new LikeResponseDto(post.getLikeCount());
 
@@ -130,10 +130,10 @@ public class PostService {
 
     //좋아요 취소
     @Transactional
-    public LikeCancelResponseDto cancelLike(Long post_id, LikeCancelRequestDto request){
-        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+    public LikeCancelResponseDto cancelLike(Long postId, LikeCancelRequestDto request){
+        Post post = postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
-        userRepository.findById(request.getUser_id()).orElseThrow(()->new AuthException("No_User"));
+        userRepository.findById(request.getUserId()).orElseThrow(()->new AuthException("No_User"));
         post.likeCancle();
         LikeCancelResponseDto likeCancelResponseDto = new LikeCancelResponseDto(post.getLikeCount());
 
@@ -142,8 +142,8 @@ public class PostService {
 
     //게시글 신고
     @Transactional
-    public ReportResponseDto reportPost (Long post_id, ReportRequestDto request){
-        Post post = postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+    public ReportResponseDto reportPost (Long postId, ReportRequestDto request){
+        Post post = postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
         post.report();
         ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReportCount());

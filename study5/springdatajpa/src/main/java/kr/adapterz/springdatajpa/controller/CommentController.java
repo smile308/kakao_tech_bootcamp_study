@@ -28,7 +28,7 @@ public class CommentController {
 
     //댓글 수정
     @PatchMapping
-    public CommentFixResponseDto commentFix(@PathVariable Long post_id,@RequestBody CommentFixRequestDto request){
-        return commentService.commentFix(post_id, request);
+    public CommentFixResponseDto commentFix(@RequestBody CommentFixRequestDto request){
+        return commentService.commentFix(request);
     }
 }

@@ -6,6 +6,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class SessionDeleteRequestDto {
-    private Long user_id;
-    private String access_session;
+    private Long userId;
+    private String accessSession;
 }

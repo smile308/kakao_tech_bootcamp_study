@@ -8,14 +8,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SessionResponseDto {
     private String message;
-    private String access_session;
-    private Long user_id;
+    private String accessSession;
+    private Long userId;
 
 
     public SessionResponseDto(Session session)
     {
         this.message = "login_success";
-        this.access_session=session.getAccessSession();
-        this.user_id=session.getUserId();
+        this.accessSession=session.getAccessSession();
+        this.userId=session.getUserId();
     }
 }

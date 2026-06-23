@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class ReportResponseDto {
     private String message = "report_success";
-    private int report_count;
-    public ReportResponseDto(int report_count){
-        this.report_count=report_count;
+    private int reportCount;
+    public ReportResponseDto(int reportCount){
+        this.reportCount=reportCount;
     }
 }

@@ -19,13 +19,13 @@ public class UserRequestDto {
     private String password;
     @NotBlank
     @Pattern(regexp = "^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[!@#$%^&*]).{8,20}$")
-    private String password_check;
+    private String passwordCheck;
     @NotBlank
     @Size(max = 10)
     //공백 제거 조건
     @Pattern(regexp = "^\\S+$")
     private String nickname;
-    private String profile_image;
+    private String profileImage;
 
 
 }

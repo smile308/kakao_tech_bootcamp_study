@@ -12,34 +12,34 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 public class PostViewResponseDto {
-    private Long post_id;
-    private boolean is_fixed;
-    private String post_title;
-    private String post_content;
-    private String image_file;
-    private int like_count;
-    private int report_count;
-    private int reply_count;
-    private int view_count;
-    private LocalDateTime created_at;
-    private String user_name;
-    private String user_profile_image;
+    private Long postId;
+    private boolean isFixed;
+    private String postTitle;
+    private String postContent;
+    private String imageFile;
+    private int likeCount;
+    private int reportCount;
+    private int replyCount;
+    private int viewCount;
+    private LocalDateTime createdAt;
+    private String userName;
+    private String userProfileImage;
 
     //댓글들 리스트
     private List<CommentResponseDto> comments;
     public PostViewResponseDto(Post post, User user, List<CommentResponseDto> comments){
-        this.post_id=post.getPostId();
-        this.is_fixed=post.is_fixed();
-        this.post_title=post.getPostTitle();
-        this.post_content=post.getPostContent();
-        this.image_file=post.getImageFile();
-        this.like_count=post.getLikeCount();
-        this.report_count=post.getReportCount();
-        this.reply_count=post.getReplyCount();
-        this.view_count=post.getViewCount();
-        this.created_at=post.getCreatedAt();
-        this.user_name=user.getNickname();
-        this.user_profile_image=user.getProfileImage();
+        this.postId=post.getPostId();
+        this.isFixed=post.is_fixed();
+        this.postTitle=post.getPostTitle();
+        this.postContent=post.getPostContent();
+        this.imageFile=post.getImageFile();
+        this.likeCount=post.getLikeCount();
+        this.reportCount=post.getReportCount();
+        this.replyCount=post.getReplyCount();
+        this.viewCount=post.getViewCount();
+        this.createdAt=post.getCreatedAt();
+        this.userName=user.getNickname();
+        this.userProfileImage=user.getProfileImage();
         this.comments=comments;
     }
 }

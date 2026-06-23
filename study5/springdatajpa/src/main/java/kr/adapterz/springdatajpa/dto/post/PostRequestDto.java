@@ -9,11 +9,11 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostRequestDto {
-    private Long user_id;
+    private Long userId;
     @NotBlank
     @Size(max=26)
     private String title;
     @NotBlank
     private String contents;
-    private String image_file;
+    private String imageFile;
 }

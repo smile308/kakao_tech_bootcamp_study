@@ -7,8 +7,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class LikeCancelResponseDto {
     private String message = "cancel_success";
-    private int like_count;
-    public LikeCancelResponseDto(int like_count){
-        this.like_count=like_count;
+    private int likeCount;
+    public LikeCancelResponseDto(int likeCount){
+        this.likeCount=likeCount;
     }
 }

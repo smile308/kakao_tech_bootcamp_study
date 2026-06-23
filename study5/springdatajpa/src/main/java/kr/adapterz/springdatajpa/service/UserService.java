@@ -18,7 +18,7 @@ public class UserService {
     //회원가입
     public UserResponseDto createUser(UserRequestDto request){
         //비밀번호 확인
-        if (!request.getPassword().equals(request.getPassword_check())) {
+        if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
         //이메일 중복 체크
@@ -33,7 +33,7 @@ public class UserService {
                 request.getEmail(),
                 request.getPassword(),
                 request.getNickname(),
-                request.getProfile_image()
+                request.getProfileImage()
         );
         User  savedUser = userRepository.save(user);
 
@@ -42,7 +42,7 @@ public class UserService {
     //회원 탈퇴
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        User user= userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
+        User user= userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
         user.delete();
         return userDeleteResponseDto;
     }
@@ -52,19 +52,19 @@ public class UserService {
         if (userRepository.existsByNickname(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
-        User user=userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
-        user.update(request.getNickname(),request.getProfile_image());
+        User user=userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        user.update(request.getNickname(),request.getProfileImage());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
     }
     //비밀번호 수정
     public UserPasswordResponseDto setPassword(UserPasswordRequestDto request){
         //비밀번호 확인
-        if (!request.getPassword().equals(request.getPassword_check())) {
+        if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user=userRepository.findById(request.getUser_id()).orElseThrow(()->new DataNullException("No_User"));
+        User user=userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
         user.setPassword(request.getPassword());
         return userPasswordResponseDto;
     }
