@@ -1,0 +1,398 @@
+.profile-edit-page {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  margin: 0 auto;
+  background: #f4f5f7;
+}
+
+/* 상단 헤더 */
+.page-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 104px;
+  background: #f4f5f7;
+  border-bottom: 1px solid #000000;
+}
+
+.page-header__title {
+  position: absolute;
+  top: 36px;
+  left: 857px;
+  width: 206px;
+  height: 32px;
+  margin: 0;
+
+  font-family: "Sandoll GogoRound", sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+/* 상단 우측 프로필 이미지 */
+.header-profile {
+  position: absolute;
+  top: 36px;
+  left: 1196px;
+  width: 36px;
+  height: 36px;
+}
+
+.header-profile__button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: #c4c4c4;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.header-profile__button.is-empty {
+  background: #c4c4c4;
+}
+
+.header-profile__button.is-empty .header-profile__image {
+  display: none;
+}
+
+.header-profile__image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* hover 메뉴 */
+.profile-menu {
+  display: none;
+  position: absolute;
+  top: 36px;
+  left: -40px;
+  width: 115px;
+  z-index: 10;
+}
+
+.header-profile:hover .profile-menu,
+.header-profile:focus-within .profile-menu {
+  display: block;
+}
+
+.profile-menu__item {
+  display: block;
+  width: 115px;
+  height: 35px;
+  padding: 10px 24px;
+  border: none;
+  background: #d9d9d9;
+  text-decoration: none;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.profile-menu__logout {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* 본문 */
+.profile-edit-section {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+}
+
+.profile-edit-title {
+  position: absolute;
+  top: 265px;
+  left: 872px;
+  width: 177px;
+  height: 37px;
+  margin: 0;
+
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.profile-edit-form {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* 프로필 사진 */
+.profile-image-label {
+  position: absolute;
+  top: 315px;
+  left: 783px;
+  width: 80px;
+  height: 17px;
+
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.profile-image-box {
+  position: absolute;
+  top: 355px;
+  left: 885px;
+  width: 149px;
+  height: 149px;
+
+  border-radius: 50%;
+  background: #4646468c;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.profile-edit-image {
+  display: block;
+  width: 149px;
+  height: 149px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #4646468c;
+}
+
+.profile-image-change-button {
+  position: absolute;
+  top: 61px;
+  left: 50px;
+  width: 52px;
+  height: 27px;
+
+  border: 1px solid #ffffff;
+  border-radius: 25px;
+  background: #00000059;
+}
+
+.profile-image-change-text {
+  position: absolute;
+  top: 5px;
+  left: 13px;
+  width: 28px;
+  height: 17px;
+
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #ffffff;
+
+  white-space: nowrap;
+}
+
+.profile-image-input {
+  display: none;
+}
+
+/* 이메일 */
+.profile-email-group {
+  position: absolute;
+  top: 540px;
+  left: 783px;
+  width: 355px;
+}
+
+.profile-form-label {
+  display: block;
+  width: max-content;
+  height: 17px;
+
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.profile-email-text {
+  position: absolute;
+  top: 34px;
+  left: 0;
+  width: 156px;
+  height: 17px;
+  margin: 0;
+
+  font-family: "42dot Sans", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+/* 닉네임 */
+.profile-nickname-group {
+  position: absolute;
+  top: 615px;
+  left: 783px;
+  width: 355px;
+}
+
+.profile-form-input {
+  width: 355px;
+  height: 33px;
+  margin-top: 8px;
+  padding: 8px 10px;
+
+  border: 1px solid #000000;
+  border-radius: 4px;
+  background: #ffffff;
+
+  font-family: "42dot Sans", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.profile-form-input::placeholder {
+  font-family: "42dot Sans", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  color: #000000;
+}
+
+.profile-helper-text {
+  width: 71px;
+  height: 15px;
+  margin: 4px 0 0;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #ff0000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+/* 수정하기 버튼 */
+.profile-submit-button {
+  position: absolute;
+  top: 693px;
+  left: 783px;
+  width: 355px;
+  height: 33px;
+
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: #aca0eb;
+
+  font-family: Arial, sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+
+  cursor: pointer;
+}
+
+/* 회원 탈퇴 */
+.withdraw-button {
+  position: absolute;
+  top: 738px;
+  left: 934px;
+  width: 52px;
+  height: 17px;
+
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+
+  font-family: "42dot Sans", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 하단 수정완료 버튼 */
+.profile-complete-button {
+  position: absolute;
+  top: 832px;
+  left: 915px;
+  width: 102px;
+  height: 46px;
+
+  padding: 0;
+  border: none;
+  border-radius: 30px;
+  background: #aca0eb;
+
+  font-family: "42dot Sans", sans-serif;
+  font-weight: 400;
+  font-size: 18px;
+  line-height: 120%;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: #ffffff;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
