@@ -23,12 +23,12 @@ public class PostController {
     }
     //게시글 추가
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public PostResponseDto createPost(@Valid @RequestBody PostRequestDto request){
         return postService.createPost(request);
     }
     //게시글 상세조회
     @GetMapping("/{post_id}")
-    @ResponseStatus(HttpStatus.CREATED)
     public PostViewResponseDto getPostView(@PathVariable Long post_id) {
         return postService.getPostView(post_id);
     }

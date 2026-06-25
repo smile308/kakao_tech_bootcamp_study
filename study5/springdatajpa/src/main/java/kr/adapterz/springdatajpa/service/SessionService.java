@@ -21,7 +21,7 @@ public class SessionService {
 
     //로그인
     public SessionResponseDto createSession(SessionRequestDto request){
-        User user = userRepository.findByEmailAndPassword(request.getEmail(), request.getPassword()).orElseThrow(() -> new LoginFailedException("Login_Failed"));
+        User user = userRepository.findByEmailAndPasswordAndDeletedFalse(request.getEmail(), request.getPassword()).orElseThrow(() -> new LoginFailedException("Login_Failed"));
         Session session = new Session(user.getUserId());
         return new SessionResponseDto(session);
     }

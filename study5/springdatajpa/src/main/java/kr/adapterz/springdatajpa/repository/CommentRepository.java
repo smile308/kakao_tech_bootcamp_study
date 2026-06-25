@@ -11,6 +11,13 @@ import java.util.Optional;
 
 public interface CommentRepository extends JpaRepository<Comment, Long> {
 
-    List<Comment> findByPost(Post post);
+    @Query("""
+        select c
+        from Comment c
+        join fetch c.user
+        where c.post = :post
+        order by c.commentId asc
+    """)
+    List<Comment> findByPostWithUser(Post post);
 
 }

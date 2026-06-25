@@ -24,7 +24,7 @@ public class CommentService {
     //댓글 등록
     public CommentPostResponseDto commentPost(Long post_id, CommentPostRequestDto request){
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
-        User user = userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_Account"));
+        User user = userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_Account"));
         Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
                     user,

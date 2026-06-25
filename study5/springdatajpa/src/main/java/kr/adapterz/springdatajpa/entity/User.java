@@ -13,7 +13,7 @@ import org.hibernate.annotations.SQLRestriction;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
     private Long userId;
 
@@ -55,7 +55,11 @@ public class User {
     }
 
     //유저 삭제
-    public void delete(){deleted=true;}
+    public void delete(){
+        this.deleted = true;
+        this.nickname = "삭제된 유저";
+        this.profileImage = null;
+    }
 
     public void setPassword(String password)
     {

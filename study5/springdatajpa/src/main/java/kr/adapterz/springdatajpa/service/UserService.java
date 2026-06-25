@@ -22,11 +22,11 @@ public class UserService {
             throw new InvalidRequestException("Invalid_Password");
         }
         //이메일 중복 체크
-        if (userRepository.existsByEmail(request.getEmail())) {
+        if (userRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
             throw new InvalidRequestException("Existed_Email");
         }
         //닉네임 중복 체크
-        if (userRepository.existsByNickname(request.getNickname())) {
+        if (userRepository.existsByNicknameAndDeletedFalse(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
         User user = new User(
@@ -42,17 +42,17 @@ public class UserService {
     //회원 탈퇴
     public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        User user= userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        User user= userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
         user.delete();
         return userDeleteResponseDto;
     }
     //회원 정보 수정
     public UserPatchResponseDto patchUser(UserPatchRequestDto request){
         //닉네임 중복 체크
-        if (userRepository.existsByNickname(request.getNickname())) {
+        if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(),request.getUserId())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
-        User user=userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        User user=userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
         user.update(request.getNickname(),request.getProfileImage());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
@@ -64,7 +64,8 @@ public class UserService {
             throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user=userRepository.findById(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        User user=userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+
         user.setPassword(request.getPassword());
         return userPasswordResponseDto;
     }
