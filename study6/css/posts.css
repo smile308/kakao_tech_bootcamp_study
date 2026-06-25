@@ -1,0 +1,1387 @@
+.posts-page {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+  margin: 0 auto;
+  background: #f4f5f7;
+}
+
+/* 상단 공통 헤더 */
+.page-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 104px;
+  background: #f4f5f7;
+  border-bottom: 1px solid #000000;
+  z-index: 100;
+}
+
+.page-header__title {
+  position: absolute;
+  top: 36px;
+  left: 857px;
+  width: 206px;
+  height: 32px;
+  margin: 0;
+
+  font-family: "Sandoll GogoRound", sans-serif;
+  font-weight: 400;
+  font-size: 32px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+/* 우측 상단 프로필 */
+.header-profile {
+  position: absolute;
+  top: 36px;
+  left: 1196px;
+  width: 36px;
+  height: 36px;
+  z-index: 200;
+}
+
+.header-profile__button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: #c4c4c4;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.header-profile__button.is-empty {
+  background: #c4c4c4;
+}
+
+.header-profile__button.is-empty .header-profile__image {
+  display: none;
+}
+
+.header-profile__image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 프로필 hover 메뉴 */
+.profile-menu {
+  display: none;
+  position: absolute;
+  top: 36px;
+  left: -40px;
+  width: 115px;
+  z-index: 300;
+}
+
+.header-profile:hover .profile-menu,
+.header-profile:focus-within .profile-menu {
+  display: block;
+}
+
+.profile-menu__item {
+  display: block;
+  width: 115px;
+  height: 35px;
+  padding: 10px 24px;
+  border: none;
+  background: #d9d9d9;
+  text-decoration: none;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.profile-menu__logout {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* 본문 */
+.posts-main {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+}
+
+.posts-welcome {
+  position: absolute;
+  top: 144px;
+  left: 819px;
+  width: 280px;
+  height: 62px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+}
+
+.write-post-button {
+  position: absolute;
+  top: 230px;
+  left: 1118px;
+  width: 138px;
+  height: 39px;
+
+  border: none;
+  border-radius: 16px;
+  background: #aca0eb;
+  cursor: pointer;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 157%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+}
+
+/* 게시글 리스트 */
+.posts-list {
+  position: absolute;
+  top: 293px;
+  left: 664px;
+  width: 592px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 게시글 카드 */
+.post-card {
+  width: 592px;
+  height: 169px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 3px 4px 4px 0px #cccccc40;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.post-card__inner {
+  width: 592px;
+  height: 169px;
+  padding: 20px 24px 14px;
+}
+
+.post-card__content {
+  width: 544px;
+  height: 135px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.post-card__top {
+  width: 544px;
+  height: 83px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.post-card__top-inner {
+  width: 544px;
+  height: 59px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.post-card__title-area {
+  width: 155px;
+  height: 59px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.post-card__title {
+  width: 155px;
+  height: 31px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.post-card__meta {
+  width: 155px;
+  height: 18px;
+
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.post-card__meta-item {
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+.post-card__date {
+  width: 133px;
+  height: 18px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: right;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+.post-card__divider {
+  width: 592px;
+  height: 0;
+  margin-left: -24px;
+  border: 1px solid #00000029;
+}
+
+.post-card__author {
+  width: 173px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.post-card__author-image-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #d9d9d9;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.post-card__author-image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.post-card__author-image-box.is-empty .post-card__author-image {
+  display: none;
+}
+
+.post-card__author-name {
+  width: 79px;
+  height: 20px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+/* ==============================
+   게시글 상세조회 페이지
+============================== */
+
+.post-detail-page {
+  position: relative;
+  width: 1920px;
+  min-height: 1300px;
+  margin: 0 auto;
+  background: #f4f5f7;
+}
+
+/* 회원가입 페이지 뒤로가기와 동일한 형태 */
+.detail-back-button {
+  position: absolute;
+  top: 32px;
+  left: 684px;
+  width: 40px;
+  height: 40px;
+
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  line-height: 0;
+  cursor: pointer;
+  z-index: 200;
+}
+
+.detail-back-button__icon {
+  width: 14px;
+  height: 14px;
+
+  border-left: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  transform: rotate(45deg);
+}
+
+.post-detail-main {
+  position: relative;
+  width: 1920px;
+  min-height: 1300px;
+  z-index: 1;
+}
+
+/* 제목 */
+.detail-post-title {
+  position: absolute;
+  top: 128px;
+  left: 688px;
+  width: 59px;
+  height: 31px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+/* 작성자 영역 */
+.detail-author-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.detail-author-image-box {
+  position: absolute;
+  top: 171px;
+  left: 688px;
+  width: 36px;
+  height: 36px;
+
+  border-radius: 50%;
+  background: #d9d9d9;
+  overflow: hidden;
+}
+
+.detail-author-image-box.is-empty .detail-author-image {
+  display: none;
+}
+
+.detail-author-image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.detail-author-name {
+  position: absolute;
+  top: 179px;
+  left: 734px;
+  width: 79px;
+  height: 20px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.detail-created-at {
+  position: absolute;
+  top: 181px;
+  left: 837px;
+  width: 133px;
+  height: 18px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: right;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+/* 게시글 수정/삭제 */
+.detail-post-actions {
+  position: absolute;
+  top: 175px;
+  left: 1124px;
+  width: 108px;
+  height: 27px;
+
+  display: flex;
+  gap: 8px;
+}
+
+.detail-small-button {
+  width: 50px;
+  height: 27px;
+  padding: 0;
+
+  border: 1px solid #aca0eb;
+  border-radius: 8px;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 157%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* 선 */
+.detail-divider {
+  position: absolute;
+  width: 592px;
+  height: 0;
+  left: 664px;
+  border: 1px solid #00000029;
+}
+
+.detail-divider--top {
+  top: 231px;
+}
+
+.detail-divider--comment-top {
+  top: 957px;
+}
+
+/* 게시글 이미지 */
+.detail-post-image-box {
+  position: absolute;
+  top: 255px;
+  left: 688px;
+  width: 544px;
+  height: 306px;
+
+  background: #d9d9d9;
+  overflow: hidden;
+}
+
+.detail-post-image-box.is-hidden {
+  display: none;
+}
+
+.detail-post-image {
+  display: block;
+  width: 544px;
+  height: 306px;
+  object-fit: cover;
+}
+
+/* 본문 */
+.detail-post-content {
+  position: absolute;
+  top: 585px;
+  left: 688px;
+  width: 544px;
+  height: 231px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+
+  overflow: visible;
+}
+
+/* 통계 카드 */
+.detail-stats {
+  position: absolute;
+  top: 848px;
+  left: 783px;
+  width: 364px;
+  height: 77px;
+}
+
+.detail-stat-card {
+  position: absolute;
+  top: 0;
+  width: 116px;
+  height: 77px;
+
+  border-radius: 16px;
+  background: #d9d9d9;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-stat-card--likes {
+  left: 0;
+}
+
+.detail-stat-card--views {
+  left: 124px;
+}
+
+.detail-stat-card--comments {
+  left: 248px;
+}
+
+.detail-stat-number {
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+}
+
+.detail-stat-label {
+  margin-top: 4px;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+}
+
+/* 댓글 입력 */
+.comment-form {
+  position: absolute;
+  top: 989px;
+  left: 664px;
+  width: 592px;
+  height: 169px;
+
+  border-radius: 16px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.comment-input {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  width: 544px;
+  height: 83px;
+
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.comment-input::placeholder {
+  color: #000000;
+}
+
+.comment-form-divider {
+  position: absolute;
+  top: 118px;
+  left: 0;
+  width: 592px;
+  height: 0;
+  border: 1px solid #00000029;
+}
+
+.comment-submit-button {
+  position: absolute;
+  top: 124px;
+  left: 446px;
+  width: 138px;
+  height: 39px;
+
+  border: none;
+  border-radius: 16px;
+  background: #aca0eb;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 157%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+
+  cursor: not-allowed;
+}
+
+.comment-submit-button:not(:disabled) {
+  background: #7f6aee;
+  cursor: pointer;
+}
+
+/* 댓글 목록 */
+.comment-list {
+  position: absolute;
+  top: 1182px;
+  left: 688px;
+  width: 544px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comment-item {
+  position: relative;
+  width: 544px;
+  height: 65px;
+}
+
+.comment-author-image-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 36px;
+  height: 36px;
+
+  border-radius: 50%;
+  background: #d9d9d9;
+  overflow: hidden;
+}
+
+.comment-author-image-box.is-empty .comment-author-image {
+  display: none;
+}
+
+.comment-author-image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.comment-author-name {
+  position: absolute;
+  top: 8px;
+  left: 46px;
+  width: 79px;
+  height: 20px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 130%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+.comment-created-at {
+  position: absolute;
+  top: 10px;
+  left: 149px;
+  width: 133px;
+  height: 18px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: right;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+.comment-content {
+  position: absolute;
+  top: 44px;
+  left: 46px;
+  width: 236px;
+  height: 21px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.comment-actions {
+  position: absolute;
+  top: 0;
+  left: 436px;
+  width: 108px;
+  height: 47px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+
+  display: flex;
+  gap: 8px;
+}
+
+.comment-action-button {
+  width: 50px;
+  height: 27px;
+  padding: 0;
+
+  border: 1px solid #aca0eb;
+  border-radius: 8px;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 157%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ==============================
+   게시글 수정 페이지
+============================== */
+
+.post-edit-page {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+  margin: 0 auto;
+  background: #f4f5f7;
+}
+
+.post-edit-main {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+  z-index: 1;
+}
+
+.post-edit-title {
+  position: absolute;
+  top: 128px;
+  left: 905px;
+  width: 110px;
+  height: 31px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-edit-form {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.post-edit-label {
+  position: absolute;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-edit-label--title {
+  top: 210px;
+  left: 688px;
+  width: 37px;
+  height: 21px;
+
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: 0;
+}
+
+.post-edit-label--content {
+  top: 337px;
+  left: 688px;
+  width: 37px;
+  height: 21px;
+
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: 0;
+}
+
+.post-edit-label--image {
+  top: 679px;
+  left: 688px;
+  width: 39px;
+  height: 18px;
+
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0;
+}
+
+.post-edit-line {
+  position: absolute;
+  left: 664px;
+  width: 592px;
+  height: 0;
+  border: 1px solid #00000029;
+}
+
+.post-edit-line--title-top {
+  top: 247px;
+}
+
+.post-edit-line--title-bottom {
+  top: 311px;
+}
+
+.post-edit-line--content-top {
+  top: 374px;
+}
+
+.post-edit-line--content-bottom {
+  top: 653px;
+}
+
+.post-title-input {
+  position: absolute;
+  top: 267px;
+  left: 688px;
+  width: 544px;
+  height: 23px;
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  outline: none;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-content-input {
+  position: absolute;
+  top: 398px;
+  left: 688px;
+  width: 544px;
+  height: 231px;
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-edit-helper {
+  position: absolute;
+  top: 658px;
+  left: 688px;
+  width: 71px;
+  height: 15px;
+  margin: 0;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #ff0000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-image-file-area {
+  position: absolute;
+  top: 705px;
+  left: 689px;
+  width: 220px;
+  height: 29px;
+}
+
+.post-image-file-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 68px;
+  height: 29px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #000000;
+  border-radius: 4px;
+  background: #d9d9d9;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.post-image-file-name {
+  position: absolute;
+  top: 6px;
+  left: 80px;
+  width: 120px;
+  height: 17px;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-image-input {
+  display: none;
+}
+
+.post-edit-submit-button {
+  position: absolute;
+  top: 761px;
+  left: 782px;
+  width: 355px;
+  height: 33px;
+  padding: 0;
+
+  border: none;
+  border-radius: 4px;
+  background: #7f6aee;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ==============================
+   게시글 작성 페이지
+============================== */
+
+.post-create-page {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+  margin: 0 auto;
+  background: #f4f5f7;
+}
+
+.post-create-main {
+  position: relative;
+  width: 1920px;
+  min-height: 1080px;
+  z-index: 1;
+}
+
+.post-create-title {
+  position: absolute;
+  top: 128px;
+  left: 905px;
+  width: 110px;
+  height: 31px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 130%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-create-form {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.post-create-label {
+  position: absolute;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-create-label--title {
+  top: 210px;
+  left: 688px;
+  width: 37px;
+  height: 21px;
+
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: 0;
+}
+
+.post-create-title-input {
+  position: absolute;
+  top: 247px;
+  left: 688px;
+  width: 544px;
+  height: 54px;
+
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  border-bottom: 1px solid #00000029;
+  outline: none;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-create-title-input::placeholder {
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-create-label--content {
+  top: 337px;
+  left: 688px;
+  width: 37px;
+  height: 21px;
+
+  font-size: 16px;
+  line-height: 130%;
+  letter-spacing: 0;
+}
+
+.post-create-content-input {
+  position: absolute;
+  top: 374px;
+  left: 688px;
+  width: 544px;
+  height: 257px;
+
+  padding: 0;
+  margin: 0;
+
+  border: none;
+  border-bottom: 1px solid #00000029;
+  outline: none;
+  resize: none;
+  background: transparent;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-create-content-input::placeholder {
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 141%;
+  letter-spacing: 0;
+  color: #000000;
+}
+
+.post-create-helper {
+  position: absolute;
+  top: 636px;
+  left: 688px;
+  width: 71px;
+  height: 15px;
+  margin: 0;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #ff0000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-create-label--image {
+  top: 669px;
+  left: 688px;
+  width: 39px;
+  height: 18px;
+
+  font-size: 15px;
+  line-height: 100%;
+  letter-spacing: 0;
+}
+
+.post-create-file-area {
+  position: absolute;
+  top: 697px;
+  left: 689px;
+  width: 355px;
+  height: 29px;
+}
+
+.post-create-file-button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 68px;
+  height: 29px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #000000;
+  border-radius: 4px;
+  background: #d9d9d9;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.post-create-file-name {
+  position: absolute;
+  top: 6px;
+  left: 80px;
+  width: 200px;
+  height: 17px;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  color: #000000;
+
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: visible;
+}
+
+.post-create-file-input {
+  display: none;
+}
+
+.post-create-submit-button {
+  position: absolute;
+  top: 747px;
+  left: 782px;
+  width: 355px;
+  height: 33px;
+  padding: 0;
+
+  border: none;
+  border-radius: 4px;
+  background: #aca0eb;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: not-allowed;
+  white-space: nowrap;
+}
+
+.post-create-submit-button:not(:disabled) {
+  background: #7f6aee;
+  cursor: pointer;
+}
+
+.post-create-submit-button:disabled {
+  background: #aca0eb;
+}
