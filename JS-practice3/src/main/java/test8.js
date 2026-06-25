@@ -29,3 +29,5 @@ const firstLevel = () => {
 
 firstLevel();
 console.log(color); // (3)
+
+//green red blue 순서로 출력
