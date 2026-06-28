@@ -54,43 +54,13 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
-  const contentType = response.headers.get("content-type");
-  const responseText = await response.text();
-
-  let data = null;
-
-  if (responseText) {
-    if (contentType && contentType.includes("application/json")) {
-      data = JSON.parse(responseText);
-    } else {
-      data = responseText;
-    }
-  }
-
-  if (!response.ok) {
-    console.error("API 요청 실패:", {
-      endpoint,
-      status: response.status,
-      data,
-    });
-
-    throw new Error(
-      typeof data === "string"
-        ? data
-        : data?.message || JSON.stringify(data)
-    );
-  }
-
-  return data;
-}
-
 window.api = {
   getCurrentUserId,
   getAccessSession,
 
-getUser(userId = getCurrentUserId()) {
-  return request(`/users/${userId}`);
-},
+  getUser(userId = getCurrentUserId()) {
+    return request(`/users/${userId}`);
+  },
 
   login({ email, password }) {
     return request("/sessions", {
@@ -112,8 +82,6 @@ getUser(userId = getCurrentUserId()) {
     });
   },
 
-
-  
   signup(payload) {
     return request("/users", {
       method: "POST",
@@ -215,4 +183,3 @@ getUser(userId = getCurrentUserId()) {
     });
   },
 };
-
