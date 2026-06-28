@@ -279,6 +279,31 @@
   border-radius: 50%;
   background: #c4c4c4;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.profile-preview-image {
+  display: none;
+  width: 149px;
+  height: 149px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-image-circle.has-image .profile-preview-image {
+  display: block;
+}
+
+.profile-image-circle.has-image .profile-plus-icon {
+  display: none;
+}
+
+.profile-helper {
+  position: absolute;
+  top: 23px;
+  left: 16px;
+  width: 355px;
+  height: 15px;
 }
 
 .profile-plus-icon {
@@ -322,22 +347,35 @@
 }
 
 .signup-form-group {
-  margin-bottom: 10px;
+  position: relative;
+  width: 355px;
+  height: 76px;
+  margin-bottom: 0;
 }
 
 .signup-form-group .form-label {
-  display: block;
-  margin-bottom: 8px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 17px;
+  margin: 0;
 }
 
 .signup-form-group .form-input {
+  position: absolute;
+  top: 25px;
+  left: 0;
   width: 355px;
   height: 33px;
 }
 
 .signup-helper-text {
+  position: absolute;
+  top: 62px;
+  left: 0;
+  width: 355px;
   height: 15px;
-  margin: 4px 0 0;
+  margin: 0;
 
   font-family: Inter, sans-serif;
   font-weight: 400;

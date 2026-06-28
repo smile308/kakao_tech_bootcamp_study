@@ -59,21 +59,21 @@
       </p>
 
       <section class="detail-stats">
-        <div class="detail-stat-card detail-stat-card--likes">
-          <strong id="likeCount" class="detail-stat-number">123</strong>
-          <span class="detail-stat-label">좋아요수</span>
-        </div>
+  <button type="button" id="likeButton" class="detail-stat-card detail-stat-card--likes">
+    <strong id="likeCount" class="detail-stat-number">123</strong>
+    <span class="detail-stat-label">좋아요수</span>
+  </button>
 
-        <div class="detail-stat-card detail-stat-card--views">
-          <strong id="viewCount" class="detail-stat-number">123</strong>
-          <span class="detail-stat-label">조회수</span>
-        </div>
+  <div class="detail-stat-card detail-stat-card--views">
+    <strong id="viewCount" class="detail-stat-number">123</strong>
+    <span class="detail-stat-label">조회수</span>
+  </div>
 
-        <div class="detail-stat-card detail-stat-card--comments">
-          <strong id="commentCount" class="detail-stat-number">123</strong>
-          <span class="detail-stat-label">댓글</span>
-        </div>
-      </section>
+  <div class="detail-stat-card detail-stat-card--comments">
+    <strong id="commentCount" class="detail-stat-number">123</strong>
+    <span class="detail-stat-label">댓글</span>
+  </div>
+</section>
 
       <div class="detail-divider detail-divider--comment-top"></div>
 
@@ -93,6 +93,23 @@
 
       <section id="commentList" class="comment-list"></section>
     </main>
+    <div id="modalOverlay" class="modal-overlay is-hidden" aria-hidden="true">
+  <section class="confirm-modal" role="dialog" aria-modal="true">
+    <h2 id="modalTitle" class="confirm-modal__title">게시글을 삭제하겠습니까?</h2>
+    <p id="modalDescription" class="confirm-modal__description">
+      삭제한 내용은 복구 할 수 없습니다.
+    </p>
+
+    <div class="confirm-modal__actions">
+      <button type="button" id="modalCancelButton" class="confirm-modal__button confirm-modal__button--cancel">
+        취소
+      </button>
+      <button type="button" id="modalConfirmButton" class="confirm-modal__button confirm-modal__button--confirm">
+        확인
+      </button>
+    </div>
+  </section>
+</div>
   </div>
 
   <script src="../js/post-detail.js"></script>

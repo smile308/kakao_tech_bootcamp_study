@@ -163,6 +163,10 @@
   color: #ffffff;
 }
 
+.write-post-button:hover {
+  background: #7f6aee;
+}
+
 /* 게시글 리스트 */
 .posts-list {
   position: absolute;
@@ -242,7 +246,7 @@
 
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 .post-card__meta {
@@ -592,6 +596,7 @@
   width: 116px;
   height: 77px;
 
+  border: none;
   border-radius: 16px;
   background: #d9d9d9;
 
@@ -599,6 +604,14 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+}
+
+button.detail-stat-card {
+  cursor: pointer;
+}
+
+button.detail-stat-card.is-liked {
+  background: #aca0eb;
 }
 
 .detail-stat-card--likes {
@@ -707,6 +720,10 @@
 .comment-submit-button:not(:disabled) {
   background: #7f6aee;
   cursor: pointer;
+}
+
+.comment-submit-button:disabled {
+  background: #aca0eb;
 }
 
 /* 댓글 목록 */
@@ -1377,6 +1394,11 @@
   white-space: nowrap;
 }
 
+.post-create-submit-button.is-active {
+  background: #7f6aee;
+  cursor: pointer;
+}
+
 .post-create-submit-button:not(:disabled) {
   background: #7f6aee;
   cursor: pointer;
@@ -1384,4 +1406,113 @@
 
 .post-create-submit-button:disabled {
   background: #aca0eb;
+}
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  background: rgba(0, 0, 0, 0.5);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 9999;
+}
+
+.modal-overlay.is-hidden {
+  display: none;
+}
+
+.confirm-modal {
+  width: 408px;
+  height: 242px;
+  border-radius: 12px;
+  background: #ffffff;
+
+  position: relative;
+}
+
+.confirm-modal__title {
+  position: absolute;
+  top: 49px;
+  left: 70px;
+  width: 268px;
+  height: 29px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+.confirm-modal__description {
+  position: absolute;
+  top: 102px;
+  left: 68px;
+  width: 273px;
+  height: 24px;
+  margin: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  white-space: nowrap;
+}
+
+.confirm-modal__actions {
+  position: absolute;
+  top: 154px;
+  left: 56px;
+  width: 296px;
+  height: 44px;
+
+  display: flex;
+  gap: 42px;
+}
+
+.confirm-modal__button {
+  width: 127px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+
+  font-family: "Pretendard", sans-serif;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+
+  cursor: pointer;
+}
+
+.confirm-modal__button--cancel {
+  background: #242424;
+  color: #ffffff;
+}
+
+.confirm-modal__button--confirm {
+  background: #c4a5fa;
+  color: #000000;
 }

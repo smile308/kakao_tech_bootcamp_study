@@ -1,3 +1,5 @@
+const CURRENT_USER_ID = 1;
+
 const backButton = document.querySelector("#backButton");
 const postEditButton = document.querySelector("#postEditButton");
 const postDeleteButton = document.querySelector("#postDeleteButton");
@@ -11,6 +13,7 @@ const postImageBox = document.querySelector("#postImageBox");
 const postImage = document.querySelector("#postImage");
 const postContent = document.querySelector("#postContent");
 
+const likeButton = document.querySelector("#likeButton");
 const likeCount = document.querySelector("#likeCount");
 const viewCount = document.querySelector("#viewCount");
 const commentCount = document.querySelector("#commentCount");
@@ -20,29 +23,62 @@ const commentInput = document.querySelector("#commentInput");
 const commentSubmitButton = document.querySelector("#commentSubmitButton");
 const commentList = document.querySelector("#commentList");
 
-const dummyPost = {
+const modalOverlay = document.querySelector("#modalOverlay");
+const modalTitle = document.querySelector("#modalTitle");
+const modalDescription = document.querySelector("#modalDescription");
+const modalCancelButton = document.querySelector("#modalCancelButton");
+const modalConfirmButton = document.querySelector("#modalConfirmButton");
+
+let modalConfirmHandler = null;
+let editingCommentId = null;
+
+let post = {
   postId: 1,
+  authorId: 1,
   title: "제목 1",
   authorNickname: "더미 작성자 1",
   authorProfileImage: null,
-  createdAt: "2021-01-01 00:00:00",
+  createdAt: "2021-01-01T00:00:00",
   imageUrl: null,
   content:
-    "무엇을 얘기할까요? 아무말이라면, 삶은 항상 회전문 같습니다. 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다. 때로는 어려움과 도전이 있지만, 그것들이 우리를 더 강하고 지혜롭게 만듭니다. 또한 우리는 주변의 사람들과 연결되어 사랑과 지지를 받습니다. 그래서 우리의 삶은 소중하고 의미가 있습니다.",
-  likeCount: 123,
-  viewCount: 123,
-  commentCount: 123,
+    "무엇을 얘기할까요? 아무말이라면, 삶은 항상 회전문 같습니다. 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다.",
+  likeCount: 1230,
+  viewCount: 10000,
+  commentCount: 1,
+  isLiked: false,
 };
 
-const dummyComments = [
+let comments = [
   {
     commentId: 1,
+    authorId: 1,
     authorNickname: "더미 작성자 1",
     authorProfileImage: null,
-    createdAt: "2021-01-01 00:00:00",
+    createdAt: "2021-01-01T00:00:00",
     content: "댓글 내용",
   },
 ];
+
+function formatCount(count) {
+  if (count >= 1000) {
+    return `${Math.floor(count / 1000)}k`;
+  }
+
+  return String(count);
+}
+
+function formatDateTime(dateTimeValue) {
+  const date = new Date(dateTimeValue);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
 
 function setImage(imageBoxElement, imageElement, imageUrl) {
   if (!imageUrl) {
@@ -55,15 +91,21 @@ function setImage(imageBoxElement, imageElement, imageUrl) {
   imageElement.src = imageUrl;
 }
 
-function renderPost(post) {
+function renderPost() {
   postTitle.textContent = post.title;
   authorNickname.textContent = post.authorNickname;
-  postCreatedAt.textContent = post.createdAt;
+  postCreatedAt.textContent = formatDateTime(post.createdAt);
   postContent.textContent = post.content;
 
-  likeCount.textContent = post.likeCount;
-  viewCount.textContent = post.viewCount;
-  commentCount.textContent = post.commentCount;
+  likeCount.textContent = formatCount(post.likeCount);
+  viewCount.textContent = formatCount(post.viewCount);
+  commentCount.textContent = formatCount(comments.length);
+
+  if (post.isLiked) {
+    likeButton.classList.add("is-liked");
+  } else {
+    likeButton.classList.remove("is-liked");
+  }
 
   setImage(authorImageBox, authorImage, post.authorProfileImage);
 
@@ -80,6 +122,8 @@ function createCommentItem(comment) {
   const commentItem = document.createElement("article");
   commentItem.className = "comment-item";
 
+  const isMyComment = comment.authorId === CURRENT_USER_ID;
+
   commentItem.innerHTML = `
     <div class="comment-author-image-box ${comment.authorProfileImage ? "" : "is-empty"}">
       <img
@@ -90,33 +134,68 @@ function createCommentItem(comment) {
     </div>
 
     <p class="comment-author-name">${comment.authorNickname}</p>
-    <p class="comment-created-at">${comment.createdAt}</p>
+    <p class="comment-created-at">${formatDateTime(comment.createdAt)}</p>
     <p class="comment-content">${comment.content}</p>
 
-    <div class="comment-actions">
-      <button type="button" class="comment-action-button">수정</button>
-      <button type="button" class="comment-action-button">삭제</button>
-    </div>
+    ${
+      isMyComment
+        ? `
+          <div class="comment-actions">
+            <button type="button" class="comment-action-button" data-action="edit" data-comment-id="${comment.commentId}">
+              수정
+            </button>
+            <button type="button" class="comment-action-button" data-action="delete" data-comment-id="${comment.commentId}">
+              삭제
+            </button>
+          </div>
+        `
+        : ""
+    }
   `;
 
   return commentItem;
 }
 
-function renderComments(comments) {
+function renderComments() {
   commentList.innerHTML = "";
-
-  if (!comments || comments.length === 0) {
-    return;
-  }
 
   comments.forEach((comment) => {
     commentList.appendChild(createCommentItem(comment));
   });
+
+  post.commentCount = comments.length;
+  commentCount.textContent = formatCount(comments.length);
 }
 
 function updateCommentSubmitButton() {
   const comment = commentInput.value.trim();
+
   commentSubmitButton.disabled = comment.length === 0;
+}
+
+function resetCommentForm() {
+  editingCommentId = null;
+  commentInput.value = "";
+  commentSubmitButton.textContent = "댓글 등록";
+  updateCommentSubmitButton();
+}
+
+function openModal({ title, description, onConfirm }) {
+  modalTitle.textContent = title;
+  modalDescription.textContent = description;
+  modalConfirmHandler = onConfirm;
+
+  modalOverlay.classList.remove("is-hidden");
+  modalOverlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeModal() {
+  modalOverlay.classList.add("is-hidden");
+  modalOverlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+
+  modalConfirmHandler = null;
 }
 
 backButton.addEventListener("click", () => {
@@ -124,19 +203,31 @@ backButton.addEventListener("click", () => {
 });
 
 postEditButton.addEventListener("click", () => {
-  const postId = dummyPost.postId;
-  window.location.href = `./post-edit.html?postId=${postId}`;
+  window.location.href = `./post-edit.html?postId=${post.postId}`;
 });
 
 postDeleteButton.addEventListener("click", () => {
-  const confirmed = confirm("게시글을 삭제하시겠습니까?");
+  openModal({
+    title: "게시글을 삭제하겠습니까?",
+    description: "삭제한 내용은 복구 할 수 없습니다.",
+    onConfirm: () => {
+      // 이후 백엔드 연결 시 DELETE /posts/{postId}
+      post = null;
+      window.location.href = "./posts.html";
+    },
+  });
+});
 
-  if (!confirmed) {
-    return;
+likeButton.addEventListener("click", () => {
+  if (post.isLiked) {
+    post.isLiked = false;
+    post.likeCount -= 1;
+  } else {
+    post.isLiked = true;
+    post.likeCount += 1;
   }
 
-  // 이후 DELETE /posts/{postId} 연동
-  window.location.href = "./posts.html";
+  renderPost();
 });
 
 commentInput.addEventListener("input", updateCommentSubmitButton);
@@ -150,13 +241,93 @@ commentForm.addEventListener("submit", (event) => {
     return;
   }
 
-  // 이후 POST /posts/{postId}/comments 연동
-  console.log("댓글 등록:", content);
+  if (editingCommentId !== null) {
+    comments = comments.map((comment) => {
+      if (comment.commentId !== editingCommentId) {
+        return comment;
+      }
 
-  commentInput.value = "";
-  updateCommentSubmitButton();
+      return {
+        ...comment,
+        content,
+        createdAt: new Date().toISOString(),
+      };
+    });
+
+    resetCommentForm();
+    renderComments();
+    return;
+  }
+
+  const newComment = {
+    commentId: Date.now(),
+    authorId: CURRENT_USER_ID,
+    authorNickname: "더미 작성자 1",
+    authorProfileImage: null,
+    createdAt: new Date().toISOString(),
+    content,
+  };
+
+  comments.push(newComment);
+
+  resetCommentForm();
+  renderComments();
 });
 
-renderPost(dummyPost);
-renderComments(dummyComments);
+commentList.addEventListener("click", (event) => {
+  const button = event.target.closest(".comment-action-button");
+
+  if (!button) {
+    return;
+  }
+
+  const commentId = Number(button.dataset.commentId);
+  const action = button.dataset.action;
+
+  const targetComment = comments.find((comment) => comment.commentId === commentId);
+
+  if (!targetComment) {
+    return;
+  }
+
+  if (action === "edit") {
+    editingCommentId = commentId;
+    commentInput.value = targetComment.content;
+    commentSubmitButton.textContent = "댓글 수정";
+    updateCommentSubmitButton();
+    commentInput.focus();
+    return;
+  }
+
+  if (action === "delete") {
+    openModal({
+      title: "댓글을 삭제하겠습니까?",
+      description: "삭제한 내용은 복구 할 수 없습니다.",
+      onConfirm: () => {
+        comments = comments.filter((comment) => comment.commentId !== commentId);
+        resetCommentForm();
+        renderComments();
+      },
+    });
+  }
+});
+
+modalCancelButton.addEventListener("click", closeModal);
+
+modalConfirmButton.addEventListener("click", () => {
+  if (modalConfirmHandler) {
+    modalConfirmHandler();
+  }
+
+  closeModal();
+});
+
+modalOverlay.addEventListener("click", (event) => {
+  if (event.target === modalOverlay) {
+    return;
+  }
+});
+
+renderPost();
+renderComments();
 updateCommentSubmitButton();

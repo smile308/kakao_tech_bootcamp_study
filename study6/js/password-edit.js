@@ -1,15 +1,18 @@
 const passwordEditForm = document.querySelector("#passwordEditForm");
-const passwordInput = document.querySelector("#password");
-const passwordConfirmInput = document.querySelector("#passwordConfirm");
+const passwordInput = document.querySelector("#passwordInput");
+const passwordConfirmInput = document.querySelector("#passwordConfirmInput");
 const passwordHelper = document.querySelector("#passwordHelper");
 const passwordConfirmHelper = document.querySelector("#passwordConfirmHelper");
-const passwordSubmitButton = document.querySelector("#passwordSubmitButton");
+const passwordEditButton = document.querySelector("#passwordEditButton");
+const toastMessage = document.querySelector("#toastMessage");
 
 const PASSWORD_EMPTY_MESSAGE = "*비밀번호를 입력해주세요";
 const PASSWORD_INVALID_MESSAGE =
   "*비밀번호는 8자 이상, 20자 이하이며, 대문자, 소문자, 숫자, 특수문자를 각각 최소 1개 포함해야 합니다.";
-const PASSWORD_CONFIRM_EMPTY_MESSAGE = "*비밀번호를 한번 더 입력해주세요.";
-const PASSWORD_CONFIRM_INVALID_MESSAGE = "*비밀번호가 다릅니다.";
+const PASSWORD_CONFIRM_EMPTY_MESSAGE = "*비밀번호를 한번더 입력해주세요";
+const PASSWORD_NOT_MATCH_MESSAGE = "*비밀번호가 다릅니다.";
+
+let toastTimer = null;
 
 function isValidPassword(password) {
   const hasValidLength = password.length >= 8 && password.length <= 20;
@@ -54,7 +57,7 @@ function validatePasswordConfirm() {
   }
 
   if (password !== passwordConfirm) {
-    passwordConfirmHelper.textContent = PASSWORD_CONFIRM_INVALID_MESSAGE;
+    passwordConfirmHelper.textContent = PASSWORD_NOT_MATCH_MESSAGE;
     return false;
   }
 
@@ -62,39 +65,98 @@ function validatePasswordConfirm() {
   return true;
 }
 
-function updateSubmitButtonState() {
-  const isPasswordValid = isValidPassword(passwordInput.value);
-  const isPasswordConfirmValid =
-    passwordConfirmInput.value.length > 0 &&
-    passwordInput.value === passwordConfirmInput.value;
+function isPasswordEditFormValid() {
+  const password = passwordInput.value;
+  const passwordConfirm = passwordConfirmInput.value;
 
-  passwordSubmitButton.disabled = !(isPasswordValid && isPasswordConfirmValid);
+  return (
+    isValidPassword(password) &&
+    passwordConfirm.length > 0 &&
+    password === passwordConfirm
+  );
 }
 
-function handleInput() {
+function updatePasswordEditButtonState() {
+  passwordEditButton.disabled = !isPasswordEditFormValid();
+}
+
+function validateAllAndRenderHelpers() {
+  const isPasswordValidResult = validatePassword();
+  const isPasswordConfirmValidResult = validatePasswordConfirm();
+
+  updatePasswordEditButtonState();
+
+  return isPasswordValidResult && isPasswordConfirmValidResult;
+}
+
+function showToast(message) {
+  toastMessage.textContent = message;
+  toastMessage.classList.remove("is-hidden");
+
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+
+  toastTimer = setTimeout(() => {
+    toastMessage.classList.add("is-hidden");
+  }, 2000);
+}
+
+passwordInput.addEventListener("input", () => {
+  updatePasswordEditButtonState();
+
+  if (passwordHelper.textContent) {
+    validatePassword();
+  }
+
+  if (passwordConfirmInput.value) {
+    validatePasswordConfirm();
+  }
+});
+
+passwordConfirmInput.addEventListener("input", () => {
+  updatePasswordEditButtonState();
+
+  if (passwordConfirmHelper.textContent) {
+    validatePasswordConfirm();
+  }
+});
+
+passwordInput.addEventListener("blur", () => {
   validatePassword();
-  validatePasswordConfirm();
-  updateSubmitButtonState();
-}
 
-passwordInput.addEventListener("input", handleInput);
-passwordConfirmInput.addEventListener("input", handleInput);
+  if (passwordConfirmInput.value) {
+    validatePasswordConfirm();
+  }
+
+  updatePasswordEditButtonState();
+});
+
+passwordConfirmInput.addEventListener("blur", () => {
+  validatePasswordConfirm();
+  updatePasswordEditButtonState();
+});
 
 passwordEditForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const isPasswordValid = validatePassword();
-  const isPasswordConfirmValid = validatePasswordConfirm();
+  const isValid = validateAllAndRenderHelpers();
 
-  if (!isPasswordValid || !isPasswordConfirmValid) {
-    updateSubmitButtonState();
+  if (!isValid) {
     return;
   }
 
-  // 이후 백엔드 API 연동 예정
-  // PATCH /users/password 또는 프로젝트 백엔드 명세에 맞는 endpoint 호출
+  const editedPasswordInfo = {
+    password: passwordInput.value,
+  };
 
-  alert("비밀번호가 수정되었습니다.");
+  localStorage.setItem("editedPasswordInfo", JSON.stringify(editedPasswordInfo));
+
+  showToast("수정 완료");
+
+  passwordInput.value = "";
+  passwordConfirmInput.value = "";
+  updatePasswordEditButtonState();
 });
 
-updateSubmitButtonState();
+updatePasswordEditButtonState();

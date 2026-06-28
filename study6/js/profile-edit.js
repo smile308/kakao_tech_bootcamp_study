@@ -1,12 +1,88 @@
+const profileMenuButton = document.querySelector("#profileMenuButton");
+const profileMenu = document.querySelector("#profileMenu");
+const logoutButton = document.querySelector("#logoutButton");
+
 const profileImageInput = document.querySelector("#profileImageInput");
 const profileEditImage = document.querySelector(".profile-edit-image");
+const headerProfileButton = document.querySelector(".header-profile__button");
 const headerProfileImage = document.querySelector(".header-profile__image");
+
 const profileEditForm = document.querySelector("#profileEditForm");
 const nicknameInput = document.querySelector("#nickname");
 const nicknameHelper = document.querySelector("#nicknameHelper");
+const toastMessage = document.querySelector("#toastMessage");
 
-const headerProfileButton = document.querySelector(".header-profile__button");
-const headerProfileImage = document.querySelector(".header-profile__image");
+const withdrawButton = document.querySelector("#withdrawButton");
+const modalOverlay = document.querySelector("#modalOverlay");
+const modalCancelButton = document.querySelector("#modalCancelButton");
+const modalConfirmButton = document.querySelector("#modalConfirmButton");
+
+const duplicatedNicknames = ["관리자", "더미 작성자 1", "startupcode"];
+
+const NICKNAME_EMPTY_MESSAGE = "*닉네임을 입력해주세요.";
+const NICKNAME_DUPLICATED_MESSAGE = "*중복된 닉네임 입니다.";
+const NICKNAME_LENGTH_MESSAGE = "*닉네임은 최대 10자 까지 작성 가능합니다.";
+
+let toastTimer = null;
+
+function toggleProfileMenu() {
+  profileMenu.classList.toggle("is-open");
+}
+
+function closeProfileMenu() {
+  profileMenu.classList.remove("is-open");
+}
+
+function isDuplicatedNickname(nickname) {
+  return duplicatedNicknames.includes(nickname);
+}
+
+function validateNickname() {
+  const nickname = nicknameInput.value.trim();
+
+  if (!nickname) {
+    nicknameHelper.textContent = NICKNAME_EMPTY_MESSAGE;
+    return false;
+  }
+
+  if (nickname.length > 10) {
+    nicknameHelper.textContent = NICKNAME_LENGTH_MESSAGE;
+    return false;
+  }
+
+  if (isDuplicatedNickname(nickname)) {
+    nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
+    return false;
+  }
+
+  nicknameHelper.textContent = "";
+  return true;
+}
+
+function showToast(message) {
+  toastMessage.textContent = message;
+  toastMessage.classList.remove("is-hidden");
+
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+  }
+
+  toastTimer = setTimeout(() => {
+    toastMessage.classList.add("is-hidden");
+  }, 2000);
+}
+
+function openWithdrawModal() {
+  modalOverlay.classList.remove("is-hidden");
+  modalOverlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+}
+
+function closeWithdrawModal() {
+  modalOverlay.classList.add("is-hidden");
+  modalOverlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
 
 function setHeaderProfileImage(imageUrl) {
   if (!imageUrl) {
@@ -18,6 +94,31 @@ function setHeaderProfileImage(imageUrl) {
   headerProfileButton.classList.remove("is-empty");
   headerProfileImage.src = imageUrl;
 }
+
+profileMenuButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleProfileMenu();
+});
+
+profileMenu.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+
+document.addEventListener("click", () => {
+  closeProfileMenu();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeProfileMenu();
+    closeWithdrawModal();
+  }
+});
+
+logoutButton.addEventListener("click", () => {
+  localStorage.removeItem("access_session");
+  window.location.href = "./login.html";
+});
 
 profileImageInput.addEventListener("change", () => {
   const file = profileImageInput.files[0];
@@ -32,17 +133,41 @@ profileImageInput.addEventListener("change", () => {
   setHeaderProfileImage(imageUrl);
 });
 
+nicknameInput.addEventListener("blur", () => {
+  validateNickname();
+});
+
 profileEditForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const nickname = nicknameInput.value.trim();
+  const isValid = validateNickname();
 
-  if (!nickname) {
-    nicknameHelper.textContent = "*닉네임을 입력해주세요.";
+  if (!isValid) {
     return;
   }
 
-  nicknameHelper.textContent = "";
+  const editedUserInfo = {
+    nickname: nicknameInput.value.trim(),
+  };
 
-  // 이후 백엔드 API 연동 예정
+  localStorage.setItem("editedUserInfo", JSON.stringify(editedUserInfo));
+
+  showToast("수정 완료");
+});
+
+withdrawButton.addEventListener("click", () => {
+  openWithdrawModal();
+});
+
+modalCancelButton.addEventListener("click", () => {
+  closeWithdrawModal();
+});
+
+modalConfirmButton.addEventListener("click", () => {
+  localStorage.removeItem("access_session");
+  localStorage.removeItem("editedUserInfo");
+
+  closeWithdrawModal();
+
+  window.location.href = "./login.html";
 });

@@ -7,14 +7,12 @@ const selectedFileName = document.querySelector("#selectedFileName");
 const postCreateHelper = document.querySelector("#postCreateHelper");
 const postCreateSubmitButton = document.querySelector("#postCreateSubmitButton");
 
-const TITLE_EMPTY_MESSAGE = "*제목을 입력해주세요.";
-const CONTENT_EMPTY_MESSAGE = "*내용을 입력해주세요.";
+const MAX_TITLE_LENGTH = 26;
+const EMPTY_MESSAGE = "*제목,내용을 모두 작성해주세요";
 
-backButton.addEventListener("click", () => {
-  window.location.href = "./posts.html";
-});
+let selectedImageFile = null;
 
-function validateForm() {
+function isPostCreateFormValid() {
   const title = postTitleInput.value.trim();
   const content = postContentInput.value.trim();
 
@@ -22,41 +20,54 @@ function validateForm() {
 }
 
 function updateSubmitButtonState() {
-  postCreateSubmitButton.disabled = !validateForm();
+  if (isPostCreateFormValid()) {
+    postCreateSubmitButton.classList.add("is-active");
+    return;
+  }
+
+  postCreateSubmitButton.classList.remove("is-active");
 }
 
 function validateAndRenderHelper() {
-  const title = postTitleInput.value.trim();
-  const content = postContentInput.value.trim();
-
-  if (!title) {
-    postCreateHelper.textContent = TITLE_EMPTY_MESSAGE;
-    updateSubmitButtonState();
-    return false;
-  }
-
-  if (!content) {
-    postCreateHelper.textContent = CONTENT_EMPTY_MESSAGE;
-    updateSubmitButtonState();
+  if (!isPostCreateFormValid()) {
+    postCreateHelper.textContent = EMPTY_MESSAGE;
     return false;
   }
 
   postCreateHelper.textContent = "";
-  updateSubmitButtonState();
   return true;
 }
 
-postTitleInput.addEventListener("input", validateAndRenderHelper);
-postContentInput.addEventListener("input", validateAndRenderHelper);
+postTitleInput.addEventListener("input", () => {
+  if (postTitleInput.value.length > MAX_TITLE_LENGTH) {
+    postTitleInput.value = postTitleInput.value.slice(0, MAX_TITLE_LENGTH);
+  }
+
+  updateSubmitButtonState();
+
+  if (isPostCreateFormValid()) {
+    postCreateHelper.textContent = "";
+  }
+});
+
+postContentInput.addEventListener("input", () => {
+  updateSubmitButtonState();
+
+  if (isPostCreateFormValid()) {
+    postCreateHelper.textContent = "";
+  }
+});
 
 postImageInput.addEventListener("change", () => {
   const file = postImageInput.files[0];
 
   if (!file) {
+    selectedImageFile = null;
     selectedFileName.textContent = "파일을 선택해주세요.";
     return;
   }
 
+  selectedImageFile = file;
   selectedFileName.textContent = file.name;
 });
 
@@ -66,29 +77,29 @@ postCreateForm.addEventListener("submit", (event) => {
   const isValid = validateAndRenderHelper();
 
   if (!isValid) {
+    updateSubmitButtonState();
     return;
   }
 
-  const title = postTitleInput.value.trim();
-  const content = postContentInput.value.trim();
-  const imageFile = postImageInput.files[0];
+  const newPost = {
+    title: postTitleInput.value.trim(),
+    content: postContentInput.value.trim(),
+    imageFileName: selectedImageFile ? selectedImageFile.name : null,
+    createdAt: new Date().toISOString(),
+  };
 
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("content", content);
+  /*
+    백엔드 연결 전 임시 저장.
+    실제 API 연결 시 POST /posts 요청으로 교체하면 됩니다.
+  */
+  const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
+  savedPosts.push(newPost);
+  localStorage.setItem("posts", JSON.stringify(savedPosts));
 
-  if (imageFile) {
-    formData.append("image", imageFile);
-  }
+  window.location.href = "./posts.html";
+});
 
-  // 이후 백엔드 API 연동 예정
-  // POST /posts
-  console.log("게시글 작성 요청", {
-    title,
-    content,
-    imageFile,
-  });
-
+backButton.addEventListener("click", () => {
   window.location.href = "./posts.html";
 });
 
