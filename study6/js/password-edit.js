@@ -1,3 +1,7 @@
+const profileMenuButton = document.querySelector("#profileMenuButton");
+const profileMenu = document.querySelector("#profileMenu");
+const logoutButton = document.querySelector("#logoutButton");
+
 const passwordEditForm = document.querySelector("#passwordEditForm");
 const passwordInput = document.querySelector("#passwordInput");
 const passwordConfirmInput = document.querySelector("#passwordConfirmInput");
@@ -19,7 +23,9 @@ function isValidPassword(password) {
   const hasUpperCase = /[A-Z]/.test(password);
   const hasLowerCase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
-  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(password);
+  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(
+    password
+  );
 
   return (
     hasValidLength &&
@@ -137,7 +143,7 @@ passwordConfirmInput.addEventListener("blur", () => {
   updatePasswordEditButtonState();
 });
 
-passwordEditForm.addEventListener("submit", (event) => {
+passwordEditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const isValid = validateAllAndRenderHelpers();
@@ -146,17 +152,49 @@ passwordEditForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const editedPasswordInfo = {
-    password: passwordInput.value,
-  };
+  try {
+    await api.updatePassword({
+      userId: api.getCurrentUserId(),
+      password: passwordInput.value,
+      passwordCheck: passwordConfirmInput.value,
+    });
 
-  localStorage.setItem("editedPasswordInfo", JSON.stringify(editedPasswordInfo));
+    showToast("수정 완료");
 
-  showToast("수정 완료");
-
-  passwordInput.value = "";
-  passwordConfirmInput.value = "";
-  updatePasswordEditButtonState();
+    passwordInput.value = "";
+    passwordConfirmInput.value = "";
+    updatePasswordEditButtonState();
+  } catch (error) {
+    console.error("비밀번호 수정 실패:", error);
+    passwordHelper.textContent = "*비밀번호 수정에 실패했습니다.";
+  }
 });
+
+if (profileMenuButton && profileMenu) {
+  profileMenuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    profileMenu.classList.toggle("is-open");
+  });
+
+  profileMenu.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  document.addEventListener("click", () => {
+    profileMenu.classList.remove("is-open");
+  });
+}
+
+if (logoutButton) {
+  logoutButton.addEventListener("click", async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error("로그아웃 실패:", error);
+    } finally {
+      window.location.href = "./login.html";
+    }
+  });
+}
 
 updatePasswordEditButtonState();

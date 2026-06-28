@@ -1,4 +1,4 @@
-const CURRENT_USER_ID = 1;
+const CURRENT_USER_ID = api.getCurrentUserId();
 
 const backButton = document.querySelector("#backButton");
 const postEditButton = document.querySelector("#postEditButton");
@@ -29,46 +29,43 @@ const modalDescription = document.querySelector("#modalDescription");
 const modalCancelButton = document.querySelector("#modalCancelButton");
 const modalConfirmButton = document.querySelector("#modalConfirmButton");
 
+const urlParams = new URLSearchParams(window.location.search);
+
+const postId =
+  urlParams.get("postId") ||
+  urlParams.get("post_id") ||
+  urlParams.get("id");
+
+if (!postId) {
+  alert("게시글 정보를 찾을 수 없습니다.");
+  window.location.href = "./posts.html";
+}
+
+let post = null;
+let comments = [];
 let modalConfirmHandler = null;
 let editingCommentId = null;
 
-let post = {
-  postId: 1,
-  authorId: 1,
-  title: "제목 1",
-  authorNickname: "더미 작성자 1",
-  authorProfileImage: null,
-  createdAt: "2021-01-01T00:00:00",
-  imageUrl: null,
-  content:
-    "무엇을 얘기할까요? 아무말이라면, 삶은 항상 회전문 같습니다. 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다.",
-  likeCount: 1230,
-  viewCount: 10000,
-  commentCount: 1,
-  isLiked: false,
-};
-
-let comments = [
-  {
-    commentId: 1,
-    authorId: 1,
-    authorNickname: "더미 작성자 1",
-    authorProfileImage: null,
-    createdAt: "2021-01-01T00:00:00",
-    content: "댓글 내용",
-  },
-];
-
 function formatCount(count) {
-  if (count >= 1000) {
-    return `${Math.floor(count / 1000)}k`;
+  const number = Number(count) || 0;
+
+  if (number >= 1000) {
+    return `${Math.floor(number / 1000)}k`;
   }
 
-  return String(count);
+  return String(number);
 }
 
 function formatDateTime(dateTimeValue) {
+  if (!dateTimeValue) {
+    return "";
+  }
+
   const date = new Date(dateTimeValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -80,7 +77,74 @@ function formatDateTime(dateTimeValue) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function normalizePostForDetail(rawPost) {
+  return {
+    postId: rawPost.postId ?? rawPost.post_id,
+    title: rawPost.postTitle ?? rawPost.title ?? rawPost.post_title ?? "",
+    authorNickname:
+      rawPost.userName ??
+      rawPost.user_name ??
+      rawPost.authorNickname ??
+      "삭제된 사용자",
+    authorProfileImage:
+      rawPost.userProfileImage ??
+      rawPost.user_profile_image ??
+      rawPost.authorProfileImage ??
+      null,
+    createdAt:
+      rawPost.createdAt ??
+      rawPost.created_at ??
+      new Date().toISOString(),
+    imageUrl:
+      rawPost.imageFile ??
+      rawPost.image_file ??
+      rawPost.imageUrl ??
+      null,
+    content:
+      rawPost.postContent ??
+      rawPost.post_content ??
+      rawPost.content ??
+      rawPost.contents ??
+      "",
+    likeCount: rawPost.likeCount ?? rawPost.like_count ?? 0,
+    viewCount: rawPost.viewCount ?? rawPost.view_count ?? 0,
+    commentCount: rawPost.replyCount ?? rawPost.reply_count ?? 0,
+    isLiked: rawPost.isLiked ?? false,
+    comments: rawPost.comments ?? [],
+  };
+}
+
+function normalizeCommentForDetail(rawComment) {
+  return {
+    commentId: rawComment.commentId ?? rawComment.comment_id,
+    authorId: rawComment.userId ?? rawComment.user_id ?? null,
+    authorNickname:
+      rawComment.userName ??
+      rawComment.user_name ??
+      rawComment.authorNickname ??
+      "삭제된 사용자",
+    authorProfileImage:
+      rawComment.userProfileImage ??
+      rawComment.user_profile_image ??
+      rawComment.authorProfileImage ??
+      null,
+    createdAt:
+      rawComment.createdAt ??
+      rawComment.created_at ??
+      "",
+    content:
+      rawComment.content ??
+      rawComment.commentContent ??
+      rawComment.comment_content ??
+      "",
+  };
+}
+
 function setImage(imageBoxElement, imageElement, imageUrl) {
+  if (!imageBoxElement || !imageElement) {
+    return;
+  }
+
   if (!imageUrl) {
     imageBoxElement.classList.add("is-empty");
     imageElement.removeAttribute("src");
@@ -92,6 +156,10 @@ function setImage(imageBoxElement, imageElement, imageUrl) {
 }
 
 function renderPost() {
+  if (!post) {
+    return;
+  }
+
   postTitle.textContent = post.title;
   authorNickname.textContent = post.authorNickname;
   postCreatedAt.textContent = formatDateTime(post.createdAt);
@@ -122,7 +190,9 @@ function createCommentItem(comment) {
   const commentItem = document.createElement("article");
   commentItem.className = "comment-item";
 
-  const isMyComment = comment.authorId === CURRENT_USER_ID;
+
+  const isMyComment = Number(comment.authorId) === Number(CURRENT_USER_ID);
+
 
   commentItem.innerHTML = `
     <div class="comment-author-image-box ${comment.authorProfileImage ? "" : "is-empty"}">
@@ -141,10 +211,21 @@ function createCommentItem(comment) {
       isMyComment
         ? `
           <div class="comment-actions">
-            <button type="button" class="comment-action-button" data-action="edit" data-comment-id="${comment.commentId}">
+            <button
+              type="button"
+              class="comment-action-button"
+              data-action="edit"
+              data-comment-id="${comment.commentId}"
+            >
               수정
             </button>
-            <button type="button" class="comment-action-button" data-action="delete" data-comment-id="${comment.commentId}">
+
+            <button
+              type="button"
+              class="comment-action-button"
+              data-action="delete"
+              data-comment-id="${comment.commentId}"
+            >
               삭제
             </button>
           </div>
@@ -163,13 +244,11 @@ function renderComments() {
     commentList.appendChild(createCommentItem(comment));
   });
 
-  post.commentCount = comments.length;
   commentCount.textContent = formatCount(comments.length);
 }
 
 function updateCommentSubmitButton() {
   const comment = commentInput.value.trim();
-
   commentSubmitButton.disabled = comment.length === 0;
 }
 
@@ -198,42 +277,104 @@ function closeModal() {
   modalConfirmHandler = null;
 }
 
+async function loadPostDetail() {
+  if (!postId) {
+    return;
+  }
+
+  try {
+    const rawPost = await api.getPost(postId);
+
+    console.log("상세조회 응답:", rawPost);
+
+    post = normalizePostForDetail(rawPost);
+    comments = post.comments.map((comment) =>
+      normalizeCommentForDetail(comment)
+    );
+
+    console.log("정규화된 게시글:", post);
+
+    renderPost();
+    renderComments();
+  } catch (error) {
+    console.error("게시글 상세조회 실패:", error);
+  }
+}
+
 backButton.addEventListener("click", () => {
   window.location.href = "./posts.html";
 });
 
 postEditButton.addEventListener("click", () => {
+  if (!post || !post.postId) {
+    console.error("수정할 게시글 ID가 없습니다.", post);
+    return;
+  }
+
   window.location.href = `./post-edit.html?postId=${post.postId}`;
 });
 
 postDeleteButton.addEventListener("click", () => {
+  if (!post || !post.postId) {
+    console.error("삭제할 게시글 ID가 없습니다.", post);
+    return;
+  }
+
   openModal({
     title: "게시글을 삭제하겠습니까?",
     description: "삭제한 내용은 복구 할 수 없습니다.",
-    onConfirm: () => {
-      // 이후 백엔드 연결 시 DELETE /posts/{postId}
-      post = null;
-      window.location.href = "./posts.html";
+    onConfirm: async () => {
+      try {
+        await api.deletePost(post.postId, {
+          userId: api.getCurrentUserId(),
+        });
+
+        window.location.href = "./posts.html";
+      } catch (error) {
+        console.error("게시글 삭제 실패:", error);
+      }
     },
   });
 });
 
-likeButton.addEventListener("click", () => {
-  if (post.isLiked) {
-    post.isLiked = false;
-    post.likeCount -= 1;
-  } else {
-    post.isLiked = true;
-    post.likeCount += 1;
+likeButton.addEventListener("click", async () => {
+  if (!post || !post.postId) {
+    console.error("좋아요 처리할 게시글 ID가 없습니다.", post);
+    return;
   }
 
-  renderPost();
+  try {
+    if (post.isLiked) {
+      const result = await api.unlikePost(post.postId, {
+        userId: api.getCurrentUserId(),
+      });
+
+      post.isLiked = false;
+      post.likeCount = result?.likeCount ?? post.likeCount - 1;
+    } else {
+      const result = await api.likePost(post.postId, {
+        userId: api.getCurrentUserId(),
+      });
+
+      post.isLiked = true;
+      post.likeCount = result?.likeCount ?? post.likeCount + 1;
+    }
+
+    renderPost();
+  } catch (error) {
+    console.error("좋아요 처리 실패:", error);
+  }
 });
 
 commentInput.addEventListener("input", updateCommentSubmitButton);
 
-commentForm.addEventListener("submit", (event) => {
+commentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
+
+  if (!post || !post.postId) {
+    console.error("댓글을 등록할 게시글 ID가 없습니다.", post);
+    return;
+  }
 
   const content = commentInput.value.trim();
 
@@ -241,37 +382,25 @@ commentForm.addEventListener("submit", (event) => {
     return;
   }
 
-  if (editingCommentId !== null) {
-    comments = comments.map((comment) => {
-      if (comment.commentId !== editingCommentId) {
-        return comment;
-      }
+  try {
+    if (editingCommentId !== null) {
+      await api.updateComment(post.postId, {
+        userId: api.getCurrentUserId(),
+        commentId: editingCommentId,
+        commentContent: content,
+      });
+    } else {
+      await api.createComment(post.postId, {
+        userId: api.getCurrentUserId(),
+        commentContent: content,
+      });
+    }
 
-      return {
-        ...comment,
-        content,
-        createdAt: new Date().toISOString(),
-      };
-    });
-
+    await loadPostDetail();
     resetCommentForm();
-    renderComments();
-    return;
+  } catch (error) {
+    console.error("댓글 저장 실패:", error);
   }
-
-  const newComment = {
-    commentId: Date.now(),
-    authorId: CURRENT_USER_ID,
-    authorNickname: "더미 작성자 1",
-    authorProfileImage: null,
-    createdAt: new Date().toISOString(),
-    content,
-  };
-
-  comments.push(newComment);
-
-  resetCommentForm();
-  renderComments();
 });
 
 commentList.addEventListener("click", (event) => {
@@ -284,7 +413,9 @@ commentList.addEventListener("click", (event) => {
   const commentId = Number(button.dataset.commentId);
   const action = button.dataset.action;
 
-  const targetComment = comments.find((comment) => comment.commentId === commentId);
+  const targetComment = comments.find(
+    (comment) => Number(comment.commentId) === commentId
+  );
 
   if (!targetComment) {
     return;
@@ -303,10 +434,18 @@ commentList.addEventListener("click", (event) => {
     openModal({
       title: "댓글을 삭제하겠습니까?",
       description: "삭제한 내용은 복구 할 수 없습니다.",
-      onConfirm: () => {
-        comments = comments.filter((comment) => comment.commentId !== commentId);
-        resetCommentForm();
-        renderComments();
+      onConfirm: async () => {
+        try {
+          await api.deleteComment(post.postId, {
+            userId: api.getCurrentUserId(),
+            commentId,
+          });
+
+          await loadPostDetail();
+          resetCommentForm();
+        } catch (error) {
+          console.error("댓글 삭제 실패:", error);
+        }
       },
     });
   }
@@ -314,20 +453,13 @@ commentList.addEventListener("click", (event) => {
 
 modalCancelButton.addEventListener("click", closeModal);
 
-modalConfirmButton.addEventListener("click", () => {
+modalConfirmButton.addEventListener("click", async () => {
   if (modalConfirmHandler) {
-    modalConfirmHandler();
+    await modalConfirmHandler();
   }
 
   closeModal();
 });
 
-modalOverlay.addEventListener("click", (event) => {
-  if (event.target === modalOverlay) {
-    return;
-  }
-});
-
-renderPost();
-renderComments();
+loadPostDetail();
 updateCommentSubmitButton();

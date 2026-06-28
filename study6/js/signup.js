@@ -17,9 +17,7 @@ const nicknameHelper = document.querySelector("#nicknameHelper");
 
 const signupButton = document.querySelector("#signupButton");
 const backButton = document.querySelector(".back-button");
-
-const duplicatedEmails = ["test@example.com", "startupcode@gmail.com"];
-const duplicatedNicknames = ["더미 작성자 1", "관리자"];
+const goLoginLink = document.querySelector(".go-login-link");
 
 let selectedProfileImageFile = null;
 let selectedProfileImageUrl = null;
@@ -28,8 +26,6 @@ const EMAIL_EMPTY_MESSAGE = "*이메일을 입력해주세요.";
 const EMAIL_INVALID_MESSAGE =
   "*올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)";
 const EMAIL_DUPLICATED_MESSAGE = "*중복된 이메일 입니다.";
-
-const PROFILE_EMPTY_MESSAGE = "*프로필 사진을 추가해주세요.";
 
 const PASSWORD_EMPTY_MESSAGE = "*비밀번호를 입력해주세요";
 const PASSWORD_INVALID_MESSAGE =
@@ -47,16 +43,14 @@ function isValidEmail(email) {
   return emailRegex.test(email);
 }
 
-function isDuplicatedEmail(email) {
-  return duplicatedEmails.includes(email);
-}
-
 function isValidPassword(password) {
   const hasValidLength = password.length >= 8 && password.length <= 20;
   const hasUpperCase = /[A-Z]/.test(password);
   const hasLowerCase = /[a-z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
-  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(password);
+  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(
+    password
+  );
 
   return (
     hasValidLength &&
@@ -71,11 +65,6 @@ function hasWhiteSpace(value) {
   return /\s/.test(value);
 }
 
-function isDuplicatedNickname(nickname) {
-  return duplicatedNicknames.includes(nickname);
-}
-
-
 function validateEmail() {
   const email = emailInput.value.trim();
 
@@ -86,11 +75,6 @@ function validateEmail() {
 
   if (!isValidEmail(email)) {
     emailHelper.textContent = EMAIL_INVALID_MESSAGE;
-    return false;
-  }
-
-  if (isDuplicatedEmail(email)) {
-    emailHelper.textContent = EMAIL_DUPLICATED_MESSAGE;
     return false;
   }
 
@@ -151,37 +135,24 @@ function validateNickname() {
     return false;
   }
 
-  if (isDuplicatedNickname(nickname)) {
-    nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
-    return false;
-  }
-
   nicknameHelper.textContent = "";
   return true;
 }
 
 function isSignupFormValid() {
-
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const passwordConfirm = passwordConfirmInput.value;
   const nickname = nicknameInput.value.trim();
 
-  const isEmailValid = email && isValidEmail(email) && !isDuplicatedEmail(email);
-  const isPasswordValidResult = password && isValidPassword(password);
-  const isPasswordConfirmValid =
-    passwordConfirm && password === passwordConfirm;
-  const isNicknameValid =
-    nickname &&
-    !hasWhiteSpace(nicknameInput.value) &&
-    nickname.length <= 10 &&
-    !isDuplicatedNickname(nickname);
-
   return (
-    isEmailValid &&
-    isPasswordValidResult &&
-    isPasswordConfirmValid &&
-    isNicknameValid
+    isValidEmail(email) &&
+    isValidPassword(password) &&
+    passwordConfirm.length > 0 &&
+    password === passwordConfirm &&
+    nickname.length > 0 &&
+    nickname.length <= 10 &&
+    !hasWhiteSpace(nicknameInput.value)
   );
 }
 
@@ -216,12 +187,15 @@ function resetProfileImage() {
   profileImageInput.value = "";
   profilePreview.removeAttribute("src");
   profileImageCircle.classList.remove("has-image");
+
+  if (profileHelper) {
+    profileHelper.textContent = "";
+  }
 }
 
 profileImageInput.addEventListener("click", () => {
   if (selectedProfileImageFile) {
     resetProfileImage();
-    profileHelper.textContent = PROFILE_EMPTY_MESSAGE;
     updateSignupButtonState();
   }
 });
@@ -231,7 +205,6 @@ profileImageInput.addEventListener("change", () => {
 
   if (!file) {
     resetProfileImage();
-    profileHelper.textContent = PROFILE_EMPTY_MESSAGE;
     updateSignupButtonState();
     return;
   }
@@ -246,7 +219,10 @@ profileImageInput.addEventListener("change", () => {
   profilePreview.src = selectedProfileImageUrl;
   profileImageCircle.classList.add("has-image");
 
-  profileHelper.textContent = "";
+  if (profileHelper) {
+    profileHelper.textContent = "";
+  }
+
   updateSignupButtonState();
 });
 
@@ -280,7 +256,7 @@ passwordInput.addEventListener("input", updateSignupButtonState);
 passwordConfirmInput.addEventListener("input", updateSignupButtonState);
 nicknameInput.addEventListener("input", updateSignupButtonState);
 
-signupForm.addEventListener("submit", (event) => {
+signupForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const isValid = validateAllAndRenderHelpers();
@@ -289,25 +265,46 @@ signupForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const userInfo = {
-    email: emailInput.value.trim(),
-    password: passwordInput.value,
-    nickname: nicknameInput.value.trim(),
-    profileImageName: selectedProfileImageFile
-    ? selectedProfileImageFile.name
-    : null,
-  };
+  try {
+    await api.signup({
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+      passwordCheck: passwordConfirmInput.value,
+      nickname: nicknameInput.value.trim(),
+      profileImage: selectedProfileImageFile
+        ? selectedProfileImageFile.name
+        : null,
+    });
 
-  const savedUsers = JSON.parse(localStorage.getItem("users")) || [];
-  savedUsers.push(userInfo);
+    window.location.href = "./login.html";
+  } catch (error) {
+    const message = error.message || "";
 
-  localStorage.setItem("users", JSON.stringify(savedUsers));
+    console.error("회원가입 실패:", error);
 
-  window.location.href = "./login.html";
+    if (message.includes("이메일")) {
+      emailHelper.textContent = EMAIL_DUPLICATED_MESSAGE;
+      return;
+    }
+
+    if (message.includes("닉네임")) {
+      nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
+      return;
+    }
+
+    emailHelper.textContent = "*회원가입에 실패했습니다.";
+  }
 });
 
 if (backButton) {
   backButton.addEventListener("click", () => {
+    window.location.href = "./login.html";
+  });
+}
+
+if (goLoginLink) {
+  goLoginLink.addEventListener("click", (event) => {
+    event.preventDefault();
     window.location.href = "./login.html";
   });
 }

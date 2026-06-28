@@ -17,12 +17,12 @@ const modalOverlay = document.querySelector("#modalOverlay");
 const modalCancelButton = document.querySelector("#modalCancelButton");
 const modalConfirmButton = document.querySelector("#modalConfirmButton");
 
-const duplicatedNicknames = ["관리자", "더미 작성자 1", "startupcode"];
-
 const NICKNAME_EMPTY_MESSAGE = "*닉네임을 입력해주세요.";
 const NICKNAME_DUPLICATED_MESSAGE = "*중복된 닉네임 입니다.";
 const NICKNAME_LENGTH_MESSAGE = "*닉네임은 최대 10자 까지 작성 가능합니다.";
 
+let selectedProfileImageFile = null;
+let selectedProfileImageUrl = null;
 let toastTimer = null;
 
 function toggleProfileMenu() {
@@ -31,10 +31,6 @@ function toggleProfileMenu() {
 
 function closeProfileMenu() {
   profileMenu.classList.remove("is-open");
-}
-
-function isDuplicatedNickname(nickname) {
-  return duplicatedNicknames.includes(nickname);
 }
 
 function validateNickname() {
@@ -47,11 +43,6 @@ function validateNickname() {
 
   if (nickname.length > 10) {
     nicknameHelper.textContent = NICKNAME_LENGTH_MESSAGE;
-    return false;
-  }
-
-  if (isDuplicatedNickname(nickname)) {
-    nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
     return false;
   }
 
@@ -115,9 +106,14 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-logoutButton.addEventListener("click", () => {
-  localStorage.removeItem("access_session");
-  window.location.href = "./login.html";
+logoutButton.addEventListener("click", async () => {
+  try {
+    await api.logout();
+  } catch (error) {
+    console.error("로그아웃 실패:", error);
+  } finally {
+    window.location.href = "./login.html";
+  }
 });
 
 profileImageInput.addEventListener("change", () => {
@@ -127,17 +123,23 @@ profileImageInput.addEventListener("change", () => {
     return;
   }
 
-  const imageUrl = URL.createObjectURL(file);
+  selectedProfileImageFile = file;
 
-  profileEditImage.src = imageUrl;
-  setHeaderProfileImage(imageUrl);
+  if (selectedProfileImageUrl) {
+    URL.revokeObjectURL(selectedProfileImageUrl);
+  }
+
+  selectedProfileImageUrl = URL.createObjectURL(file);
+
+  profileEditImage.src = selectedProfileImageUrl;
+  setHeaderProfileImage(selectedProfileImageUrl);
 });
 
 nicknameInput.addEventListener("blur", () => {
   validateNickname();
 });
 
-profileEditForm.addEventListener("submit", (event) => {
+profileEditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const isValid = validateNickname();
@@ -146,13 +148,28 @@ profileEditForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const editedUserInfo = {
-    nickname: nicknameInput.value.trim(),
-  };
+  try {
+    await api.updateProfile({
+      userId: api.getCurrentUserId(),
+      nickname: nicknameInput.value.trim(),
+      profileImage: selectedProfileImageFile
+        ? selectedProfileImageFile.name
+        : null,
+    });
 
-  localStorage.setItem("editedUserInfo", JSON.stringify(editedUserInfo));
+    showToast("수정 완료");
+  } catch (error) {
+    const message = error.message || "";
 
-  showToast("수정 완료");
+    console.error("회원정보 수정 실패:", error);
+
+    if (message.includes("중복")) {
+      nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
+      return;
+    }
+
+    nicknameHelper.textContent = "*회원정보 수정에 실패했습니다.";
+  }
 });
 
 withdrawButton.addEventListener("click", () => {
@@ -163,11 +180,15 @@ modalCancelButton.addEventListener("click", () => {
   closeWithdrawModal();
 });
 
-modalConfirmButton.addEventListener("click", () => {
-  localStorage.removeItem("access_session");
-  localStorage.removeItem("editedUserInfo");
-
-  closeWithdrawModal();
-
-  window.location.href = "./login.html";
+modalConfirmButton.addEventListener("click", async () => {
+  try {
+    await api.deleteUser({
+      userId: api.getCurrentUserId(),
+    });
+  } catch (error) {
+    console.error("회원 탈퇴 실패:", error);
+  } finally {
+    closeWithdrawModal();
+    window.location.href = "./login.html";
+  }
 });

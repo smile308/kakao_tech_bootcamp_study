@@ -71,7 +71,7 @@ postImageInput.addEventListener("change", () => {
   selectedFileName.textContent = file.name;
 });
 
-postCreateForm.addEventListener("submit", (event) => {
+postCreateForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const isValid = validateAndRenderHelper();
@@ -81,22 +81,19 @@ postCreateForm.addEventListener("submit", (event) => {
     return;
   }
 
-  const newPost = {
-    title: postTitleInput.value.trim(),
-    content: postContentInput.value.trim(),
-    imageFileName: selectedImageFile ? selectedImageFile.name : null,
-    createdAt: new Date().toISOString(),
-  };
+  try {
+    await api.createPost({
+      userId: api.getCurrentUserId(),
+      title: postTitleInput.value.trim(),
+      contents: postContentInput.value.trim(),
+      imageFile: selectedImageFile ? selectedImageFile.name : null,
+    });
 
-  /*
-    백엔드 연결 전 임시 저장.
-    실제 API 연결 시 POST /posts 요청으로 교체하면 됩니다.
-  */
-  const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-  savedPosts.push(newPost);
-  localStorage.setItem("posts", JSON.stringify(savedPosts));
-
-  window.location.href = "./posts.html";
+    window.location.href = "./posts.html";
+  } catch (error) {
+    console.error("게시글 작성 실패:", error);
+    postCreateHelper.textContent = "*게시글 작성에 실패했습니다.";
+  }
 });
 
 backButton.addEventListener("click", () => {

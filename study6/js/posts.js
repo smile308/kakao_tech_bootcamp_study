@@ -9,26 +9,11 @@ let currentPage = 0;
 let isLoading = false;
 let hasNextPage = true;
 
-/*
-  지금은 백엔드 연결 전이므로 더미 데이터 사용.
-  나중에는 fetchPostsFromServer() 안에서 실제 API를 호출하면 됩니다.
-*/
-const dummyPosts = Array.from({ length: 35 }, (_, index) => {
-  const postNumber = index + 1;
-
-  return {
-    postId: postNumber,
-    title: `제목 ${postNumber} - 게시글 제목이 26자를 넘어가면 잘려야 합니다`,
-    likeCount: postNumber * 450,
-    commentCount: postNumber * 120,
-    viewCount: postNumber * 1300,
-    createdAt: "2021-01-01T00:00:00",
-    authorNickname: `더미 작성자 ${postNumber}`,
-    authorProfileImage: null,
-  };
-});
-
 function truncateTitle(title) {
+  if (!title) {
+    return "";
+  }
+
   if (title.length <= MAX_TITLE_LENGTH) {
     return title;
   }
@@ -37,15 +22,21 @@ function truncateTitle(title) {
 }
 
 function formatCount(count) {
-  if (count >= 1000) {
-    return `${Math.floor(count / 1000)}k`;
+  const number = Number(count) || 0;
+
+  if (number >= 1000) {
+    return `${Math.floor(number / 1000)}k`;
   }
 
-  return String(count);
+  return String(number);
 }
 
 function formatDateTime(dateTimeValue) {
   const date = new Date(dateTimeValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -57,7 +48,34 @@ function formatDateTime(dateTimeValue) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-function createPostCard(post) {
+function normalizePostForList(post) {
+  return {
+    postId: post.postId ?? post.post_id ?? post.id,
+    title: post.title ?? post.post_title ?? "",
+    likeCount: post.likeCount ?? post.like_count ?? 0,
+    commentCount: post.commentCount ?? post.reply_count ?? post.comment_count ?? 0,
+    viewCount: post.viewCount ?? post.view_count ?? 0,
+    createdAt:
+      post.createdAt ??
+      post.created_at ??
+      post.date ??
+      new Date().toISOString(),
+    authorNickname:
+      post.authorNickname ??
+      post.user_name ??
+      post.nickname ??
+      "삭제된 사용자",
+    authorProfileImage:
+      post.authorProfileImage ??
+      post.user_profile_image ??
+      post.profile_image ??
+      null,
+  };
+}
+
+function createPostCard(rawPost) {
+  const post = normalizePostForList(rawPost);
+
   const article = document.createElement("article");
   article.className = "post-card";
 
@@ -68,6 +86,7 @@ function createPostCard(post) {
           <div class="post-card__top-inner">
             <div class="post-card__title-area">
               <h3 class="post-card__title">${truncateTitle(post.title)}</h3>
+
               <div class="post-card__meta">
                 <span class="post-card__meta-item">좋아요 ${formatCount(post.likeCount)}</span>
                 <span class="post-card__meta-item">댓글 ${formatCount(post.commentCount)}</span>
@@ -89,6 +108,7 @@ function createPostCard(post) {
               alt="작성자 프로필 이미지"
             />
           </div>
+
           <p class="post-card__author-name">${post.authorNickname}</p>
         </div>
       </div>
@@ -96,32 +116,20 @@ function createPostCard(post) {
   `;
 
   article.addEventListener("click", () => {
-    window.location.href = `./post-detail.html?postId=${post.postId}`;
-  });
+  if (!post.postId) {
+    console.error("게시글 ID가 없습니다.", rawPost);
+    return;
+  }
+
+  window.location.href = `./post-detail.html?postId=${post.postId}`;
+});
 
   return article;
 }
 
 function renderPosts(posts) {
   posts.forEach((post) => {
-    const postCard = createPostCard(post);
-    postsList.appendChild(postCard);
-  });
-}
-
-function fetchPostsFromServer(page, size) {
-  const startIndex = page * size;
-  const endIndex = startIndex + size;
-
-  const posts = dummyPosts.slice(startIndex, endIndex);
-
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        posts,
-        hasNextPage: endIndex < dummyPosts.length,
-      });
-    }, 300);
+    postsList.appendChild(createPostCard(post));
   });
 }
 
@@ -133,7 +141,10 @@ async function loadPosts(size) {
   isLoading = true;
 
   try {
-    const result = await fetchPostsFromServer(currentPage, size);
+    const result = await api.getPosts({
+      page: currentPage,
+      size,
+    });
 
     renderPosts(result.posts);
 
@@ -146,6 +157,10 @@ async function loadPosts(size) {
   }
 }
 
+writePostButton.addEventListener("click", () => {
+  window.location.href = "./post-create.html";
+});
+
 const scrollObserverTarget = document.createElement("div");
 scrollObserverTarget.className = "scroll-observer-target";
 postsList.after(scrollObserverTarget);
@@ -156,10 +171,6 @@ const observer = new IntersectionObserver((entries) => {
   if (target.isIntersecting) {
     loadPosts(ADDITIONAL_POST_COUNT);
   }
-});
-
-writePostButton.addEventListener("click", () => {
-  window.location.href = "./post-create.html";
 });
 
 loadPosts(INITIAL_POST_COUNT).then(() => {

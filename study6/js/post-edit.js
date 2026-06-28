@@ -6,50 +6,112 @@ const postImageInput = document.querySelector("#postImageInput");
 const selectedFileName = document.querySelector("#selectedFileName");
 const postEditHelper = document.querySelector("#postEditHelper");
 
-backButton.addEventListener("click", () => {
-  window.location.href = "./post-detail.html";
+const MAX_TITLE_LENGTH = 26;
+
+const urlParams = new URLSearchParams(window.location.search);
+const postId = urlParams.get("postId") || "1";
+
+let originalPost = null;
+let selectedNewImageFile = null;
+
+function normalizePostForEdit(post) {
+  return {
+    postId: post.postId ?? post.post_id,
+    title: post.postTitle ?? post.post_title ?? post.title ?? "",
+    content: post.postContent ?? post.post_content ?? post.content ?? "",
+    imageFileName: post.imageFile ?? post.image_file ?? null,
+  };
+}
+
+function renderOriginalPost(post) {
+  originalPost = normalizePostForEdit(post);
+
+  postTitleInput.value = originalPost.title;
+  postContentInput.value = originalPost.content;
+
+  if (originalPost.imageFileName) {
+    selectedFileName.textContent = originalPost.imageFileName;
+  } else {
+    selectedFileName.textContent = "파일을 선택해주세요.";
+  }
+}
+
+function validatePostEditForm() {
+  const title = postTitleInput.value.trim();
+  const content = postContentInput.value.trim();
+
+  if (!title || !content) {
+    postEditHelper.textContent = "*제목, 내용을 모두 작성해주세요.";
+    return false;
+  }
+
+  postEditHelper.textContent = "";
+  return true;
+}
+
+async function loadPost() {
+  try {
+    const post = await api.getPost(postId);
+    renderOriginalPost(post);
+  } catch (error) {
+    console.error("게시글 조회 실패:", error);
+    postEditHelper.textContent = "*게시글 정보를 불러오지 못했습니다.";
+  }
+}
+
+postTitleInput.addEventListener("input", () => {
+  if (postTitleInput.value.length > MAX_TITLE_LENGTH) {
+    postTitleInput.value = postTitleInput.value.slice(0, MAX_TITLE_LENGTH);
+  }
 });
 
 postImageInput.addEventListener("change", () => {
   const file = postImageInput.files[0];
 
   if (!file) {
-    selectedFileName.textContent = "기존 파일 명";
+    selectedNewImageFile = null;
+
+    if (originalPost && originalPost.imageFileName) {
+      selectedFileName.textContent = originalPost.imageFileName;
+    } else {
+      selectedFileName.textContent = "파일을 선택해주세요.";
+    }
+
     return;
   }
 
+  selectedNewImageFile = file;
   selectedFileName.textContent = file.name;
 });
 
-postEditForm.addEventListener("submit", (event) => {
+postEditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const title = postTitleInput.value.trim();
-  const content = postContentInput.value.trim();
-  const imageFile = postImageInput.files[0];
+  const isValid = validatePostEditForm();
 
-  if (!title || !content) {
-    postEditHelper.textContent = "*제목, 내용을 모두 작성해주세요.";
+  if (!isValid) {
     return;
   }
 
-  postEditHelper.textContent = "";
+  try {
+    await api.updatePost(postId, {
+      userId: api.getCurrentUserId(),
+      title: postTitleInput.value.trim(),
+      contents: postContentInput.value.trim(),
+      imageFile: selectedNewImageFile
+        ? selectedNewImageFile.name
+        : originalPost.imageFileName,
+    });
 
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("content", content);
-
-  if (imageFile) {
-    formData.append("image", imageFile);
+    window.location.href = `./post-detail.html?postId=${postId}`;
+  } catch (error) {
+    console.error("게시글 수정 실패:", error);
+    postEditHelper.textContent = "*게시글 수정에 실패했습니다.";
   }
-
-  // 이후 백엔드 API 연동 예정
-  // PATCH /posts/{postId}
-  console.log("게시글 수정 요청", {
-    title,
-    content,
-    imageFile,
-  });
-
-  window.location.href = "./post-detail.html";
 });
+
+backButton.addEventListener("click", () => {
+  window.location.href = `./post-detail.html?postId=${postId}`;
+});
+
+loadPost();
