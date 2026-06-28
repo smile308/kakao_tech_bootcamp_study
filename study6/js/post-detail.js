@@ -279,18 +279,24 @@ function closeModal() {
 
 async function loadPostDetail() {
   if (!postId) {
+    alert("게시글 정보를 찾을 수 없습니다.");
+    window.location.href = "./posts.html";
     return;
   }
 
   try {
     const rawPost = await api.getPost(postId);
-
     console.log("상세조회 응답:", rawPost);
 
+    if (!rawPost || typeof rawPost !== "object") {
+      throw new Error("상세조회 응답이 객체가 아닙니다.");
+    }
+
     post = normalizePostForDetail(rawPost);
-    comments = post.comments.map((comment) =>
-      normalizeCommentForDetail(comment)
-    );
+
+    comments = Array.isArray(post.comments)
+      ? post.comments.map((comment) => normalizeCommentForDetail(comment))
+      : [];
 
     console.log("정규화된 게시글:", post);
 
@@ -298,6 +304,15 @@ async function loadPostDetail() {
     renderComments();
   } catch (error) {
     console.error("게시글 상세조회 실패:", error);
+
+    postTitle.textContent = "게시글을 불러오지 못했습니다.";
+    authorNickname.textContent = "";
+    postCreatedAt.textContent = "";
+    postContent.textContent =
+      "백엔드 서버 실행 여부, 게시글 ID, 콘솔의 상세조회 응답을 확인하세요.";
+
+    comments = [];
+    renderComments();
   }
 }
 
@@ -314,23 +329,37 @@ postEditButton.addEventListener("click", () => {
   window.location.href = `./post-edit.html?postId=${post.postId}`;
 });
 
-const params = new URLSearchParams(window.location.search);
-const postId = Number(params.get("postId"));
-const CURRENT_USER_ID = api.getCurrentUserId();
 
 postDeleteButton.addEventListener("click", () => {
+  const targetPostId = post?.postId ?? postId;
+
+  if (!targetPostId) {
+    console.error("삭제할 게시글 ID가 없습니다.", { post, postId });
+    alert("게시글 ID를 찾을 수 없습니다.");
+    return;
+  }
+
   openModal({
-    title: "게시글을 삭제하시겠습니까?",
-    description: "삭제한 내용은 복구할 수 없습니다.",
+    title: "게시글을 삭제하겠습니까?",
+    description: "삭제한 내용은 복구 할 수 없습니다.",
     onConfirm: async () => {
       try {
-        await api.deletePost(postId, {
-          userId: CURRENT_USER_ID,
+        const userId = api.getCurrentUserId();
+
+        if (!userId) {
+          alert("로그인이 필요합니다.");
+          window.location.href = "./login.html";
+          return;
+        }
+
+        await api.deletePost(targetPostId, {
+          userId,
         });
 
         window.location.href = "./posts.html";
       } catch (error) {
-        alert(error.message || "게시글 삭제에 실패했습니다.");
+        console.error("게시글 삭제 실패:", error);
+        alert("게시글 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
       }
     },
   });

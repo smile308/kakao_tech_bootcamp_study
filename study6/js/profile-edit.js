@@ -22,7 +22,8 @@ const NICKNAME_DUPLICATED_MESSAGE = "*중복된 닉네임 입니다.";
 const NICKNAME_LENGTH_MESSAGE = "*닉네임은 최대 10자 까지 작성 가능합니다.";
 
 let selectedProfileImageFile = null;
-let selectedProfileImageUrl = null;
+let selectedProfileImageDataUrl = null;
+let currentProfileImage = null;
 let toastTimer = null;
 
 function toggleProfileMenu() {
@@ -150,12 +151,18 @@ profileEditForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    await api.updateProfile(formData);
-    alert("회원정보가 수정되었습니다.");
-    window.location.href = "./profile.html";
-  } catch (error) {
-    alert(error.message || "회원정보 수정에 실패했습니다.");
-  }
+  await api.updateProfile({
+    userId: api.getCurrentUserId(),
+    nickname: nicknameInput.value.trim(),
+    profileImage: selectedProfileImageDataUrl ?? currentProfileImage,
+  });
+
+  alert("회원정보가 수정되었습니다.");
+  window.location.href = "./profile.html";
+} catch (error) {
+  console.error("회원정보 수정 실패:", error);
+  alert(error.message || "회원정보 수정에 실패했습니다.");
+}
 });
 
 withdrawButton.addEventListener("click", () => {
@@ -183,7 +190,6 @@ const emailText =
   document.querySelector("#profileEmail") ||
   document.querySelector(".profile-email-text");
 
-let selectedProfileImageDataUrl = null;
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -211,12 +217,14 @@ async function loadUserInfo() {
       emailText.textContent = user.email ?? "";
     }
 
-    if (user.profileImage) {
-      profileEditImage.src = user.profileImage;
-      setHeaderProfileImage(user.profileImage);
-    } else {
-      setHeaderProfileImage(null);
-    }
+    currentProfileImage = user.profileImage ?? null;
+
+if (currentProfileImage) {
+  profileEditImage.src = currentProfileImage;
+  setHeaderProfileImage(currentProfileImage);
+} else {
+  setHeaderProfileImage(null);
+}
   } catch (error) {
     console.error("회원정보 조회 실패:", error);
   }

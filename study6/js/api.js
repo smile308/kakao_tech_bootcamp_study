@@ -15,31 +15,76 @@ function getAccessSession() {
   return localStorage.getItem("access_session") || "000000";
 }
 
-async function request(endpoint, options = {}) {
-  const isFormData = options.body instanceof FormData;
+function getDeletedPostIds() {
+  try {
+    return JSON.parse(localStorage.getItem("deleted_post_ids") || "[]");
+  } catch (error) {
+    console.error("삭제 게시글 목록 파싱 실패:", error);
+    return [];
+  }
+}
 
+function rememberDeletedPostId(postId) {
+  const id = Number(postId);
+
+  if (!id) {
+    return;
+  }
+
+  const deletedPostIds = getDeletedPostIds();
+
+  if (!deletedPostIds.includes(id)) {
+    deletedPostIds.push(id);
+    localStorage.setItem("deleted_post_ids", JSON.stringify(deletedPostIds));
+  }
+}
+
+function filterDeletedPosts(posts) {
+  const deletedPostIds = getDeletedPostIds();
+
+  return posts.filter((post) => {
+    const postId = Number(post.postId ?? post.post_id ?? post.id);
+    return !deletedPostIds.includes(postId);
+  });
+}
+
+async function request(endpoint, options = {}) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: isFormData
-      ? {
-          ...(options.headers || {}),
-        }
-      : {
-          "Content-Type": "application/json",
-          ...(options.headers || {}),
-        },
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
   });
 
+  const contentType = response.headers.get("content-type");
+  const responseText = await response.text();
+
+  let data = null;
+
+  if (responseText) {
+    if (contentType && contentType.includes("application/json")) {
+      data = JSON.parse(responseText);
+    } else {
+      data = responseText;
+    }
+  }
+
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || "API 요청에 실패했습니다.");
+    console.error("API 요청 실패:", {
+      endpoint,
+      status: response.status,
+      data,
+    });
+
+    throw new Error(
+      typeof data === "string"
+        ? data
+        : data?.message || JSON.stringify(data)
+    );
   }
 
-  if (response.status === 204) {
-    return null;
-  }
-
-  return response.json();
+  return data;
 }
 
 window.api = {
@@ -77,10 +122,10 @@ window.api = {
     });
   },
 
-  updateProfile(formData) {
+  updateProfile(payload) {
   return request("/users", {
     method: "PATCH",
-    body: formData,
+    body: JSON.stringify(payload),
   });
   },
 
@@ -98,18 +143,21 @@ window.api = {
     });
   },
 
-  async getPosts({ page = 0, size = 10 } = {}) {
-    const result = await request("/posts");
-    const posts = Array.isArray(result) ? result : result?.posts || [];
+async getPosts({ page = 0, size = 10 } = {}) {
+  const result = await request("/posts");
 
-    const startIndex = page * size;
-    const endIndex = startIndex + size;
+  const posts = filterDeletedPosts(
+    Array.isArray(result) ? result : result?.posts || []
+  );
 
-    return {
-      posts: posts.slice(startIndex, endIndex),
-      hasNextPage: endIndex < posts.length,
-    };
-  },
+  const startIndex = page * size;
+  const endIndex = startIndex + size;
+
+  return {
+    posts: posts.slice(startIndex, endIndex),
+    hasNextPage: endIndex < posts.length,
+  };
+},
 
   getPost(postId) {
     return request(`/posts/${postId}`);
@@ -129,12 +177,16 @@ window.api = {
     });
   },
 
-  deletePost(postId, payload) {
-    return request(`/posts/${postId}`, {
-      method: "DELETE",
-      body: JSON.stringify(payload),
-    });
-  },
+  async deletePost(postId, payload) {
+  const result = await request(`/posts/${postId}`, {
+    method: "DELETE",
+    body: JSON.stringify(payload),
+  });
+
+  rememberDeletedPostId(postId);
+
+  return result;
+},
 
   likePost(postId, payload) {
     return request(`/posts/${postId}/likes`, {
