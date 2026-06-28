@@ -170,31 +170,4 @@ passwordEditForm.addEventListener("submit", async (event) => {
   }
 });
 
-if (profileMenuButton && profileMenu) {
-  profileMenuButton.addEventListener("click", (event) => {
-    event.stopPropagation();
-    profileMenu.classList.toggle("is-open");
-  });
-
-  profileMenu.addEventListener("click", (event) => {
-    event.stopPropagation();
-  });
-
-  document.addEventListener("click", () => {
-    profileMenu.classList.remove("is-open");
-  });
-}
-
-if (logoutButton) {
-  logoutButton.addEventListener("click", async () => {
-    try {
-      await api.logout();
-    } catch (error) {
-      console.error("로그아웃 실패:", error);
-    } finally {
-      window.location.href = "./login.html";
-    }
-  });
-}
-
 updatePasswordEditButtonState();

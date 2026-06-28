@@ -1,7 +1,3 @@
-const profileMenuButton = document.querySelector("#profileMenuButton");
-const profileMenu = document.querySelector("#profileMenu");
-const logoutButton = document.querySelector("#logoutButton");
-
 const profileImageInput = document.querySelector("#profileImageInput");
 const profileEditImage = document.querySelector(".profile-edit-image");
 const headerProfileButton = document.querySelector(".header-profile__button");
@@ -154,11 +150,10 @@ profileEditForm.addEventListener("submit", async (event) => {
   await api.updateProfile({
     userId: api.getCurrentUserId(),
     nickname: nicknameInput.value.trim(),
-    profileImage: selectedProfileImageDataUrl ?? currentProfileImage,
+    profileImage: selectedProfileImageDataUrl,
   });
 
-  alert("회원정보가 수정되었습니다.");
-  window.location.href = "./profile.html";
+  showToast("수정 완료");
 } catch (error) {
   console.error("회원정보 수정 실패:", error);
   alert(error.message || "회원정보 수정에 실패했습니다.");
