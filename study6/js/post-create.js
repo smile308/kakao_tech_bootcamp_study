@@ -82,11 +82,15 @@ postCreateForm.addEventListener("submit", async (event) => {
   }
 
   try {
+    const imageFile = selectedImageFile
+      ? await fileToDataUrl(selectedImageFile)
+      : null;
+
     await api.createPost({
       userId: api.getCurrentUserId(),
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
-      imageFile: selectedImageFile ? selectedImageFile.name : null,
+      imageFile,
     });
 
     window.location.href = "./posts.html";
@@ -99,5 +103,21 @@ postCreateForm.addEventListener("submit", async (event) => {
 backButton.addEventListener("click", () => {
   window.location.href = "./posts.html";
 });
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = () => {
+      reject(reader.error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
 
 updateSubmitButtonState();

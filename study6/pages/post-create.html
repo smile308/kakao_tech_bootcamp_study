@@ -17,18 +17,37 @@
       <h1 class="page-header__title">아무 말 대잔치</h1>
 
       <div class="header-profile">
-        <button type="button" class="header-profile__button is-empty" aria-label="사용자 메뉴 열기">
-          <img alt="프로필 이미지" class="header-profile__image" />
-        </button>
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
 
-        <nav class="profile-menu" aria-label="사용자 메뉴">
-          <a href="./profile-edit.html" class="profile-menu__item">회원정보수정</a>
-          <a href="./password-edit.html" class="profile-menu__item">비밀번호수정</a>
-          <button type="button" class="profile-menu__item profile-menu__logout">
-            로그아웃
-          </button>
-        </nav>
-      </div>
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
     </header>
 
     <main class="post-create-main">
@@ -87,6 +106,7 @@
     </main>
   </div>
   <script src="../js/api.js"></script>
+  <script src="../js/header-menu.js"></script>
   <script src="../js/post-create.js"></script>
 </body>
 </html>

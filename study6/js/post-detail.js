@@ -325,13 +325,22 @@ postDeleteButton.addEventListener("click", () => {
     description: "삭제한 내용은 복구 할 수 없습니다.",
     onConfirm: async () => {
       try {
+        const userId = api.getCurrentUserId();
+
+        if (!userId) {
+          alert("로그인이 필요합니다.");
+          window.location.href = "./login.html";
+          return;
+        }
+
         await api.deletePost(post.postId, {
-          userId: api.getCurrentUserId(),
+          userId,
         });
 
         window.location.href = "./posts.html";
       } catch (error) {
         console.error("게시글 삭제 실패:", error);
+        alert("게시글 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
       }
     },
   });

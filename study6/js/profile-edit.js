@@ -116,7 +116,7 @@ logoutButton.addEventListener("click", async () => {
   }
 });
 
-profileImageInput.addEventListener("change", () => {
+profileImageInput.addEventListener("change", async () => {
   const file = profileImageInput.files[0];
 
   if (!file) {
@@ -124,15 +124,10 @@ profileImageInput.addEventListener("change", () => {
   }
 
   selectedProfileImageFile = file;
+  selectedProfileImageDataUrl = await fileToDataUrl(file);
 
-  if (selectedProfileImageUrl) {
-    URL.revokeObjectURL(selectedProfileImageUrl);
-  }
-
-  selectedProfileImageUrl = URL.createObjectURL(file);
-
-  profileEditImage.src = selectedProfileImageUrl;
-  setHeaderProfileImage(selectedProfileImageUrl);
+  profileEditImage.src = selectedProfileImageDataUrl;
+  setHeaderProfileImage(selectedProfileImageDataUrl);
 });
 
 nicknameInput.addEventListener("blur", () => {
@@ -152,9 +147,7 @@ profileEditForm.addEventListener("submit", async (event) => {
     await api.updateProfile({
       userId: api.getCurrentUserId(),
       nickname: nicknameInput.value.trim(),
-      profileImage: selectedProfileImageFile
-        ? selectedProfileImageFile.name
-        : null,
+      profileImage: selectedProfileImageDataUrl,
     });
 
     showToast("수정 완료");
@@ -192,3 +185,48 @@ modalConfirmButton.addEventListener("click", async () => {
     window.location.href = "./login.html";
   }
 });
+
+const emailText =
+  document.querySelector("#profileEmail") ||
+  document.querySelector(".profile-email-text");
+
+let selectedProfileImageDataUrl = null;
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = () => {
+      reject(reader.error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
+async function loadUserInfo() {
+  try {
+    const user = await api.getUser();
+
+    nicknameInput.value = user.nickname ?? "";
+
+    if (emailText) {
+      emailText.textContent = user.email ?? "";
+    }
+
+    if (user.profileImage) {
+      profileEditImage.src = user.profileImage;
+      setHeaderProfileImage(user.profileImage);
+    } else {
+      setHeaderProfileImage(null);
+    }
+  } catch (error) {
+    console.error("회원정보 조회 실패:", error);
+  }
+}
+
+loadUserInfo();

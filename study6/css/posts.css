@@ -87,11 +87,6 @@
   z-index: 300;
 }
 
-.header-profile:hover .profile-menu,
-.header-profile:focus-within .profile-menu {
-  display: block;
-}
-
 .profile-menu__item {
   display: block;
   width: 115px;

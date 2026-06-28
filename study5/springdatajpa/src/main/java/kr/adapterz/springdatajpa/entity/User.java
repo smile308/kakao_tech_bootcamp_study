@@ -26,7 +26,8 @@ public class User {
     @Column(nullable = false, length = 10)
     private String nickname;
 
-    @Column(name="profile_image",nullable = true, unique = false)
+    @Lob
+    @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
     @Column(name ="deleted", nullable = false)
     private boolean deleted;

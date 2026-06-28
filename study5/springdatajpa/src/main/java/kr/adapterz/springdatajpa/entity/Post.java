@@ -28,7 +28,8 @@ public class Post {
 
     @Column(name = "post_content", nullable = false)
     private String postContent;
-    @Column(name ="image_file", nullable = true)
+    @Lob
+    @Column(name = "image_file", columnDefinition = "TEXT")
     private String imageFile;
     private boolean is_fixed;
 

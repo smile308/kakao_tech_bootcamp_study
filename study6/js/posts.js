@@ -51,23 +51,24 @@ function formatDateTime(dateTimeValue) {
 function normalizePostForList(post) {
   return {
     postId: post.postId ?? post.post_id ?? post.id,
-    title: post.title ?? post.post_title ?? "",
+    title: post.title ?? post.postTitle ?? post.post_title ?? "",
     likeCount: post.likeCount ?? post.like_count ?? 0,
-    commentCount: post.commentCount ?? post.reply_count ?? post.comment_count ?? 0,
+    commentCount: post.replyCount ?? post.reply_count ?? post.commentCount ?? 0,
     viewCount: post.viewCount ?? post.view_count ?? 0,
     createdAt:
       post.createdAt ??
       post.created_at ??
-      post.date ??
       new Date().toISOString(),
     authorNickname:
-      post.authorNickname ??
+      post.userName ??
       post.user_name ??
+      post.authorNickname ??
       post.nickname ??
       "삭제된 사용자",
     authorProfileImage:
-      post.authorProfileImage ??
+      post.userProfileImage ??
       post.user_profile_image ??
+      post.authorProfileImage ??
       post.profile_image ??
       null,
   };

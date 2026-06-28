@@ -59,6 +59,22 @@ async function loadPost() {
   }
 }
 
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = () => {
+      reject(reader.error);
+    };
+
+    reader.readAsDataURL(file);
+  });
+}
+
 postTitleInput.addEventListener("input", () => {
   if (postTitleInput.value.length > MAX_TITLE_LENGTH) {
     postTitleInput.value = postTitleInput.value.slice(0, MAX_TITLE_LENGTH);
@@ -94,13 +110,15 @@ postEditForm.addEventListener("submit", async (event) => {
   }
 
   try {
+    const imageFile = selectedNewImageFile
+      ? await fileToDataUrl(selectedNewImageFile)
+      : originalPost.imageFileName;
+
     await api.updatePost(postId, {
       userId: api.getCurrentUserId(),
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
-      imageFile: selectedNewImageFile
-        ? selectedNewImageFile.name
-        : originalPost.imageFileName,
+      imageFile,
     });
 
     window.location.href = `./post-detail.html?postId=${postId}`;
@@ -113,5 +131,7 @@ postEditForm.addEventListener("submit", async (event) => {
 backButton.addEventListener("click", () => {
   window.location.href = `./post-detail.html?postId=${postId}`;
 });
+
+
 
 loadPost();

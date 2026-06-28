@@ -94,8 +94,8 @@ loginForm.addEventListener("submit", async (event) => {
       password,
     });
 
-    localStorage.setItem("access_session", result.access_session);
-    localStorage.setItem("user_id", result.user_id);
+    localStorage.setItem("access_session", result.accessSession);
+    localStorage.setItem("user_id", result.userId);
 
     window.location.href = "./posts.html";
   } catch (error) {

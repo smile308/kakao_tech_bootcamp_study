@@ -1,7 +1,14 @@
 const API_BASE_URL = "http://localhost:8080";
 
 function getCurrentUserId() {
-  return Number(localStorage.getItem("user_id")) || 1;
+  const userId = Number(localStorage.getItem("user_id"));
+
+  if (!userId) {
+    console.error("로그인 사용자 ID가 없습니다.");
+    return null;
+  }
+
+  return userId;
 }
 
 function getAccessSession() {
@@ -47,9 +54,43 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+  const contentType = response.headers.get("content-type");
+  const responseText = await response.text();
+
+  let data = null;
+
+  if (responseText) {
+    if (contentType && contentType.includes("application/json")) {
+      data = JSON.parse(responseText);
+    } else {
+      data = responseText;
+    }
+  }
+
+  if (!response.ok) {
+    console.error("API 요청 실패:", {
+      endpoint,
+      status: response.status,
+      data,
+    });
+
+    throw new Error(
+      typeof data === "string"
+        ? data
+        : data?.message || JSON.stringify(data)
+    );
+  }
+
+  return data;
+}
+
 window.api = {
   getCurrentUserId,
   getAccessSession,
+
+getUser(userId = getCurrentUserId()) {
+  return request(`/users/${userId}`);
+},
 
   login({ email, password }) {
     return request("/sessions", {
@@ -71,6 +112,8 @@ window.api = {
     });
   },
 
+
+  
   signup(payload) {
     return request("/users", {
       method: "POST",
@@ -172,3 +215,4 @@ window.api = {
     });
   },
 };
+

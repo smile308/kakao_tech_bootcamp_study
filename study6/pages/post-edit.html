@@ -17,18 +17,37 @@
       <h1 class="page-header__title">아무 말 대잔치</h1>
 
       <div class="header-profile">
-        <button type="button" class="header-profile__button is-empty" aria-label="사용자 메뉴 열기">
-          <img alt="프로필 이미지" class="header-profile__image" />
-        </button>
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
 
-        <nav class="profile-menu" aria-label="사용자 메뉴">
-          <a href="./profile-edit.html" class="profile-menu__item">회원정보수정</a>
-          <a href="./password-edit.html" class="profile-menu__item">비밀번호수정</a>
-          <button type="button" class="profile-menu__item profile-menu__logout">
-            로그아웃
-          </button>
-        </nav>
-      </div>
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
     </header>
 
     <main class="post-edit-main">
@@ -57,9 +76,7 @@
 
         <div class="post-edit-line post-edit-line--content-top"></div>
 
-        <textarea id="postContentInput" class="post-content-input">무엇을 얘기할까요? 아무말이라면, 삶은 항상 놀라운 모험이라고 생각합니다. 우리는 매일 새로운 경험을 하고 배우며 성장합니다. 때로는 어려움과 도전이 있지만, 그것들이 우리를 더 강하고 지혜롭게 만듭니다. 또한 우리는 주변의 사람들과 연결되어 사랑과 지지를 받습니다. 그래서 우리의 삶은 소중하고 의미가 있습니다.
-자연은 아름다운 이야기입니다. 우리 주변의 자연은 끝없는 아름다움과 신비로움을 담고 있습니다. 산, 바다, 숲, 하늘 등 모든 것이 우리를 놀라게 만들고 감동시킵니다. 자연은 우리의 생명과 안정을 지키며 우리에게 힘을 주는 곳입니다.
-마지막으로, 지식을 향한 탐구는 항상 흥미로운 여정입니다. 우리는 끝없는 지식의 바다에서 배우고 발견할 수 있으며, 이것이 우리를 더 깊이 이해하고 세상을 더 넓게 보게 해줍니다.</textarea>
+        <textarea id="postContentInput" class="post-content-input"></textarea>
 
         <div class="post-edit-line post-edit-line--content-bottom"></div>
 
