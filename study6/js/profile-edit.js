@@ -137,31 +137,24 @@ nicknameInput.addEventListener("blur", () => {
 profileEditForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
-  const isValid = validateNickname();
-
-  if (!isValid) {
+  if (!validateNickname()) {
     return;
   }
 
+  const formData = new FormData();
+  formData.append("userId", String(api.getCurrentUserId()));
+  formData.append("nickname", nicknameInput.value.trim());
+
+  if (selectedProfileImageFile) {
+    formData.append("profileImage", selectedProfileImageFile);
+  }
+
   try {
-    await api.updateProfile({
-      userId: api.getCurrentUserId(),
-      nickname: nicknameInput.value.trim(),
-      profileImage: selectedProfileImageDataUrl,
-    });
-
-    showToast("수정 완료");
+    await api.updateProfile(formData);
+    alert("회원정보가 수정되었습니다.");
+    window.location.href = "./profile.html";
   } catch (error) {
-    const message = error.message || "";
-
-    console.error("회원정보 수정 실패:", error);
-
-    if (message.includes("중복")) {
-      nicknameHelper.textContent = NICKNAME_DUPLICATED_MESSAGE;
-      return;
-    }
-
-    nicknameHelper.textContent = "*회원정보 수정에 실패했습니다.";
+    alert(error.message || "회원정보 수정에 실패했습니다.");
   }
 });
 

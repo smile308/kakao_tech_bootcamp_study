@@ -314,33 +314,23 @@ postEditButton.addEventListener("click", () => {
   window.location.href = `./post-edit.html?postId=${post.postId}`;
 });
 
-postDeleteButton.addEventListener("click", () => {
-  if (!post || !post.postId) {
-    console.error("삭제할 게시글 ID가 없습니다.", post);
-    return;
-  }
+const params = new URLSearchParams(window.location.search);
+const postId = Number(params.get("postId"));
+const CURRENT_USER_ID = api.getCurrentUserId();
 
+postDeleteButton.addEventListener("click", () => {
   openModal({
-    title: "게시글을 삭제하겠습니까?",
-    description: "삭제한 내용은 복구 할 수 없습니다.",
+    title: "게시글을 삭제하시겠습니까?",
+    description: "삭제한 내용은 복구할 수 없습니다.",
     onConfirm: async () => {
       try {
-        const userId = api.getCurrentUserId();
-
-        if (!userId) {
-          alert("로그인이 필요합니다.");
-          window.location.href = "./login.html";
-          return;
-        }
-
-        await api.deletePost(post.postId, {
-          userId,
+        await api.deletePost(postId, {
+          userId: CURRENT_USER_ID,
         });
 
         window.location.href = "./posts.html";
       } catch (error) {
-        console.error("게시글 삭제 실패:", error);
-        alert("게시글 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
+        alert(error.message || "게시글 삭제에 실패했습니다.");
       }
     },
   });
@@ -463,11 +453,14 @@ commentList.addEventListener("click", (event) => {
 modalCancelButton.addEventListener("click", closeModal);
 
 modalConfirmButton.addEventListener("click", async () => {
-  if (modalConfirmHandler) {
-    await modalConfirmHandler();
+  try {
+    if (modalConfirmHandler) {
+      await modalConfirmHandler();
+    }
+    closeModal();
+  } catch (error) {
+    alert(error.message || "요청 처리에 실패했습니다.");
   }
-
-  closeModal();
 });
 
 loadPostDetail();

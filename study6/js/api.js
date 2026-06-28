@@ -16,42 +16,30 @@ function getAccessSession() {
 }
 
 async function request(endpoint, options = {}) {
+  const isFormData = options.body instanceof FormData;
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers: isFormData
+      ? {
+          ...(options.headers || {}),
+        }
+      : {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
   });
 
-  const contentType = response.headers.get("content-type");
-  const responseText = await response.text();
-
-  let data = null;
-
-  if (responseText) {
-    if (contentType && contentType.includes("application/json")) {
-      data = JSON.parse(responseText);
-    } else {
-      data = responseText;
-    }
-  }
-
   if (!response.ok) {
-    console.error("API 요청 실패:", {
-      endpoint,
-      status: response.status,
-      data,
-    });
-
-    throw new Error(
-      typeof data === "string"
-        ? data
-        : data?.message || JSON.stringify(data)
-    );
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.message || "API 요청에 실패했습니다.");
   }
 
-  return data;
+  if (response.status === 204) {
+    return null;
+  }
+
+  return response.json();
 }
 
 window.api = {
@@ -89,11 +77,11 @@ window.api = {
     });
   },
 
-  updateProfile(payload) {
-    return request("/users", {
-      method: "PATCH",
-      body: JSON.stringify(payload),
-    });
+  updateProfile(formData) {
+  return request("/users", {
+    method: "PATCH",
+    body: formData,
+  });
   },
 
   updatePassword(payload) {
