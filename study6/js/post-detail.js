@@ -33,7 +33,7 @@ const urlParams = new URLSearchParams(window.location.search);
 
 const postId =
   urlParams.get("postId") ||
-  urlParams.get("post_id") ||
+  urlParams.get("postId") ||
   urlParams.get("id");
 
 if (!postId) {
@@ -79,36 +79,36 @@ function formatDateTime(dateTimeValue) {
 
 function normalizePostForDetail(rawPost) {
   return {
-    postId: rawPost.postId ?? rawPost.post_id,
-    title: rawPost.postTitle ?? rawPost.title ?? rawPost.post_title ?? "",
+    postId: rawPost.postId,
+    title: rawPost.postTitle ?? rawPost.title ?? "",
     authorNickname:
       rawPost.userName ??
-      rawPost.user_name ??
+      rawPost.userName ??
       rawPost.authorNickname ??
       "삭제된 사용자",
     authorProfileImage:
       rawPost.userProfileImage ??
-      rawPost.user_profile_image ??
+      rawPost.userProfileImage ??
       rawPost.authorProfileImage ??
       null,
     createdAt:
       rawPost.createdAt ??
-      rawPost.created_at ??
+      rawPost.createdAt ??
       new Date().toISOString(),
     imageUrl:
       rawPost.imageFile ??
-      rawPost.image_file ??
+      rawPost.imageFile ??
       rawPost.imageUrl ??
       null,
     content:
       rawPost.postContent ??
-      rawPost.post_content ??
+      rawPost.postContent ??
       rawPost.content ??
       rawPost.contents ??
       "",
-    likeCount: rawPost.likeCount ?? rawPost.like_count ?? 0,
-    viewCount: rawPost.viewCount ?? rawPost.view_count ?? 0,
-    commentCount: rawPost.replyCount ?? rawPost.reply_count ?? 0,
+    likeCount: rawPost.likeCount ?? 0,
+    viewCount: rawPost.viewCount ?? 0,
+    commentCount: rawPost.replyCount ?? 0,
     isLiked: rawPost.isLiked ?? false,
     comments: rawPost.comments ?? [],
   };
@@ -116,26 +116,26 @@ function normalizePostForDetail(rawPost) {
 
 function normalizeCommentForDetail(rawComment) {
   return {
-    commentId: rawComment.commentId ?? rawComment.comment_id,
-    authorId: rawComment.userId ?? rawComment.user_id ?? null,
+    commentId: rawComment.commentId,
+    authorId: rawComment.userId ?? null,
     authorNickname:
       rawComment.userName ??
-      rawComment.user_name ??
+      rawComment.userName ??
       rawComment.authorNickname ??
       "삭제된 사용자",
     authorProfileImage:
       rawComment.userProfileImage ??
-      rawComment.user_profile_image ??
+      rawComment.userProfileImage ??
       rawComment.authorProfileImage ??
       null,
     createdAt:
       rawComment.createdAt ??
-      rawComment.created_at ??
+      rawComment.createdAt ??
       "",
     content:
       rawComment.content ??
       rawComment.commentContent ??
-      rawComment.comment_content ??
+      rawComment.commentContent ??
       "",
   };
 }

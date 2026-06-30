@@ -12,9 +12,9 @@ public class Session {
     private String accessSession;
     @Column(name ="user_id", nullable = false)
     private Long userId;
-    public Session(Long user_id){
+    public Session(Long userId){
         accessSession="000000";
-        this.userId=user_id;
+        this.userId=userId;
     }
 
 }

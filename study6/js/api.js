@@ -1,7 +1,7 @@
 const API_BASE_URL = "http://localhost:8080";
 
 function getCurrentUserId() {
-  const userId = Number(localStorage.getItem("user_id"));
+  const userId = Number(localStorage.getItem("userId"));
 
   if (!userId) {
     console.error("로그인 사용자 ID가 없습니다.");
@@ -12,12 +12,12 @@ function getCurrentUserId() {
 }
 
 function getAccessSession() {
-  return localStorage.getItem("access_session") || "000000";
+  return localStorage.getItem("accessSession") || "000000";
 }
 
 function getDeletedPostIds() {
   try {
-    return JSON.parse(localStorage.getItem("deleted_post_ids") || "[]");
+    return JSON.parse(localStorage.getItem("deletedPostIds") || "[]");
   } catch (error) {
     console.error("삭제 게시글 목록 파싱 실패:", error);
     return [];
@@ -35,7 +35,7 @@ function rememberDeletedPostId(postId) {
 
   if (!deletedPostIds.includes(id)) {
     deletedPostIds.push(id);
-    localStorage.setItem("deleted_post_ids", JSON.stringify(deletedPostIds));
+    localStorage.setItem("deletedPostIds", JSON.stringify(deletedPostIds));
   }
 }
 
@@ -43,7 +43,7 @@ function filterDeletedPosts(posts) {
   const deletedPostIds = getDeletedPostIds();
 
   return posts.filter((post) => {
-    const postId = Number(post.postId ?? post.post_id ?? post.id);
+    const postId = Number(post.postId ?? post.id);
     return !deletedPostIds.includes(postId);
   });
 }

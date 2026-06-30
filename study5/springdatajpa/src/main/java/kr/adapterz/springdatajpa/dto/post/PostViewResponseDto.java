@@ -29,7 +29,7 @@ public class PostViewResponseDto {
     private List<CommentResponseDto> comments;
     public PostViewResponseDto(Post post, User user, List<CommentResponseDto> comments){
         this.postId=post.getPostId();
-        this.isFixed=post.is_fixed();
+        this.isFixed=post.isFixed();
         this.postTitle=post.getPostTitle();
         this.postContent=post.getPostContent();
         this.imageFile=post.getImageFile();

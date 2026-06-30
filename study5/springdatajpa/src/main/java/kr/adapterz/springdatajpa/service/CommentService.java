@@ -22,10 +22,10 @@ public class CommentService {
     private final UserRepository userRepository;
 
     //댓글 등록
-    public CommentPostResponseDto commentPost(Long post_id, CommentPostRequestDto request){
+    public CommentPostResponseDto commentPost(Long postId, CommentPostRequestDto request){
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
         User user = userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_Account"));
-        Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+        Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
                     user,
                     post,
@@ -51,9 +51,9 @@ public class CommentService {
     }
 
     //댓글 삭제
-    public CommentDeleteResponseDto commentDelete(Long post_id, CommentDeleteRequestDto request){
+    public CommentDeleteResponseDto commentDelete(Long postId, CommentDeleteRequestDto request){
         CommentDeleteResponseDto commentDeleteResponseDto = new CommentDeleteResponseDto();
-        Post post =postRepository.findById(post_id).orElseThrow(()->new DataNullException("No_Post"));
+        Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
         commentRepository.findById(request.getCommentId()).orElseThrow(()->new DataNullException("No_Comment"));
         commentRepository.deleteById(request.getCommentId());
         //댓글 개수 감소

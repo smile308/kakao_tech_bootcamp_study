@@ -36,7 +36,7 @@ public class PostService {
         List<Post> posts = postRepository.findAllByOrderByPostIdDesc();
         List<PostListResponseDto> result = new ArrayList<>();
 
-        //각 게시물의 user_id로 작성자 정보 붙이기
+        //각 게시물의 userId로 작성자 정보 붙이기
         for (Post post : posts) {
             PostListResponseDto dto = new PostListResponseDto(post, post.getUser());
 

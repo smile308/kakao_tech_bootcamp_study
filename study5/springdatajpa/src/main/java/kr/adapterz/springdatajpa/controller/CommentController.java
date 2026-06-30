@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/posts/{post_id}/comments")
+@RequestMapping("/posts/{postId}/comments")
 @RequiredArgsConstructor
 public class CommentController {
     private final CommentService commentService;
@@ -15,15 +15,15 @@ public class CommentController {
     //댓글 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CommentPostResponseDto commentPost(@PathVariable Long post_id, @RequestBody CommentPostRequestDto request){
-        return commentService.commentPost(post_id, request);
+    public CommentPostResponseDto commentPost(@PathVariable("postId") Long postId, @RequestBody CommentPostRequestDto request){
+        return commentService.commentPost(postId, request);
     }
 
     //댓글 삭제
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public CommentDeleteResponseDto commentDelete(@PathVariable Long post_id,@RequestBody CommentDeleteRequestDto request){
-        return commentService.commentDelete(post_id, request);
+    public CommentDeleteResponseDto commentDelete(@PathVariable("postId") Long postId,@RequestBody CommentDeleteRequestDto request){
+        return commentService.commentDelete(postId, request);
     }
 
     //댓글 수정

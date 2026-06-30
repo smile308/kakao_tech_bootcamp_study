@@ -31,7 +31,8 @@ public class Post {
     @Lob
     @Column(name = "image_file", columnDefinition = "TEXT")
     private String imageFile;
-    private boolean is_fixed;
+    @Column(name = "is_fixed", nullable = false)
+    private boolean isFixed;
 
     @Column(name ="report_count", nullable = false)
     private int reportCount;
@@ -59,7 +60,7 @@ public class Post {
         this.postContent=postContent;
         this.imageFile=imageFile;
 
-        is_fixed=false;
+        isFixed=false;
         reportCount=0;
         likeCount=0;
         replyCount=0;
@@ -76,7 +77,7 @@ public class Post {
         this.postContent=postContent;
         this.imageFile=null;
 
-        is_fixed=false;
+        isFixed=false;
         reportCount=0;
         likeCount=0;
         replyCount=0;
@@ -91,7 +92,7 @@ public class Post {
         this.postTitle = title;
         this.postContent = contents;
         this.imageFile = imageFile;
-        is_fixed=true;
+        isFixed=true;
     }
 
     //신고 기능

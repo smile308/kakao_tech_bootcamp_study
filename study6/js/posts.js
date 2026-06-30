@@ -50,26 +50,26 @@ function formatDateTime(dateTimeValue) {
 
 function normalizePostForList(post) {
   return {
-    postId: post.postId ?? post.post_id ?? post.id,
-    title: post.title ?? post.postTitle ?? post.post_title ?? "",
-    likeCount: post.likeCount ?? post.like_count ?? 0,
-    commentCount: post.replyCount ?? post.reply_count ?? post.commentCount ?? 0,
-    viewCount: post.viewCount ?? post.view_count ?? 0,
+    postId: post.postId ?? post.id,
+    title: post.title ?? post.postTitle ?? "",
+    likeCount: post.likeCount ?? 0,
+    commentCount: post.replyCount ?? post.commentCount ?? 0,
+    viewCount: post.viewCount ?? 0,
     createdAt:
       post.createdAt ??
-      post.created_at ??
+      post.createdAt ??
       new Date().toISOString(),
     authorNickname:
       post.userName ??
-      post.user_name ??
+      post.userName ??
       post.authorNickname ??
       post.nickname ??
       "삭제된 사용자",
     authorProfileImage:
       post.userProfileImage ??
-      post.user_profile_image ??
+      post.userProfileImage ??
       post.authorProfileImage ??
-      post.profile_image ??
+      post.profileImage ??
       null,
   };
 }

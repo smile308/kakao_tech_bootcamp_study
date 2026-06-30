@@ -16,10 +16,10 @@ let selectedNewImageFile = null;
 
 function normalizePostForEdit(post) {
   return {
-    postId: post.postId ?? post.post_id,
-    title: post.postTitle ?? post.post_title ?? post.title ?? "",
-    content: post.postContent ?? post.post_content ?? post.content ?? "",
-    imageFileName: post.imageFile ?? post.image_file ?? null,
+    postId: post.postId,
+    title: post.postTitle ?? post.title ?? "",
+    content: post.postContent ?? post.content ?? "",
+    imageFileName: post.imageFile ?? null,
   };
 }
 

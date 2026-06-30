@@ -2,6 +2,13 @@ const profileMenuButton = document.querySelector("#profileMenuButton");
 const profileMenu = document.querySelector("#profileMenu");
 const logoutButton = document.querySelector("#logoutButton");
 
+function openProfileMenu() {
+  if (!profileMenu) {
+    return;
+  }
+
+  profileMenu.classList.add("is-open");
+}
 
 function closeProfileMenu() {
   if (!profileMenu) {
@@ -49,8 +56,8 @@ if (logoutButton) {
     } catch (error) {
       console.error("로그아웃 실패:", error);
     } finally {
-      localStorage.removeItem("user_id");
-      localStorage.removeItem("access_session");
+      localStorage.removeItem("userId");
+      localStorage.removeItem("accessSession");
       window.location.href = "./login.html";
     }
   });

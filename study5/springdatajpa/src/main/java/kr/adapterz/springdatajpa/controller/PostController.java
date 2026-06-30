@@ -28,39 +28,39 @@ public class PostController {
         return postService.createPost(request);
     }
     //게시글 상세조회
-    @GetMapping("/{post_id}")
-    public PostViewResponseDto getPostView(@PathVariable Long post_id) {
-        return postService.getPostView(post_id);
+    @GetMapping("/{postId}")
+    public PostViewResponseDto getPostView(@PathVariable("postId") Long postId) {
+        return postService.getPostView(postId);
     }
     //게시글 수정
-    @PatchMapping("/{post_id}")
-    public PostFixResponseDto fixPost(@PathVariable Long post_id,@Valid @RequestBody PostFixRequestDto request){
-        return postService.fixPost(post_id,request);
+    @PatchMapping("/{postId}")
+    public PostFixResponseDto fixPost(@PathVariable("postId") Long postId,@Valid @RequestBody PostFixRequestDto request){
+        return postService.fixPost(postId,request);
     }
     //게시글 삭제
-    @DeleteMapping("/{post_id}")
+    @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public PostDeleteResponseDto deletePost(@PathVariable Long post_id,@RequestBody PostDeleteRequestDto request){
-        return postService.deletePost(post_id,request);
+    public PostDeleteResponseDto deletePost(@PathVariable("postId") Long postId,@RequestBody PostDeleteRequestDto request){
+        return postService.deletePost(postId,request);
     }
     //좋아요
-    @PostMapping("/{post_id}/likes")
+    @PostMapping("/{postId}/likes")
     @ResponseStatus(HttpStatus.CREATED)
-    public LikeResponseDto likePost(@PathVariable Long post_id,@RequestBody LikeRequestDto request){
-        return postService.likePost(post_id,request);
+    public LikeResponseDto likePost(@PathVariable("postId") Long postId,@RequestBody LikeRequestDto request){
+        return postService.likePost(postId,request);
     }
 
     //좋아요 취소
-    @DeleteMapping("/{post_id}/likes")
+    @DeleteMapping("/{postId}/likes")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public LikeCancelResponseDto cancelLike(@PathVariable Long post_id, @RequestBody LikeCancelRequestDto request){
-        return postService.cancelLike(post_id,request);
+    public LikeCancelResponseDto cancelLike(@PathVariable("postId") Long postId, @RequestBody LikeCancelRequestDto request){
+        return postService.cancelLike(postId,request);
     }
 
     //게시글 신고
-    @PostMapping("/{post_id}/report")
+    @PostMapping("/{postId}/report")
     @ResponseStatus(HttpStatus.CREATED)
-    public ReportResponseDto reportPost(@PathVariable Long post_id, @RequestBody ReportRequestDto request){
-        return postService.reportPost(post_id,request);
+    public ReportResponseDto reportPost(@PathVariable("postId") Long postId, @RequestBody ReportRequestDto request){
+        return postService.reportPost(postId,request);
     }
 }
