@@ -77,7 +77,6 @@ function isPasswordEditFormValid() {
 
   return (
     isValidPassword(password) &&
-    passwordConfirm.length > 0 &&
     password === passwordConfirm
   );
 }

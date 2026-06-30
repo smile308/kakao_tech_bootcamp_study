@@ -2,13 +2,6 @@ const profileMenuButton = document.querySelector("#profileMenuButton");
 const profileMenu = document.querySelector("#profileMenu");
 const logoutButton = document.querySelector("#logoutButton");
 
-function openProfileMenu() {
-  if (!profileMenu) {
-    return;
-  }
-
-  profileMenu.classList.add("is-open");
-}
 
 function closeProfileMenu() {
   if (!profileMenu) {
