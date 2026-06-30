@@ -43,7 +43,7 @@ function filterDeletedPosts(posts) {
   const deletedPostIds = getDeletedPostIds();
 
   return posts.filter((post) => {
-    const postId = Number(post.postId ?? post.id);
+    const postId = Number(post.postId);
     return !deletedPostIds.includes(postId);
   });
 }

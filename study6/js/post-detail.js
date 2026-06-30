@@ -30,11 +30,7 @@ const modalCancelButton = document.querySelector("#modalCancelButton");
 const modalConfirmButton = document.querySelector("#modalConfirmButton");
 
 const urlParams = new URLSearchParams(window.location.search);
-
-const postId =
-  urlParams.get("postId") ||
-  urlParams.get("postId") ||
-  urlParams.get("id");
+const postId = urlParams.get("postId");
 
 if (!postId) {
   alert("게시글 정보를 찾을 수 없습니다.");
@@ -80,32 +76,12 @@ function formatDateTime(dateTimeValue) {
 function normalizePostForDetail(rawPost) {
   return {
     postId: rawPost.postId,
-    title: rawPost.postTitle ?? rawPost.title ?? "",
-    authorNickname:
-      rawPost.userName ??
-      rawPost.userName ??
-      rawPost.authorNickname ??
-      "삭제된 사용자",
-    authorProfileImage:
-      rawPost.userProfileImage ??
-      rawPost.userProfileImage ??
-      rawPost.authorProfileImage ??
-      null,
-    createdAt:
-      rawPost.createdAt ??
-      rawPost.createdAt ??
-      new Date().toISOString(),
-    imageUrl:
-      rawPost.imageFile ??
-      rawPost.imageFile ??
-      rawPost.imageUrl ??
-      null,
-    content:
-      rawPost.postContent ??
-      rawPost.postContent ??
-      rawPost.content ??
-      rawPost.contents ??
-      "",
+    title: rawPost.postTitle ?? "",
+    authorNickname: rawPost.userName ?? "삭제된 사용자",
+    authorProfileImage: rawPost.userProfileImage ?? null,
+    createdAt: rawPost.createdAt ?? new Date().toISOString(),
+    imageUrl: rawPost.imageFile ?? null,
+    content: rawPost.postContent ?? "",
     likeCount: rawPost.likeCount ?? 0,
     viewCount: rawPost.viewCount ?? 0,
     commentCount: rawPost.replyCount ?? 0,
@@ -118,25 +94,10 @@ function normalizeCommentForDetail(rawComment) {
   return {
     commentId: rawComment.commentId,
     authorId: rawComment.userId ?? null,
-    authorNickname:
-      rawComment.userName ??
-      rawComment.userName ??
-      rawComment.authorNickname ??
-      "삭제된 사용자",
-    authorProfileImage:
-      rawComment.userProfileImage ??
-      rawComment.userProfileImage ??
-      rawComment.authorProfileImage ??
-      null,
-    createdAt:
-      rawComment.createdAt ??
-      rawComment.createdAt ??
-      "",
-    content:
-      rawComment.content ??
-      rawComment.commentContent ??
-      rawComment.commentContent ??
-      "",
+    authorNickname: rawComment.userName ?? "삭제된 사용자",
+    authorProfileImage: rawComment.userProfileImage ?? null,
+    createdAt: rawComment.createdAt ?? "",
+    content: rawComment.content ?? "",
   };
 }
 
@@ -331,10 +292,8 @@ postEditButton.addEventListener("click", () => {
 
 
 postDeleteButton.addEventListener("click", () => {
-  const targetPostId = post?.postId ?? postId;
-
-  if (!targetPostId) {
-    console.error("삭제할 게시글 ID가 없습니다.", { post, postId });
+  if (!post || !post.postId) {
+    console.error("삭제할 게시글 ID가 없습니다.", post);
     alert("게시글 ID를 찾을 수 없습니다.");
     return;
   }
@@ -352,7 +311,7 @@ postDeleteButton.addEventListener("click", () => {
           return;
         }
 
-        await api.deletePost(targetPostId, {
+        await api.deletePost(post.postId, {
           userId,
         });
 

@@ -9,7 +9,12 @@ const postEditHelper = document.querySelector("#postEditHelper");
 const MAX_TITLE_LENGTH = 26;
 
 const urlParams = new URLSearchParams(window.location.search);
-const postId = urlParams.get("postId") || "1";
+const postId = urlParams.get("postId");
+
+if (!postId) {
+  alert("게시글 정보를 찾을 수 없습니다.");
+  window.location.href = "./posts.html";
+}
 
 let originalPost = null;
 let selectedNewImageFile = null;
@@ -17,8 +22,8 @@ let selectedNewImageFile = null;
 function normalizePostForEdit(post) {
   return {
     postId: post.postId,
-    title: post.postTitle ?? post.title ?? "",
-    content: post.postContent ?? post.content ?? "",
+    title: post.postTitle ?? "",
+    content: post.postContent ?? "",
     imageFileName: post.imageFile ?? null,
   };
 }
