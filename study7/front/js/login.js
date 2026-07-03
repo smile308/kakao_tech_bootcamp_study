@@ -94,7 +94,7 @@ loginForm.addEventListener("submit", async (event) => {
       password,
     });
 
-    localStorage.setItem("accessSession", result.accessSession);
+    localStorage.setItem("accessToken", result.accessToken);
     localStorage.setItem("userId", result.userId);
 
     window.location.href = "./posts.html";

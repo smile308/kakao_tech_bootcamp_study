@@ -15,20 +15,32 @@ public class CommentController {
     //댓글 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CommentPostResponseDto commentPost(@PathVariable("postId") Long postId, @RequestBody CommentPostRequestDto request){
-        return commentService.commentPost(postId, request);
+    public CommentPostResponseDto commentPost(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody CommentPostRequestDto request
+    ){
+        return commentService.commentPost(postId, authorizationHeader, request);
     }
 
     //댓글 삭제
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public CommentDeleteResponseDto commentDelete(@PathVariable("postId") Long postId,@RequestBody CommentDeleteRequestDto request){
-        return commentService.commentDelete(postId, request);
+    public CommentDeleteResponseDto commentDelete(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody CommentDeleteRequestDto request
+    ){
+        return commentService.commentDelete(postId, authorizationHeader, request);
     }
 
     //댓글 수정
     @PatchMapping
-    public CommentFixResponseDto commentFix(@RequestBody CommentFixRequestDto request){
-        return commentService.commentFix(request);
+    public CommentFixResponseDto commentFix(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody CommentFixRequestDto request
+    ){
+        return commentService.commentFix(postId, authorizationHeader, request);
     }
 }

@@ -1,5 +1,6 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.*;
 import kr.adapterz.springdatajpa.entity.Comment;
@@ -30,6 +31,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
+    private final JwtProvider jwtProvider;
 
     //게시물 목록 조회
     public List<PostListResponseDto> getPostList() {
@@ -48,9 +50,9 @@ public class PostService {
 
     // 게시물 추가
     @Transactional
-    public PostResponseDto createPost(PostRequestDto request) {
+    public PostResponseDto createPost(String authorizationHeader, PostRequestDto request) {
         PostResponseDto postResponseDto= new PostResponseDto();
-        User user = userRepository.findById(request.getUserId()).orElseThrow(()->new AuthException("No_User"));
+        User user = getLoginUser(authorizationHeader);
         Post post = new Post(
                 user,
                 request.getTitle(),
@@ -85,13 +87,14 @@ public class PostService {
 
     //게시물 수정
     @Transactional
-    public PostFixResponseDto fixPost(Long postId, PostFixRequestDto request) {
+    public PostFixResponseDto fixPost(Long postId, String authorizationHeader, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Post post = postRepository.findById(postId)
                 .orElseThrow(()->new DataNullException("No_Post"));
 
         //실제 작성자가 맞는지 확인
-        if (!post.getUser().getUserId().equals(request.getUserId())) {
+        if (!post.getUser().getUserId().equals(loginUserId)) {
             throw new AuthException("No_Auth");
         }
         post.update(
@@ -103,12 +106,13 @@ public class PostService {
     }
     //게시글 삭제
     @Transactional
-    public PostDeleteResponseDto deletePost(Long postId, PostDeleteRequestDto request){
+    public PostDeleteResponseDto deletePost(Long postId, String authorizationHeader){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
-        if(!post.getUser().getUserId().equals(request.getUserId())) {
+        if(!post.getUser().getUserId().equals(loginUserId)) {
             throw new AuthException("No_Auth");
         }
         post.delete();
@@ -117,12 +121,11 @@ public class PostService {
 
     //게시물 좋아요
     @Transactional
-    public LikeResponseDto likePost(Long postId, LikeRequestDto request) {
+    public LikeResponseDto likePost(Long postId, String authorizationHeader) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
 
-        User user = userRepository.findByUserIdAndDeletedFalse(request.getUserId())
-                .orElseThrow(() -> new AuthException("No_User"));
+        User user = getLoginUser(authorizationHeader);
 
         if (likeRepository.existsByPostAndUser(post, user)) {
             throw new InvalidRequestException("Already_Liked");
@@ -136,12 +139,11 @@ public class PostService {
 
     //좋아요 취소
     @Transactional
-    public LikeCancelResponseDto cancelLike(Long postId, LikeCancelRequestDto request) {
+    public LikeCancelResponseDto cancelLike(Long postId, String authorizationHeader) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
 
-        User user = userRepository.findByUserIdAndDeletedFalse(request.getUserId())
-                .orElseThrow(() -> new AuthException("No_User"));
+        User user = getLoginUser(authorizationHeader);
 
         Like postLike = likeRepository.findByPostAndUser(post, user)
                 .orElseThrow(() -> new InvalidRequestException("Not_Liked"));
@@ -154,7 +156,8 @@ public class PostService {
 
     //게시글 신고
     @Transactional
-    public ReportResponseDto reportPost (Long postId, ReportRequestDto request){
+    public ReportResponseDto reportPost (Long postId, String authorizationHeader){
+        getLoginUser(authorizationHeader);
         Post post = postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
 
         post.report();
@@ -162,4 +165,9 @@ public class PostService {
         return reportResponseDto;
     }
 
+    private User getLoginUser(String authorizationHeader) {
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
+        return userRepository.findByUserIdAndDeletedFalse(loginUserId)
+                .orElseThrow(() -> new AuthException("No_User"));
+    }
 }

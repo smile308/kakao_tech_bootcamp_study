@@ -9,10 +9,8 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class UserPatchRequestDto {
-    private long userId;
     @NotBlank
     @Size(max = 10)
-    //공백 제거 조건
     @Pattern(regexp = "^\\S+$")
     private String nickname;
     private String profileImage;

@@ -12,7 +12,7 @@ function getCurrentUserId() {
 }
 
 function getAccessSession() {
-  return localStorage.getItem("accessSession") || "000000";
+  return localStorage.getItem("accessSession");
 }
 
 function getDeletedPostIds() {
@@ -49,12 +49,20 @@ function filterDeletedPosts(posts) {
 }
 
 async function request(endpoint, options = {}) {
+  const accessToken = localStorage.getItem("accessToken");
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
   });
 
   const contentType = response.headers.get("content-type");
@@ -71,12 +79,6 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    console.error("API 요청 실패:", {
-      endpoint,
-      status: response.status,
-      data,
-    });
-
     throw new Error(
       typeof data === "string"
         ? data
@@ -108,10 +110,6 @@ window.api = {
   logout() {
     return request("/sessions", {
       method: "DELETE",
-      body: JSON.stringify({
-        userId: getCurrentUserId(),
-        accessSession: getAccessSession(),
-      }),
     });
   },
 

@@ -6,6 +6,5 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostListRequestDto {
-    private Long user_id;
     private int page;
 }

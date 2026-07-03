@@ -9,7 +9,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostRequestDto {
-    private Long userId;
     @NotBlank
     @Size(max=26)
     private String title;

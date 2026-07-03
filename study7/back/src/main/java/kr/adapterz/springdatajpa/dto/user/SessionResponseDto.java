@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.dto.user;
 
-import kr.adapterz.springdatajpa.entity.Session;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -8,14 +7,12 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class SessionResponseDto {
     private String message;
-    private String accessSession;
+    private String accessToken;
     private Long userId;
 
-
-    public SessionResponseDto(Session session)
-    {
+    public SessionResponseDto(String accessToken, Long userId) {
         this.message = "login_success";
-        this.accessSession=session.getAccessSession();
-        this.userId=session.getUserId();
+        this.accessToken = accessToken;
+        this.userId = userId;
     }
 }

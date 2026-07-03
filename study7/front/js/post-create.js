@@ -87,7 +87,6 @@ postCreateForm.addEventListener("submit", async (event) => {
       : null;
 
     await api.createPost({
-      userId: api.getCurrentUserId(),
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
       imageFile,

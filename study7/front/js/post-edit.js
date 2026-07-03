@@ -14,6 +14,7 @@ const postId = urlParams.get("postId");
 if (!postId) {
   alert("게시글 정보를 찾을 수 없습니다.");
   window.location.href = "./posts.html";
+  throw new Error("postId가 없어 게시글 수정 페이지 초기화를 중단합니다.");
 }
 
 let originalPost = null;
@@ -120,7 +121,6 @@ postEditForm.addEventListener("submit", async (event) => {
       : originalPost.imageFileName;
 
     await api.updatePost(postId, {
-      userId: api.getCurrentUserId(),
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
       imageFile,

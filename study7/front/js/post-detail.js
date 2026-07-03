@@ -3,6 +3,7 @@ const CURRENT_USER_ID = api.getCurrentUserId();
 const backButton = document.querySelector("#backButton");
 const postEditButton = document.querySelector("#postEditButton");
 const postDeleteButton = document.querySelector("#postDeleteButton");
+const postActions = document.querySelector(".detail-post-actions");
 
 const postTitle = document.querySelector("#postTitle");
 const authorImageBox = document.querySelector("#authorImageBox");
@@ -42,6 +43,31 @@ let comments = [];
 let modalConfirmHandler = null;
 let editingCommentId = null;
 
+function setPostActionVisibility(isVisible) {
+  const displayValue = isVisible ? "" : "none";
+
+  if (postActions) {
+    postActions.hidden = !isVisible;
+    postActions.style.display = displayValue;
+  }
+
+  if (postEditButton) {
+    postEditButton.hidden = !isVisible;
+    postEditButton.style.display = displayValue;
+  }
+
+  if (postDeleteButton) {
+    postDeleteButton.hidden = !isVisible;
+    postDeleteButton.style.display = displayValue;
+  }
+}
+
+setPostActionVisibility(false);
+
+function isCurrentUserPost() {
+  return Number(post?.authorId) === Number(CURRENT_USER_ID);
+}
+
 function formatCount(count) {
   const number = Number(count) || 0;
 
@@ -77,6 +103,7 @@ function normalizePostForDetail(rawPost) {
   return {
     postId: rawPost.postId,
     title: rawPost.postTitle ?? "",
+    authorId: rawPost.userId ?? null,
     authorNickname: rawPost.userName ?? "삭제된 사용자",
     authorProfileImage: rawPost.userProfileImage ?? null,
     createdAt: rawPost.createdAt ?? new Date().toISOString(),
@@ -125,6 +152,9 @@ function renderPost() {
   authorNickname.textContent = post.authorNickname;
   postCreatedAt.textContent = formatDateTime(post.createdAt);
   postContent.textContent = post.content;
+
+  const isMyPost = isCurrentUserPost();
+  setPostActionVisibility(isMyPost);
 
   likeCount.textContent = formatCount(post.likeCount);
   viewCount.textContent = formatCount(post.viewCount);
@@ -271,6 +301,7 @@ async function loadPostDetail() {
     postCreatedAt.textContent = "";
     postContent.textContent =
       "백엔드 서버 실행 여부, 게시글 ID, 콘솔의 상세조회 응답을 확인하세요.";
+    setPostActionVisibility(false);
 
     comments = [];
     renderComments();
@@ -287,6 +318,11 @@ postEditButton.addEventListener("click", () => {
     return;
   }
 
+  if (!isCurrentUserPost()) {
+    alert("게시글 작성자만 수정할 수 있습니다.");
+    return;
+  }
+
   window.location.href = `./post-edit.html?postId=${post.postId}`;
 });
 
@@ -295,6 +331,11 @@ postDeleteButton.addEventListener("click", () => {
   if (!post || !post.postId) {
     console.error("삭제할 게시글 ID가 없습니다.", post);
     alert("게시글 ID를 찾을 수 없습니다.");
+    return;
+  }
+
+  if (!isCurrentUserPost()) {
+    alert("게시글 작성자만 삭제할 수 있습니다.");
     return;
   }
 
@@ -311,9 +352,7 @@ postDeleteButton.addEventListener("click", () => {
           return;
         }
 
-        await api.deletePost(post.postId, {
-          userId,
-        });
+        await api.deletePost(post.postId);
 
         window.location.href = "./posts.html";
       } catch (error) {
@@ -332,16 +371,12 @@ likeButton.addEventListener("click", async () => {
 
   try {
     if (post.isLiked) {
-      const result = await api.unlikePost(post.postId, {
-        userId: api.getCurrentUserId(),
-      });
+      const result = await api.unlikePost(post.postId);
 
       post.isLiked = false;
       post.likeCount = result?.likeCount ?? post.likeCount - 1;
     } else {
-      const result = await api.likePost(post.postId, {
-        userId: api.getCurrentUserId(),
-      });
+      const result = await api.likePost(post.postId);
 
       post.isLiked = true;
       post.likeCount = result?.likeCount ?? post.likeCount + 1;
@@ -372,13 +407,11 @@ commentForm.addEventListener("submit", async (event) => {
   try {
     if (editingCommentId !== null) {
       await api.updateComment(post.postId, {
-        userId: api.getCurrentUserId(),
         commentId: editingCommentId,
         commentContent: content,
       });
     } else {
       await api.createComment(post.postId, {
-        userId: api.getCurrentUserId(),
         commentContent: content,
       });
     }
@@ -424,7 +457,6 @@ commentList.addEventListener("click", (event) => {
       onConfirm: async () => {
         try {
           await api.deleteComment(post.postId, {
-            userId: api.getCurrentUserId(),
             commentId,
           });
 

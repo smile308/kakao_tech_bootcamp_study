@@ -1,5 +1,6 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.user.*;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
+    private final JwtProvider jwtProvider;
 
     //회원가입
     public UserResponseDto createUser(UserRequestDto request){
@@ -39,34 +41,50 @@ public class UserService {
 
         return new UserResponseDto(savedUser);
     }
+
+    //내 회원정보 조회
+    @Transactional(readOnly = true)
+    public UserInfoResponseDto getMyInfo(String authorizationHeader){
+        User user = getLoginUser(authorizationHeader);
+        return new UserInfoResponseDto(user);
+    }
+
     //회원 탈퇴
-    public UserDeleteResponseDto deleteUser(UserDeleteRequestDto request){
+    public UserDeleteResponseDto deleteUser(String authorizationHeader){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        User user= userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        User user = getLoginUser(authorizationHeader);
         user.delete();
         return userDeleteResponseDto;
     }
     //회원 정보 수정
-    public UserPatchResponseDto patchUser(UserPatchRequestDto request){
+    public UserPatchResponseDto patchUser(String authorizationHeader, UserPatchRequestDto request){
+        User user = getLoginUser(authorizationHeader);
+
         //닉네임 중복 체크
-        if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(),request.getUserId())) {
+        if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(), user.getUserId())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
-        User user=userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
-        user.update(request.getNickname(),request.getProfileImage());
+
+        user.update(request.getNickname(), request.getProfileImage());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
     }
     //비밀번호 수정
-    public UserPasswordResponseDto setPassword(UserPasswordRequestDto request){
+    public UserPasswordResponseDto setPassword(String authorizationHeader, UserPasswordRequestDto request){
         //비밀번호 확인
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user=userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_User"));
+        User user = getLoginUser(authorizationHeader);
 
         user.setPassword(request.getPassword());
         return userPasswordResponseDto;
+    }
+
+    private User getLoginUser(String authorizationHeader) {
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
+        return userRepository.findByUserIdAndDeletedFalse(loginUserId)
+                .orElseThrow(() -> new DataNullException("No_User"));
     }
 }

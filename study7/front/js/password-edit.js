@@ -149,7 +149,6 @@ passwordEditForm.addEventListener("submit", async (event) => {
 
   try {
     await api.updatePassword({
-      userId: api.getCurrentUserId(),
       password: passwordInput.value,
       passwordCheck: passwordConfirmInput.value,
     });

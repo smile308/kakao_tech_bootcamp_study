@@ -22,6 +22,7 @@ public class PostViewResponseDto {
     private int replyCount;
     private int viewCount;
     private LocalDateTime createdAt;
+    private Long userId;
     private String userName;
     private String userProfileImage;
 
@@ -38,6 +39,7 @@ public class PostViewResponseDto {
         this.replyCount=post.getReplyCount();
         this.viewCount=post.getViewCount();
         this.createdAt=post.getCreatedAt();
+        this.userId=user.getUserId();
         this.userName=user.getNickname();
         this.userProfileImage=user.getProfileImage();
         this.comments=comments;

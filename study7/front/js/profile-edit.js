@@ -75,16 +75,6 @@ function setHeaderProfileImage(imageUrl) {
   headerProfileImage.src = imageUrl;
 }
 
-logoutButton.addEventListener("click", async () => {
-  try {
-    await api.logout();
-  } catch (error) {
-    console.error("로그아웃 실패:", error);
-  } finally {
-    window.location.href = "./login.html";
-  }
-});
-
 profileImageInput.addEventListener("change", async () => {
   const file = profileImageInput.files[0];
 

@@ -20,21 +20,32 @@ public class UserController {
         return userService.createUser(request);
     }
 
+    //내 회원정보 조회
+    @GetMapping("/me")
+    public UserInfoResponseDto getMyInfo(@RequestHeader("Authorization") String authorizationHeader){
+        return userService.getMyInfo(authorizationHeader);
+    }
+
     //회원 탈퇴
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public UserDeleteResponseDto deleteUser(@RequestBody UserDeleteRequestDto request){
-        return userService.deleteUser(request);
+    public UserDeleteResponseDto deleteUser(@RequestHeader("Authorization") String authorizationHeader){
+        return userService.deleteUser(authorizationHeader);
     }
     //회원정보 수정
     @PatchMapping
-    public UserPatchResponseDto patchUser(@Valid @RequestBody UserPatchRequestDto request){
-        return userService.patchUser(request);
+    public UserPatchResponseDto patchUser(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody UserPatchRequestDto request
+    ){
+        return userService.patchUser(authorizationHeader, request);
     }
     //비밀번호 수정
     @PatchMapping("/password")
-    public UserPasswordResponseDto setPassword(@Valid @RequestBody UserPasswordRequestDto request){
-        return userService.setPassword(request);
+    public UserPasswordResponseDto setPassword(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody UserPasswordRequestDto request
+    ){
+        return userService.setPassword(authorizationHeader, request);
     }
 }
-

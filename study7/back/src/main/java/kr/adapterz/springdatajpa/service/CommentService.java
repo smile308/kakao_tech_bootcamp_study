@@ -1,5 +1,6 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.comment.*;
 import kr.adapterz.springdatajpa.entity.Comment;
 import kr.adapterz.springdatajpa.entity.Post;
@@ -20,11 +21,12 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final JwtProvider jwtProvider;
 
     //댓글 등록
-    public CommentPostResponseDto commentPost(Long postId, CommentPostRequestDto request){
+    public CommentPostResponseDto commentPost(Long postId, String authorizationHeader, CommentPostRequestDto request){
         CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
-        User user = userRepository.findByUserIdAndDeletedFalse(request.getUserId()).orElseThrow(()->new DataNullException("No_Account"));
+        User user = getLoginUser(authorizationHeader);
         Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
                     user,
@@ -38,10 +40,16 @@ public class CommentService {
     }
 
     //댓글 수정
-    public CommentFixResponseDto commentFix(CommentFixRequestDto request){
+    public CommentFixResponseDto commentFix(Long postId, String authorizationHeader, CommentFixRequestDto request){
         CommentFixResponseDto commentFixResponseDto = new CommentFixResponseDto();
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Comment comment= commentRepository.findById(request.getCommentId()).orElseThrow(()-> new DataNullException("No_Comment"));
-        if(!(comment.getUser().getUserId()== request.getUserId()))
+
+        if (!comment.getPost().getPostId().equals(postId)) {
+            throw new DataNullException("No_Comment");
+        }
+
+        if(!comment.getUser().getUserId().equals(loginUserId))
         {
             throw new AuthException("No_Auth");
         }
@@ -51,13 +59,29 @@ public class CommentService {
     }
 
     //댓글 삭제
-    public CommentDeleteResponseDto commentDelete(Long postId, CommentDeleteRequestDto request){
+    public CommentDeleteResponseDto commentDelete(Long postId, String authorizationHeader, CommentDeleteRequestDto request){
         CommentDeleteResponseDto commentDeleteResponseDto = new CommentDeleteResponseDto();
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
-        commentRepository.findById(request.getCommentId()).orElseThrow(()->new DataNullException("No_Comment"));
-        commentRepository.deleteById(request.getCommentId());
+        Comment comment = commentRepository.findById(request.getCommentId()).orElseThrow(()->new DataNullException("No_Comment"));
+
+        if (!comment.getPost().getPostId().equals(postId)) {
+            throw new DataNullException("No_Comment");
+        }
+
+        if (!comment.getUser().getUserId().equals(loginUserId)) {
+            throw new AuthException("No_Auth");
+        }
+
+        commentRepository.delete(comment);
         //댓글 개수 감소
         post.deleteReply();
         return commentDeleteResponseDto;
+    }
+
+    private User getLoginUser(String authorizationHeader) {
+        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
+        return userRepository.findByUserIdAndDeletedFalse(loginUserId)
+                .orElseThrow(() -> new DataNullException("No_Account"));
     }
 }

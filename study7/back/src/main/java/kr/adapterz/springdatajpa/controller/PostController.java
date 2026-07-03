@@ -24,8 +24,11 @@ public class PostController {
     //게시글 추가
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public PostResponseDto createPost(@Valid @RequestBody PostRequestDto request){
-        return postService.createPost(request);
+    public PostResponseDto createPost(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody PostRequestDto request
+    ){
+        return postService.createPost(authorizationHeader, request);
     }
     //게시글 상세조회
     @GetMapping("/{postId}")
@@ -34,33 +37,49 @@ public class PostController {
     }
     //게시글 수정
     @PatchMapping("/{postId}")
-    public PostFixResponseDto fixPost(@PathVariable("postId") Long postId,@Valid @RequestBody PostFixRequestDto request){
-        return postService.fixPost(postId,request);
+    public PostFixResponseDto fixPost(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader,
+            @Valid @RequestBody PostFixRequestDto request
+    ){
+        return postService.fixPost(postId, authorizationHeader, request);
     }
     //게시글 삭제
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public PostDeleteResponseDto deletePost(@PathVariable("postId") Long postId,@RequestBody PostDeleteRequestDto request){
-        return postService.deletePost(postId,request);
+    public PostDeleteResponseDto deletePost(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        return postService.deletePost(postId, authorizationHeader);
     }
     //좋아요
     @PostMapping("/{postId}/likes")
     @ResponseStatus(HttpStatus.CREATED)
-    public LikeResponseDto likePost(@PathVariable("postId") Long postId,@RequestBody LikeRequestDto request){
-        return postService.likePost(postId,request);
+    public LikeResponseDto likePost(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        return postService.likePost(postId, authorizationHeader);
     }
 
     //좋아요 취소
     @DeleteMapping("/{postId}/likes")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public LikeCancelResponseDto cancelLike(@PathVariable("postId") Long postId, @RequestBody LikeCancelRequestDto request){
-        return postService.cancelLike(postId,request);
+    public LikeCancelResponseDto cancelLike(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        return postService.cancelLike(postId, authorizationHeader);
     }
 
     //게시글 신고
     @PostMapping("/{postId}/report")
     @ResponseStatus(HttpStatus.CREATED)
-    public ReportResponseDto reportPost(@PathVariable("postId") Long postId, @RequestBody ReportRequestDto request){
-        return postService.reportPost(postId,request);
+    public ReportResponseDto reportPost(
+            @PathVariable("postId") Long postId,
+            @RequestHeader("Authorization") String authorizationHeader
+    ){
+        return postService.reportPost(postId, authorizationHeader);
     }
 }

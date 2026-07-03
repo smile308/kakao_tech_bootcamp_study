@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class PostFixRequestDto {
-    private Long userId;
     @Size(max=26)
     private String title;
     private String contents;
