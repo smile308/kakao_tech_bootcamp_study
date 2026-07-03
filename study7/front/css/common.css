@@ -1,0 +1,126 @@
+@font-face {
+  font-family: "42dot Sans";
+  src: url("../assets/fonts/42dotSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "42dot Sans";
+  src: url("../assets/fonts/42dotSans-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+}
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #f4f5f7;
+  color: #000000;
+}
+
+.page-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 104px;
+  background: #f4f5f7;
+  border-bottom: 1px solid #000000;
+  z-index: 1000;
+}
+
+.header-profile {
+  position: absolute;
+  top: 36px;
+  left: 1196px;
+  width: 36px;
+  height: 36px;
+  z-index: 1100;
+}
+
+.header-profile__button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 50%;
+  background: #c4c4c4;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.header-profile__button.is-empty {
+  background: #c4c4c4;
+}
+
+.header-profile__button.is-empty .header-profile__image {
+  display: none;
+}
+
+.header-profile__image {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* 드롭다운 기본 상태: 숨김 */
+.profile-menu {
+  display: none;
+  position: absolute;
+  top: 36px;
+  left: -40px;
+  width: 115px;
+  z-index: 1200;
+}
+
+/* 클릭했을 때만 표시 */
+.profile-menu.is-open {
+  display: block;
+}
+
+.profile-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 115px;
+  height: 35px;
+  padding: 0;
+
+  border: none;
+  background: #d9d9d9;
+  text-decoration: none;
+  box-sizing: border-box;
+
+  font-family: Inter, sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 100%;
+  letter-spacing: 0;
+  text-align: center;
+  color: #000000;
+
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* hover 시 해당 칸만 색 변경 */
+.profile-menu__item:hover {
+  background: #e9e9e9;
+}
+
+.profile-menu__logout {
+  appearance: none;
+  -webkit-appearance: none;
+}

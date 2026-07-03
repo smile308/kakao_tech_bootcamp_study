@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>게시글 목록</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/posts.css" />
+</head>
+<body>
+  <div class="posts-page">
+    <header class="page-header">
+      <h1 class="page-header__title">아무 말 대잔치</h1>
+
+      <div class="header-profile">
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
+
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
+    </header>
+
+    <main class="posts-main">
+      <p class="posts-welcome">
+        안녕하세요,<br />
+        아무 말 대잔치 게시판 입니다.
+      </p>
+
+      <button type="button" id="writePostButton" class="write-post-button">
+        게시글 작성
+      </button>
+
+      <section id="postsList" class="posts-list"></section>
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/header-menu.js"></script>
+  <script src="../js/posts.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>게시글 수정</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/posts.css" />
+</head>
+<body>
+  <div class="post-edit-page">
+    <header class="page-header">
+      <button type="button" id="backButton" class="detail-back-button" aria-label="뒤로가기">
+        <span class="detail-back-button__icon"></span>
+      </button>
+
+      <h1 class="page-header__title">아무 말 대잔치</h1>
+
+      <div class="header-profile">
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
+
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
+    </header>
+
+    <main class="post-edit-main">
+      <h2 class="post-edit-title">게시글 수정</h2>
+
+      <form id="postEditForm" class="post-edit-form" novalidate>
+        <label for="postTitleInput" class="post-edit-label post-edit-label--title">
+          제목*
+        </label>
+
+        <div class="post-edit-line post-edit-line--title-top"></div>
+
+        <input
+          type="text"
+          id="postTitleInput"
+          class="post-title-input"
+          value="제목 1"
+          maxlength="26"
+        />
+
+        <div class="post-edit-line post-edit-line--title-bottom"></div>
+
+        <label for="postContentInput" class="post-edit-label post-edit-label--content">
+          내용*
+        </label>
+
+        <div class="post-edit-line post-edit-line--content-top"></div>
+
+        <textarea id="postContentInput" class="post-content-input"></textarea>
+
+        <div class="post-edit-line post-edit-line--content-bottom"></div>
+
+        <p id="postEditHelper" class="post-edit-helper"></p>
+
+        <label class="post-edit-label post-edit-label--image">
+          이미지
+        </label>
+
+        <div class="post-image-file-area">
+          <label for="postImageInput" class="post-image-file-button">
+            파일 선택
+          </label>
+
+          <span id="selectedFileName" class="post-image-file-name">
+            기존 파일 명
+          </span>
+
+          <input
+            type="file"
+            id="postImageInput"
+            class="post-image-input"
+            accept="image/*"
+          />
+        </div>
+
+        <button id="postEditSubmitButton" type="submit" class="post-edit-submit-button">
+          수정하기
+        </button>
+      </form>
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/post-edit.js"></script>
+</body>
+</html>

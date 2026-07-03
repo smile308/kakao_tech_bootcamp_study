@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>게시글 상세조회</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/posts.css" />
+</head>
+<body>
+  <div class="post-detail-page">
+    <header class="page-header">
+      <button type="button" id="backButton" class="detail-back-button" aria-label="뒤로가기">
+        <span class="detail-back-button__icon"></span>
+      </button>
+
+      <h1 class="page-header__title">아무 말 대잔치</h1>
+
+      <div class="header-profile">
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
+
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
+    </header>
+
+    <main class="post-detail-main">
+      <h2 id="postTitle" class="detail-post-title"></h2>
+
+      <section class="detail-author-area">
+        <div id="authorImageBox" class="detail-author-image-box is-empty">
+          <img id="authorImage" class="detail-author-image" alt="작성자 프로필 이미지" />
+        </div>
+
+        <p id="authorNickname" class="detail-author-name"></p>
+        <p id="postCreatedAt" class="detail-created-at"></p>
+      </section>
+
+      <section class="detail-post-actions">
+        <button type="button" id="postEditButton" class="detail-small-button">수정</button>
+        <button type="button" id="postDeleteButton" class="detail-small-button">삭제</button>
+      </section>
+
+      <div class="detail-divider detail-divider--top"></div>
+
+      <section id="postImageBox" class="detail-post-image-box">
+        <img id="postImage" class="detail-post-image" alt="게시글 이미지" />
+      </section>
+
+      <p id="postContent" class="detail-post-content">
+      </p>
+
+      <section class="detail-stats">
+  <button type="button" id="likeButton" class="detail-stat-card detail-stat-card--likes">
+    <strong id="likeCount" class="detail-stat-number"></strong>
+    <span class="detail-stat-label">좋아요수</span>
+  </button>
+
+  <div class="detail-stat-card detail-stat-card--views">
+    <strong id="viewCount" class="detail-stat-number"></strong>
+    <span class="detail-stat-label">조회수</span>
+  </div>
+
+  <div class="detail-stat-card detail-stat-card--comments">
+    <strong id="commentCount" class="detail-stat-number"></strong>
+    <span class="detail-stat-label">댓글</span>
+  </div>
+</section>
+
+      <div class="detail-divider detail-divider--comment-top"></div>
+
+      <form id="commentForm" class="comment-form" novalidate>
+        <textarea
+          id="commentInput"
+          class="comment-input"
+          placeholder="댓글을 남겨주세요!"
+        ></textarea>
+
+        <div class="comment-form-divider"></div>
+
+        <button id="commentSubmitButton" type="submit" class="comment-submit-button" disabled>
+          댓글 등록
+        </button>
+      </form>
+
+      <section id="commentList" class="comment-list"></section>
+    </main>
+    <div id="modalOverlay" class="modal-overlay is-hidden" aria-hidden="true">
+  <section class="confirm-modal" role="dialog" aria-modal="true">
+    <h2 id="modalTitle" class="confirm-modal__title">게시글을 삭제하겠습니까?</h2>
+    <p id="modalDescription" class="confirm-modal__description">
+      삭제한 내용은 복구 할 수 없습니다.
+    </p>
+
+    <div class="confirm-modal__actions">
+      <button type="button" id="modalCancelButton" class="confirm-modal__button confirm-modal__button--cancel">
+        취소
+      </button>
+      <button type="button" id="modalConfirmButton" class="confirm-modal__button confirm-modal__button--confirm">
+        확인
+      </button>
+    </div>
+  </section>
+</div>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/header-menu.js"></script>
+  <script src="../js/post-detail.js"></script>
+</body>
+</html>
