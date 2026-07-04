@@ -79,12 +79,25 @@ async function request(endpoint, options = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(
-      typeof data === "string"
-        ? data
-        : data?.message || JSON.stringify(data)
-    );
+  const errorMessage =
+    typeof data === "string"
+      ? data
+      : data?.message || JSON.stringify(data);
+
+  if (response.status === 401 || response.status === 403) {
+    const currentPage = window.location.pathname.split("/").pop();
+    const isPublicPage = currentPage === "login.html" || currentPage === "signup.html";
+
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("userId");
+
+    if (!isPublicPage) {
+      window.location.replace("./login.html");
+    }
   }
+
+  throw new Error(errorMessage);
+}
 
   return data;
 }
@@ -93,9 +106,9 @@ window.api = {
   getCurrentUserId,
   getAccessSession,
 
-  getUser(userId = getCurrentUserId()) {
-    return request(`/users/${userId}`);
-  },
+  getUser() {
+  return request("/users/me");
+},
 
   login({ email, password }) {
     return request("/sessions", {

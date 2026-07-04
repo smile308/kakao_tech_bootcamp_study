@@ -10,6 +10,8 @@ const postCreateSubmitButton = document.querySelector("#postCreateSubmitButton")
 const MAX_TITLE_LENGTH = 26;
 const EMPTY_MESSAGE = "*제목,내용을 모두 작성해주세요";
 
+const { fileToDataUrl } = window.utils;
+
 let selectedImageFile = null;
 
 function isPostCreateFormValid() {
@@ -105,20 +107,6 @@ backButton.addEventListener("click", () => {
   window.location.href = "./posts.html";
 });
 
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
 
-    reader.onload = () => {
-      resolve(reader.result);
-    };
-
-    reader.onerror = () => {
-      reject(reader.error);
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
 
 updateSubmitButtonState();

@@ -22,6 +22,8 @@ let selectedProfileImageDataUrl = null;
 let currentProfileImage = null;
 let toastTimer = null;
 
+const { fileToDataUrl } = window.utils;
+
 function validateNickname() {
   const nickname = nicknameInput.value.trim();
 
@@ -147,22 +149,6 @@ const emailText =
   document.querySelector("#profileEmail") ||
   document.querySelector(".profile-email-text");
 
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      resolve(reader.result);
-    };
-
-    reader.onerror = () => {
-      reject(reader.error);
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
 
 async function loadUserInfo() {
   try {

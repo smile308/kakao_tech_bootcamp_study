@@ -11,6 +11,8 @@ const MAX_TITLE_LENGTH = 26;
 const urlParams = new URLSearchParams(window.location.search);
 const postId = urlParams.get("postId");
 
+const { fileToDataUrl } = window.utils;
+
 if (!postId) {
   alert("게시글 정보를 찾을 수 없습니다.");
   window.location.href = "./posts.html";
@@ -64,22 +66,6 @@ async function loadPost() {
     console.error("게시글 조회 실패:", error);
     postEditHelper.textContent = "*게시글 정보를 불러오지 못했습니다.";
   }
-}
-
-function fileToDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      resolve(reader.result);
-    };
-
-    reader.onerror = () => {
-      reject(reader.error);
-    };
-
-    reader.readAsDataURL(file);
-  });
 }
 
 postTitleInput.addEventListener("input", () => {

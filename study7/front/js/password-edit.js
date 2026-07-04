@@ -14,23 +14,7 @@ const PASSWORD_NOT_MATCH_MESSAGE = "*비밀번호가 다릅니다.";
 
 let toastTimer = null;
 
-function isValidPassword(password) {
-  const hasValidLength = password.length >= 8 && password.length <= 20;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(
-    password
-  );
-
-  return (
-    hasValidLength &&
-    hasUpperCase &&
-    hasLowerCase &&
-    hasNumber &&
-    hasSpecialCharacter
-  );
-}
+const { isValidPassword } = window.utils;
 
 function validatePassword() {
   const password = passwordInput.value;

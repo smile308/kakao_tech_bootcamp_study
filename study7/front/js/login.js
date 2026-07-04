@@ -13,28 +13,7 @@ const PASSWORD_INVALID_MESSAGE =
   "*비밀번호는 8자 이상, 20자 이하이며, 대문자, 소문자, 숫자, 특수문자를 각각 최소 1개 포함해야 합니다.";
 const LOGIN_FAIL_MESSAGE = "*아이디 또는 비밀번호를 확인해주세요";
 
-function isValidEmail(email) {
-  const emailRegex = /^[A-Za-z]+@[A-Za-z]+(\.[A-Za-z]+)+$/;
-  return emailRegex.test(email);
-}
-
-function isValidPassword(password) {
-  const hasValidLength = password.length >= 8 && password.length <= 20;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(
-    password
-  );
-
-  return (
-    hasValidLength &&
-    hasUpperCase &&
-    hasLowerCase &&
-    hasNumber &&
-    hasSpecialCharacter
-  );
-}
+const { isValidEmail, isValidPassword } = window.utils;
 
 function getValidationError(email, password) {
   if (!email) {

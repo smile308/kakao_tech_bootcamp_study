@@ -38,28 +38,8 @@ const NICKNAME_SPACE_MESSAGE = "*띄어쓰기를 없애주세요";
 const NICKNAME_LENGTH_MESSAGE = "*닉네임은 최대 10자 까지 작성 가능합니다.";
 const NICKNAME_DUPLICATED_MESSAGE = "*중복된 닉네임 입니다.";
 
-function isValidEmail(email) {
-  const emailRegex = /^[A-Za-z]+@[A-Za-z]+(\.[A-Za-z]+)+$/;
-  return emailRegex.test(email);
-}
+const { isValidEmail, isValidPassword } = window.utils;
 
-function isValidPassword(password) {
-  const hasValidLength = password.length >= 8 && password.length <= 20;
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
-  const hasSpecialCharacter = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/.test(
-    password
-  );
-
-  return (
-    hasValidLength &&
-    hasUpperCase &&
-    hasLowerCase &&
-    hasNumber &&
-    hasSpecialCharacter
-  );
-}
 
 function hasWhiteSpace(value) {
   return /\s/.test(value);
