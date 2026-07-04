@@ -26,6 +26,7 @@ function normalizePostForEdit(post) {
     title: post.postTitle ?? "",
     content: post.postContent ?? "",
     imageFileName: post.imageFile ?? null,
+    imageFiles: post.imageFiles ?? (post.imageFile ? [post.imageFile] : []),
   };
 }
 
@@ -119,11 +120,15 @@ postEditForm.addEventListener("submit", async (event) => {
     const imageFile = selectedNewImageFile
       ? await fileToDataUrl(selectedNewImageFile)
       : originalPost.imageFileName;
+    const imageFiles = selectedNewImageFile
+      ? [imageFile]
+      : originalPost.imageFiles;
 
     await api.updatePost(postId, {
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
       imageFile,
+      imageFiles,
     });
 
     window.location.href = `./post-detail.html?postId=${postId}`;

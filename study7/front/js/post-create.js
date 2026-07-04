@@ -85,11 +85,13 @@ postCreateForm.addEventListener("submit", async (event) => {
     const imageFile = selectedImageFile
       ? await fileToDataUrl(selectedImageFile)
       : null;
+    const imageFiles = imageFile ? [imageFile] : [];
 
     await api.createPost({
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
       imageFile,
+      imageFiles,
     });
 
     window.location.href = "./posts.html";

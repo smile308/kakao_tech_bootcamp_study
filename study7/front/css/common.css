@@ -1,8 +1,3 @@
-
-[hidden] {
-  display: none !important;
-}
-
 @font-face {
   font-family: "42dot Sans";
   src: url("../assets/fonts/42dotSans-Regular.ttf") format("truetype");

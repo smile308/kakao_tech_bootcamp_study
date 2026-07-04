@@ -3,7 +3,6 @@ const CURRENT_USER_ID = api.getCurrentUserId();
 const backButton = document.querySelector("#backButton");
 const postEditButton = document.querySelector("#postEditButton");
 const postDeleteButton = document.querySelector("#postDeleteButton");
-const postActions = document.querySelector(".detail-post-actions");
 
 const postTitle = document.querySelector("#postTitle");
 const authorImageBox = document.querySelector("#authorImageBox");
@@ -43,26 +42,8 @@ let comments = [];
 let modalConfirmHandler = null;
 let editingCommentId = null;
 
-function setPostActionVisibility(isVisible) {
-  const displayValue = isVisible ? "" : "none";
-
-  if (postActions) {
-    postActions.hidden = !isVisible;
-    postActions.style.display = displayValue;
-  }
-
-  if (postEditButton) {
-    postEditButton.hidden = !isVisible;
-    postEditButton.style.display = displayValue;
-  }
-
-  if (postDeleteButton) {
-    postDeleteButton.hidden = !isVisible;
-    postDeleteButton.style.display = displayValue;
-  }
-}
-
-setPostActionVisibility(false);
+postEditButton.hidden = true;
+postDeleteButton.hidden = true;
 
 function isCurrentUserPost() {
   return Number(post?.authorId) === Number(CURRENT_USER_ID);
@@ -108,6 +89,7 @@ function normalizePostForDetail(rawPost) {
     authorProfileImage: rawPost.userProfileImage ?? null,
     createdAt: rawPost.createdAt ?? new Date().toISOString(),
     imageUrl: rawPost.imageFile ?? null,
+    imageUrls: rawPost.imageFiles ?? [],
     content: rawPost.postContent ?? "",
     likeCount: rawPost.likeCount ?? 0,
     viewCount: rawPost.viewCount ?? 0,
@@ -154,7 +136,8 @@ function renderPost() {
   postContent.textContent = post.content;
 
   const isMyPost = isCurrentUserPost();
-  setPostActionVisibility(isMyPost);
+  postEditButton.hidden = !isMyPost;
+  postDeleteButton.hidden = !isMyPost;
 
   likeCount.textContent = formatCount(post.likeCount);
   viewCount.textContent = formatCount(post.viewCount);
@@ -168,12 +151,16 @@ function renderPost() {
 
   setImage(authorImageBox, authorImage, post.authorProfileImage);
 
-  if (!post.imageUrl) {
+  const firstImageUrl = post.imageUrls.length > 0
+    ? post.imageUrls[0]
+    : post.imageUrl;
+
+  if (!firstImageUrl) {
     postImageBox.classList.add("is-hidden");
     postImage.removeAttribute("src");
   } else {
     postImageBox.classList.remove("is-hidden");
-    postImage.src = post.imageUrl;
+    postImage.src = firstImageUrl;
   }
 }
 
@@ -301,7 +288,8 @@ async function loadPostDetail() {
     postCreatedAt.textContent = "";
     postContent.textContent =
       "백엔드 서버 실행 여부, 게시글 ID, 콘솔의 상세조회 응답을 확인하세요.";
-    setPostActionVisibility(false);
+    postEditButton.hidden = true;
+    postDeleteButton.hidden = true;
 
     comments = [];
     renderComments();

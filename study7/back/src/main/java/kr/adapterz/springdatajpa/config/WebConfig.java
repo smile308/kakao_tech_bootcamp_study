@@ -1,4 +1,4 @@
-package kr.adapterz.springdatajpa;
+package kr.adapterz.springdatajpa.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

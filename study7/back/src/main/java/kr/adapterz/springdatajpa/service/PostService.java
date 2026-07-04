@@ -56,9 +56,9 @@ public class PostService {
         Post post = new Post(
                 user,
                 request.getTitle(),
-                request.getContents(),
-                request.getImageFile()
+                request.getContents()
         );
+        post.replaceImages(request.getPostImageFiles());
         postRepository.save(post);
 
         return postResponseDto;
@@ -100,7 +100,7 @@ public class PostService {
         post.update(
                 request.getTitle(),
                 request.getContents(),
-                request.getImageFile()
+                request.getPostImageFiles()
         );
         return postFixResponseDto;
     }

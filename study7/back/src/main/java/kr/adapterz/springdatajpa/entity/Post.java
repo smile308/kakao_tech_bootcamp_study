@@ -1,6 +1,8 @@
 package kr.adapterz.springdatajpa.entity;
 
 import java.time.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -28,9 +30,11 @@ public class Post {
 
     @Column(name = "post_content", nullable = false)
     private String postContent;
-    @Lob
-    @Column(name = "image_file", columnDefinition = "TEXT")
-    private String imageFile;
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("imageOrder ASC")
+    private List<PostImage> postImages = new ArrayList<>();
+
     @Column(name = "is_fixed", nullable = false)
     private boolean isFixed;
 
@@ -55,18 +59,8 @@ public class Post {
     //초기값 설정
     public Post(User user, String postTitle, String postContent, String imageFile)
     {
-        this.user=user;
-        this.postTitle=postTitle;
-        this.postContent=postContent;
-        this.imageFile=imageFile;
-
-        isFixed=false;
-        reportCount=0;
-        likeCount=0;
-        replyCount=0;
-        viewCount=0;
-        createdAt = LocalDateTime.now();
-        deleted=false;
+        this(user, postTitle, postContent);
+        replaceImages(imageFile);
     }
 
     //이미지가 없는 경우
@@ -75,7 +69,6 @@ public class Post {
         this.user=user;
         this.postTitle=postTitle;
         this.postContent=postContent;
-        this.imageFile=null;
 
         isFixed=false;
         reportCount=0;
@@ -91,8 +84,61 @@ public class Post {
     public void update(String title, String contents, String imageFile) {
         this.postTitle = title;
         this.postContent = contents;
-        this.imageFile = imageFile;
+        replaceImages(imageFile);
         isFixed=true;
+    }
+
+    //게시물 수정
+    public void update(String title, String contents, List<String> imageFiles) {
+        this.postTitle = title;
+        this.postContent = contents;
+        replaceImages(imageFiles);
+        isFixed=true;
+    }
+
+    //기존 imageFile 이름을 유지하기 위한 대표 이미지 조회
+    public String getImageFile() {
+        if (postImages == null || postImages.isEmpty()) {
+            return null;
+        }
+
+        return postImages.get(0).getImageFile();
+    }
+
+    //이미지 1개 교체
+    public void replaceImages(String imageFile) {
+        postImages.clear();
+
+        if (imageFile == null || imageFile.isBlank()) {
+            return;
+        }
+
+        addImage(imageFile, 0);
+    }
+
+    //이미지 여러 개 교체
+    public void replaceImages(List<String> imageFiles) {
+        postImages.clear();
+
+        if (imageFiles == null) {
+            return;
+        }
+
+        for (int i = 0; i < imageFiles.size(); i++) {
+            String imageFile = imageFiles.get(i);
+
+            if (imageFile == null || imageFile.isBlank()) {
+                continue;
+            }
+
+            addImage(imageFile, i);
+        }
+    }
+
+    //이미지 추가
+    public void addImage(String imageFile, int imageOrder) {
+        PostImage postImage = new PostImage(this, imageFile, imageOrder);
+        postImages.add(postImage);
     }
 
     //신고 기능
