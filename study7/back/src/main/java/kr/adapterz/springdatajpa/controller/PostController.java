@@ -75,14 +75,4 @@ public class PostController {
     ){
         return postService.cancelLike(postId, authorizationHeader);
     }
-
-    //게시글 신고
-    @PostMapping("/{postId}/report")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ReportResponseDto reportPost(
-            @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader
-    ){
-        return postService.reportPost(postId, authorizationHeader);
-    }
 }

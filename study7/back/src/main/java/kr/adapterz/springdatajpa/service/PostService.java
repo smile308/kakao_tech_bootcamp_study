@@ -153,16 +153,6 @@ public class PostService {
         return new LikeCancelResponseDto(post.getLikeCount());
     }
 
-    //게시글 신고
-    @Transactional
-    public ReportResponseDto reportPost (Long postId, String authorizationHeader){
-        getLoginUser(authorizationHeader);
-        Post post = getActivePost(postId);
-
-        post.report();
-        ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReportCount());
-        return reportResponseDto;
-    }
 
     private User getLoginUser(String authorizationHeader) {
         Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);

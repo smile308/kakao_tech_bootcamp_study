@@ -38,9 +38,6 @@ public class Post {
     @Column(name = "is_fixed", nullable = false)
     private boolean isFixed;
 
-    @Column(name ="report_count", nullable = false)
-    private int reportCount;
-
     @Column(name ="like_count", nullable = false)
     private int likeCount;
 
@@ -71,7 +68,6 @@ public class Post {
         this.postContent=postContent;
 
         isFixed=false;
-        reportCount=0;
         likeCount=0;
         replyCount=0;
         viewCount=0;
@@ -141,10 +137,6 @@ public class Post {
         postImages.add(postImage);
     }
 
-    //신고 기능
-    public void report(){
-        reportCount++;
-    }
     //댓글 추가
     public void addReply(){
         replyCount++;

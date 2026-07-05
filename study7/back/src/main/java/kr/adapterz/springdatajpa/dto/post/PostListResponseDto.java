@@ -21,7 +21,6 @@ public class PostListResponseDto {
     private String userProfileImage;
     public PostListResponseDto(Post post, User user){
         this.postId=post.getPostId();
-        this.reportCount=post.getReportCount();
         this.title=post.getPostTitle();
         this.likeCount=post.getLikeCount();
         this.replyCount=post.getReplyCount();

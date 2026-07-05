@@ -39,7 +39,6 @@ public class PostViewResponseDto {
         this.imageFile=post.getImageFile();
         this.imageFiles=getImageFiles(post);
         this.likeCount=post.getLikeCount();
-        this.reportCount=post.getReportCount();
         this.replyCount=post.getReplyCount();
         this.viewCount=post.getViewCount();
         this.createdAt=post.getCreatedAt();
