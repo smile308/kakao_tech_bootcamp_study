@@ -45,10 +45,10 @@ public class PostService {
         List<PostListResponseDto> result = new ArrayList<>();
 
         for (Post post : posts.getContent()) {
-            result.add(new PostListResponseDto(post, post.getUser()));
+            result.add(PostResponseFactory.createListResponse(post));
         }
 
-        return new PostPageResponseDto(result, posts.hasNext());
+        return PostResponseFactory.createPageResponse(result, posts.hasNext());
     }
 
     // 게시물 추가
