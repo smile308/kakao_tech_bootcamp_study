@@ -3,6 +3,9 @@ package kr.adapterz.springdatajpa.entity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
@@ -79,6 +82,65 @@ class PostTest {
                 () -> assertThat(post.getLikeCount()).isZero(),
                 () -> assertThat(post.getViewCount()).isEqualTo(1),
                 () -> assertThat(post.isDeleted()).isTrue()
+        );
+    }
+
+    @Test
+    @DisplayName("이미지를 null이나 공백으로 교체하면 이미지 목록이 비워진다")
+    void replaceImagesWithNullOrBlank() {
+        Post post = new Post(createUser(), "title", "content", "old.png");
+
+        post.replaceImages((String) null);
+
+        assertThat(post.getPostImages()).isEmpty();
+        assertThat(post.getImageFile()).isNull();
+
+        post.replaceImages("   ");
+
+        assertThat(post.getPostImages()).isEmpty();
+        assertThat(post.getImageFile()).isNull();
+    }
+
+    @Test
+    @DisplayName("여러 이미지 교체 시 null과 공백 이미지는 제외된다")
+    void replaceImagesWithListSkipsNullAndBlank() {
+        Post post = new Post(createUser(), "title", "content", "old.png");
+
+        post.replaceImages(Arrays.asList("first.png", null, " ", "second.png"));
+
+        assertAll(
+                () -> assertThat(post.getPostImages()).hasSize(2),
+                () -> assertThat(post.getPostImages().get(0).getImageFile()).isEqualTo("first.png"),
+                () -> assertThat(post.getPostImages().get(0).getImageOrder()).isZero(),
+                () -> assertThat(post.getPostImages().get(1).getImageFile()).isEqualTo("second.png"),
+                () -> assertThat(post.getPostImages().get(1).getImageOrder()).isEqualTo(3),
+                () -> assertThat(post.getImageFile()).isEqualTo("first.png")
+        );
+    }
+
+    @Test
+    @DisplayName("여러 이미지 교체 시 이미지 목록이 null이면 목록이 비워진다")
+    void replaceImagesWithNullList() {
+        Post post = new Post(createUser(), "title", "content", "old.png");
+
+        post.replaceImages((List<String>) null);
+
+        assertThat(post.getPostImages()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("여러 이미지로 게시글을 수정하면 제목과 내용, 이미지 목록이 변경된다")
+    void updatePostWithImageList() {
+        Post post = new Post(createUser(), "old", "old content", "old.png");
+
+        post.update("new", "new content", List.of("first.png", "second.png"));
+
+        assertAll(
+                () -> assertThat(post.getPostTitle()).isEqualTo("new"),
+                () -> assertThat(post.getPostContent()).isEqualTo("new content"),
+                () -> assertThat(post.getPostImages()).hasSize(2),
+                () -> assertThat(post.getImageFile()).isEqualTo("first.png"),
+                () -> assertThat(post.isFixed()).isTrue()
         );
     }
 }

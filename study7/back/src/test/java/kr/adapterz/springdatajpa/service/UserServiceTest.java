@@ -1,9 +1,11 @@
 package kr.adapterz.springdatajpa.service;
 
 import kr.adapterz.springdatajpa.auth.JwtProvider;
+import kr.adapterz.springdatajpa.dto.user.UserPasswordRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserPatchRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserRequestDto;
 import kr.adapterz.springdatajpa.entity.User;
+import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -220,6 +222,64 @@ class UserServiceTest {
         org.assertj.core.api.Assertions.assertThat(loginUser.getProfileImage()).isEqualTo("new-profile.png");
     }
 
+    @Test
+    @DisplayName("내 정보 조회 시 로그인 유저가 없으면 No_User 예외가 발생한다")
+    void getMyInfoFailByNoUser() {
+        // given
+        String authorizationHeader = "Bearer token";
+        Long loginUserId = 1L;
+
+        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
+                .thenReturn(loginUserId);
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> userService.getMyInfo(authorizationHeader))
+                .isInstanceOf(DataNullException.class)
+                .hasMessage("No_User");
+
+        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
+        verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+    }
+
+    @Test
+    @DisplayName("비밀번호 수정 시 비밀번호 확인이 다르면 Invalid_Password 예외가 발생한다")
+    void setPasswordFailByPasswordMismatch() {
+        // given
+        String authorizationHeader = "Bearer token";
+        UserPasswordRequestDto request = createUserPasswordRequest("Password1!", "WrongPassword1!");
+
+        // when & then
+        assertThatThrownBy(() -> userService.setPassword(authorizationHeader, request))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Invalid_Password");
+
+        verify(jwtProvider, never()).getUserIdFromAuthorizationHeader(anyString());
+        verify(userRepository, never()).findByUserIdAndDeletedFalse(anyLong());
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 시 로그인 유저가 없으면 No_User 예외가 발생한다")
+    void deleteUserFailByNoUser() {
+        // given
+        String authorizationHeader = "Bearer token";
+        Long loginUserId = 1L;
+
+        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
+                .thenReturn(loginUserId);
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> userService.deleteUser(authorizationHeader))
+                .isInstanceOf(DataNullException.class)
+                .hasMessage("No_User");
+
+        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
+        verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+    }
+
     private UserRequestDto createUserRequest(
             String email,
             String password,
@@ -246,6 +306,18 @@ class UserServiceTest {
 
         ReflectionTestUtils.setField(request, "nickname", nickname);
         ReflectionTestUtils.setField(request, "profileImage", profileImage);
+
+        return request;
+    }
+
+    private UserPasswordRequestDto createUserPasswordRequest(
+            String password,
+            String passwordCheck
+    ) {
+        UserPasswordRequestDto request = new UserPasswordRequestDto();
+
+        ReflectionTestUtils.setField(request, "password", password);
+        ReflectionTestUtils.setField(request, "passwordCheck", passwordCheck);
 
         return request;
     }
