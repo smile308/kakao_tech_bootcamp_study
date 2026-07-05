@@ -14,6 +14,10 @@ java {
 	}
 }
 
+configurations {
+	mockitoAgent
+}
+
 repositories {
 	mavenCentral()
 }
@@ -33,8 +37,20 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation 'org.mockito:mockito-core'
+	mockitoAgent('org.mockito:mockito-core') {
+		transitive = false
+	}
 }
 
-tasks.named('test') {
+tasks.withType(Test).configureEach {
 	useJUnitPlatform()
+	jvmArgs(
+			"-javaagent:${configurations.mockitoAgent.asPath}",
+			"-Xshare:off"
+	)
+	testLogging {
+		events "passed", "skipped", "failed"
+		exceptionFormat "full"
+	}
 }

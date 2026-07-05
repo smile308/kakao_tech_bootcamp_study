@@ -51,7 +51,7 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        
+
                         .requestMatchers(HttpMethod.POST, "/users").permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/sessions").permitAll()
