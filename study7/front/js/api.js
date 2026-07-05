@@ -155,18 +155,16 @@ window.api = {
   },
 
 async getPosts({ page = 0, size = 10 } = {}) {
-  const result = await request("/posts");
+  const params = new URLSearchParams({
+    page: String(page),
+    size: String(size),
+  });
 
-  const posts = filterDeletedPosts(
-    Array.isArray(result) ? result : result?.posts || []
-  );
-
-  const startIndex = page * size;
-  const endIndex = startIndex + size;
+  const result = await request(`/posts?${params.toString()}`);
 
   return {
-    posts: posts.slice(startIndex, endIndex),
-    hasNextPage: endIndex < posts.length,
+    posts: result?.posts || [],
+    hasNextPage: Boolean(result?.hasNextPage),
   };
 },
 

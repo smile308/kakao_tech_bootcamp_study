@@ -17,6 +17,9 @@ import kr.adapterz.springdatajpa.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,18 +37,18 @@ public class PostService {
     private final JwtProvider jwtProvider;
 
     //게시물 목록 조회
-    public List<PostListResponseDto> getPostList() {
-        List<Post> posts = postRepository.findAllByOrderByPostIdDesc();
+    public PostPageResponseDto getPostList(int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Post> posts = postRepository.findByDeletedFalseOrderByPostIdDesc(pageable);
+
         List<PostListResponseDto> result = new ArrayList<>();
 
-        //각 게시물의 userId로 작성자 정보 붙이기
-        for (Post post : posts) {
-            PostListResponseDto dto = new PostListResponseDto(post, post.getUser());
-
-            result.add(dto);
+        for (Post post : posts.getContent()) {
+            result.add(new PostListResponseDto(post, post.getUser()));
         }
 
-        return result;
+        return new PostPageResponseDto(result, posts.hasNext());
     }
 
     // 게시물 추가
@@ -67,8 +70,7 @@ public class PostService {
     //게시물
     @Transactional
     public PostViewResponseDto getPostView(Long postId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         List<Comment> comments = commentRepository.findByPostWithUser(post);
         List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
@@ -90,8 +92,7 @@ public class PostService {
     public PostFixResponseDto fixPost(Long postId, String authorizationHeader, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
         Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
-        Post post = postRepository.findById(postId)
-                .orElseThrow(()->new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         //실제 작성자가 맞는지 확인
         if (!post.getUser().getUserId().equals(loginUserId)) {
@@ -109,7 +110,7 @@ public class PostService {
     public PostDeleteResponseDto deletePost(Long postId, String authorizationHeader){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
         Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
-        Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
         if(!post.getUser().getUserId().equals(loginUserId)) {
@@ -122,8 +123,7 @@ public class PostService {
     //게시물 좋아요
     @Transactional
     public LikeResponseDto likePost(Long postId, String authorizationHeader) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         User user = getLoginUser(authorizationHeader);
 
@@ -140,8 +140,7 @@ public class PostService {
     //좋아요 취소
     @Transactional
     public LikeCancelResponseDto cancelLike(Long postId, String authorizationHeader) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         User user = getLoginUser(authorizationHeader);
 
@@ -158,7 +157,7 @@ public class PostService {
     @Transactional
     public ReportResponseDto reportPost (Long postId, String authorizationHeader){
         getLoginUser(authorizationHeader);
-        Post post = postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
+        Post post = getActivePost(postId);
 
         post.report();
         ReportResponseDto reportResponseDto = new ReportResponseDto(post.getReportCount());
@@ -169,5 +168,10 @@ public class PostService {
         Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         return userRepository.findByUserIdAndDeletedFalse(loginUserId)
                 .orElseThrow(() -> new AuthException("No_User"));
+    }
+
+    private Post getActivePost(Long postId) {
+        return postRepository.findByPostIdAndDeletedFalse(postId)
+                .orElseThrow(() -> new DataNullException("No_Post"));
     }
 }

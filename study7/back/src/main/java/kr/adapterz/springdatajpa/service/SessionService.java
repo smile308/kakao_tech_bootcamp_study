@@ -28,7 +28,7 @@ public class SessionService {
         return new SessionResponseDto(accessToken, user.getUserId());
     }
 
-    //JWT 방식에서는 서버 세션을 삭제하지 않고, 클라이언트 저장 토큰을 제거한다.
+
     public SessionDeleteResponseDto deleteSession(String authorizationHeader){
         jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         return new SessionDeleteResponseDto();

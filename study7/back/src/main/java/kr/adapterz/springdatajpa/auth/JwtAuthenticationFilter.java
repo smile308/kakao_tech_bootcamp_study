@@ -29,8 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         return method.equals("OPTIONS")
                 || method.equals("POST") && path.equals("/users")
-                || method.equals("POST") && path.equals("/sessions")
-                || path.startsWith("/h2-console");
+                || method.equals("POST") && path.equals("/sessions");
     }
 
     @Override
@@ -59,10 +58,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             null,
                             userDetails.getAuthorities()
                     );
-
-            authentication.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-            );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 

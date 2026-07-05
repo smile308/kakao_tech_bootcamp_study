@@ -18,8 +18,11 @@ public class PostController {
 
     //게시글 목록 조회
     @GetMapping
-    public List<PostListResponseDto> getPostList(){
-        return postService.getPostList();
+    public PostPageResponseDto getPostList(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return postService.getPostList(page, size);
     }
     //게시글 추가
     @PostMapping

@@ -492,6 +492,11 @@
   gap: 8px;
 }
 
+.detail-post-actions.is-hidden,
+.detail-small-button.is-hidden {
+  display: none;
+}
+
 .detail-small-button {
   width: 50px;
   height: 27px;

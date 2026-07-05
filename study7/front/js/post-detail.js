@@ -28,6 +28,11 @@ const modalTitle = document.querySelector("#modalTitle");
 const modalDescription = document.querySelector("#modalDescription");
 const modalCancelButton = document.querySelector("#modalCancelButton");
 const modalConfirmButton = document.querySelector("#modalConfirmButton");
+const postActions = document.querySelector(".detail-post-actions");
+
+
+
+
 
 const urlParams = new URLSearchParams(window.location.search);
 const postId = urlParams.get("postId");
@@ -41,9 +46,13 @@ let post = null;
 let comments = [];
 let modalConfirmHandler = null;
 let editingCommentId = null;
+setPostActionsVisible(false);
 
-postEditButton.hidden = true;
-postDeleteButton.hidden = true;
+function setPostActionsVisible(isVisible) {
+  postActions.classList.toggle("is-hidden", !isVisible);
+  postEditButton.classList.toggle("is-hidden", !isVisible);
+  postDeleteButton.classList.toggle("is-hidden", !isVisible);
+}
 
 function isCurrentUserPost() {
   return Number(post?.authorId) === Number(CURRENT_USER_ID);
@@ -136,8 +145,7 @@ function renderPost() {
   postContent.textContent = post.content;
 
   const isMyPost = isCurrentUserPost();
-  postEditButton.hidden = !isMyPost;
-  postDeleteButton.hidden = !isMyPost;
+  setPostActionsVisible(isMyPost);
 
   likeCount.textContent = formatCount(post.likeCount);
   viewCount.textContent = formatCount(post.viewCount);
@@ -288,8 +296,7 @@ async function loadPostDetail() {
     postCreatedAt.textContent = "";
     postContent.textContent =
       "백엔드 서버 실행 여부, 게시글 ID, 콘솔의 상세조회 응답을 확인하세요.";
-    postEditButton.hidden = true;
-    postDeleteButton.hidden = true;
+    setPostActionsVisible(false);
 
     comments = [];
     renderComments();
