@@ -51,17 +51,11 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // 회원가입 허용
+                        
                         .requestMatchers(HttpMethod.POST, "/users").permitAll()
 
-                        // 로그인 허용
                         .requestMatchers(HttpMethod.POST, "/sessions").permitAll()
 
-                        // H2 콘솔 허용
-                        .requestMatchers("/h2-console/**").permitAll()
-
-                        // 나머지는 전부 로그인 필요
                         .anyRequest().authenticated()
                 )
 
