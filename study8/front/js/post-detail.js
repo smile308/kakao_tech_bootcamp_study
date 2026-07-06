@@ -38,7 +38,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const postId = urlParams.get("postId");
 
 if (!postId) {
-  alert("게시글 정보를 찾을 수 없습니다.");
+  alert("평가 정보를 찾을 수 없습니다.");
   window.location.href = "./posts.html";
 }
 
@@ -265,7 +265,7 @@ function closeModal() {
 
 async function loadPostDetail() {
   if (!postId) {
-    alert("게시글 정보를 찾을 수 없습니다.");
+    alert("평가 정보를 찾을 수 없습니다.");
     window.location.href = "./posts.html";
     return;
   }
@@ -284,18 +284,18 @@ async function loadPostDetail() {
       ? post.comments.map((comment) => normalizeCommentForDetail(comment))
       : [];
 
-    console.log("정규화된 게시글:", post);
+    console.log("정규화된 평가:", post);
 
     renderPost();
     renderComments();
   } catch (error) {
-    console.error("게시글 상세조회 실패:", error);
+    console.error("평가 상세조회 실패:", error);
 
-    postTitle.textContent = "게시글을 불러오지 못했습니다.";
+    postTitle.textContent = "평가를 불러오지 못했습니다.";
     authorNickname.textContent = "";
     postCreatedAt.textContent = "";
     postContent.textContent =
-      "백엔드 서버 실행 여부, 게시글 ID, 콘솔의 상세조회 응답을 확인하세요.";
+      "백엔드 서버 실행 여부, 평가 ID, 콘솔의 상세조회 응답을 확인하세요.";
     setPostActionsVisible(false);
 
     comments = [];
@@ -309,12 +309,12 @@ backButton.addEventListener("click", () => {
 
 postEditButton.addEventListener("click", () => {
   if (!post || !post.postId) {
-    console.error("수정할 게시글 ID가 없습니다.", post);
+    console.error("수정할 평가 ID가 없습니다.", post);
     return;
   }
 
   if (!isCurrentUserPost()) {
-    alert("게시글 작성자만 수정할 수 있습니다.");
+    alert("평가 작성자만 수정할 수 있습니다.");
     return;
   }
 
@@ -324,18 +324,18 @@ postEditButton.addEventListener("click", () => {
 
 postDeleteButton.addEventListener("click", () => {
   if (!post || !post.postId) {
-    console.error("삭제할 게시글 ID가 없습니다.", post);
-    alert("게시글 ID를 찾을 수 없습니다.");
+    console.error("삭제할 평가 ID가 없습니다.", post);
+    alert("평가 ID를 찾을 수 없습니다.");
     return;
   }
 
   if (!isCurrentUserPost()) {
-    alert("게시글 작성자만 삭제할 수 있습니다.");
+    alert("평가 작성자만 삭제할 수 있습니다.");
     return;
   }
 
   openModal({
-    title: "게시글을 삭제하겠습니까?",
+    title: "평가를 삭제하겠습니까?",
     description: "삭제한 내용은 복구 할 수 없습니다.",
     onConfirm: async () => {
       try {
@@ -351,8 +351,8 @@ postDeleteButton.addEventListener("click", () => {
 
         window.location.href = "./posts.html";
       } catch (error) {
-        console.error("게시글 삭제 실패:", error);
-        alert("게시글 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
+        console.error("평가 삭제 실패:", error);
+        alert("평가 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
       }
     },
   });
@@ -360,7 +360,7 @@ postDeleteButton.addEventListener("click", () => {
 
 likeButton.addEventListener("click", async () => {
   if (!post || !post.postId) {
-    console.error("좋아요 처리할 게시글 ID가 없습니다.", post);
+    console.error("좋아요 처리할 평가 ID가 없습니다.", post);
     return;
   }
 
@@ -389,7 +389,7 @@ commentForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!post || !post.postId) {
-    console.error("댓글을 등록할 게시글 ID가 없습니다.", post);
+    console.error("댓글을 등록할 평가 ID가 없습니다.", post);
     return;
   }
 

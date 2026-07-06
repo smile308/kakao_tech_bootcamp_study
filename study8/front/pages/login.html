@@ -3,17 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>로그인</title>
+  <title>강의 평가 로그인</title>
   <link rel="stylesheet" href="../css/common.css" />
   <link rel="stylesheet" href="../css/auth.css" />
 </head>
 <body>
   <div class="login-page">
     <header class="page-header">
-      <h1 class="page-header__title">아무 말 대잔치</h1>
+      <h1 class="page-header__title">강의 평가 시스템</h1>
     </header>
 
     <main class="login-section">
+      <section class="auth-copy-panel" aria-label="서비스 소개">
+        <p>Feedback Operations</p>
+        <h2>수업 피드백을 날짜별 평가로 정리하세요.</h2>
+        <dl>
+          <div><dt>강사</dt><dd>반별 평가와 댓글 관리</dd></div>
+          <div><dt>학생</dt><dd>내 평가 작성과 답변 확인</dd></div>
+        </dl>
+      </section>
+
+      <section class="auth-form-panel">
       <h2 class="login-section__title">로그인</h2>
 
       <form id="loginForm" class="login-form" novalidate>
@@ -46,8 +56,9 @@
   </button>
 </form>
 
-<a href="./signup.html" class="signup-link">회원가입</a>
+<a href="./signup.html" id="signupLink" class="signup-link">회원가입</a>
 
+      </section>
 
     </main>
   </div>
@@ -57,4 +68,3 @@
 <script src="../js/login.js"></script>
 </body>
 </html>
-

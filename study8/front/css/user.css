@@ -1,763 +1,288 @@
-.profile-edit-page {
-  position: relative;
-  width: 1920px;
-  height: 1080px;
+.profile-edit-page,
+.password-edit-page {
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, rgba(15, 183, 181, 0.08), transparent 340px),
+    var(--color-bg);
+}
+
+.profile-edit-section,
+.password-edit-section {
+  width: min(980px, 100%);
+  min-height: calc(100vh - 72px);
   margin: 0 auto;
-  background: #f4f5f7;
+  padding: 48px 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 18px;
+  align-items: start;
 }
 
-/* 상단 헤더 */
-.page-header {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1920px;
-  height: 104px;
-  background: #f4f5f7;
-  border-bottom: 1px solid #000000;
-  z-index: 100;
-}
-
-.page-header__title {
-  position: absolute;
-  top: 36px;
-  left: 857px;
-  width: 206px;
-  height: 32px;
+.profile-edit-title,
+.password-edit-title {
+  grid-column: 1;
   margin: 0;
-
-  font-family: "Sandoll GogoRound", sans-serif;
-  font-weight: 400;
-  font-size: 32px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
+  color: var(--color-text);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.25;
 }
 
-/* 상단 우측 프로필 이미지 */
-.header-profile {
-  position: absolute;
-  top: 36px;
-  left: 1196px;
-  width: 36px;
-  height: 36px;
-  z-index: 100;
+.account-side-panel,
+.profile-edit-form,
+.password-edit-form {
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-panel);
 }
 
-.header-profile__button {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 50%;
-  background: #c4c4c4;
-  overflow: hidden;
-  cursor: pointer;
+.account-side-panel {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  position: sticky;
+  top: 96px;
+  padding: 22px;
 }
 
-.header-profile__button.is-empty {
-  background: #c4c4c4;
-}
-
-.header-profile__button.is-empty .header-profile__image {
-  display: none;
-}
-
-.header-profile__image {
-  display: block;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* hover 메뉴 */
-.profile-menu {
-  display: none;
-  position: absolute;
-  top: 36px;
-  left: -40px;
-  width: 115px;
-  z-index: 300;
-}
-
-.profile-menu.is-open {
-  display: block;
-}
-
-.profile-menu__item {
-  display: block;
-  width: 115px;
-  height: 35px;
-  padding: 10px 24px;
-  border: none;
-  background: #d9d9d9;
-  text-decoration: none;
-
-  font-family: Inter, sans-serif;
-  font-weight: 400;
+.account-side-panel p {
+  margin: 0 0 12px;
+  color: var(--color-teal-dark);
   font-size: 12px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  cursor: pointer;
-  white-space: nowrap;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
-.profile-menu__item:hover {
-  background: #e9e9e9;
+.account-side-panel strong {
+  display: block;
+  color: var(--color-text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.4;
 }
 
-.profile-menu__logout {
-  appearance: none;
-  -webkit-appearance: none;
+.account-side-panel span {
+  display: block;
+  margin-top: 12px;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
-/* 본문 */
-.profile-edit-section {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1920px;
-  height: 1080px;
-
-  z-index: 1;
+.profile-edit-form,
+.password-edit-form {
+  grid-column: 1;
+  padding: 24px;
+  display: grid;
+  gap: 18px;
 }
 
-.profile-edit-title {
-  position: absolute;
-  top: 265px;
-  left: 872px;
-  width: 177px;
-  height: 37px;
-  margin: 0;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 32px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
+.profile-image-area {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 20px;
+  border: 1px dashed var(--color-line-strong);
+  border-radius: var(--radius-md);
+  background: #fbfdfe;
 }
 
-.profile-edit-form {
-  position: absolute;
-  top: 0;
-  left: 0;
-}
-
-/* 프로필 사진 */
-.profile-image-label {
-  position: absolute;
-  top: 315px;
-  left: 783px;
-  width: 80px;
-  height: 17px;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
+.profile-image-label,
+.profile-form-label,
+.password-label {
+  justify-self: start;
+  color: var(--color-text);
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .profile-image-box {
-  position: absolute;
-  top: 355px;
-  left: 885px;
-  width: 149px;
-  height: 149px;
-
+  position: relative;
+  width: 126px;
+  height: 126px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: #4646468c;
+  background: linear-gradient(135deg, #d9f4f4, #ffe6b8);
   overflow: hidden;
   cursor: pointer;
 }
 
+.profile-image-box::before {
+  content: "프로필";
+  color: var(--color-teal-dark);
+  font-size: 14px;
+  font-weight: 800;
+}
+
 .profile-edit-image {
+  position: absolute;
+  inset: 0;
   display: block;
-  width: 149px;
-  height: 149px;
+  width: 100%;
+  height: 100%;
   border-radius: 50%;
   object-fit: cover;
-  background: #4646468c;
+}
+
+.profile-edit-image:not([src]) {
+  display: none;
 }
 
 .profile-image-change-button {
   position: absolute;
-  top: 61px;
-  left: 50px;
-  width: 52px;
-  height: 27px;
-
-  border: 1px solid #ffffff;
-  border-radius: 25px;
-  background: #00000059;
+  right: 12px;
+  bottom: 12px;
+  min-width: 48px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 999px;
+  background: rgba(6, 26, 50, 0.72);
+  color: #ffffff;
 }
 
 .profile-image-change-text {
-  position: absolute;
-  top: 5px;
-  left: 13px;
-  width: 28px;
-  height: 17px;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #ffffff;
-
-  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .profile-image-input {
   display: none;
 }
 
-/* 이메일 */
-.profile-email-group {
-  position: absolute;
-  top: 540px;
-  left: 783px;
-  width: 355px;
-}
-
-.profile-form-label {
-  display: block;
-  width: max-content;
-  height: 17px;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
+.profile-form-area,
+.profile-form-group,
+.password-form-group {
+  display: grid;
+  gap: 8px;
 }
 
 .profile-email-text {
-  position: absolute;
-  top: 34px;
-  left: 0;
-  width: 156px;
-  height: 17px;
+  min-height: 44px;
   margin: 0;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #f8fbfc;
+  color: var(--color-muted);
   font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
 }
 
-/* 닉네임 */
-.profile-nickname-group {
-  position: absolute;
-  top: 615px;
-  left: 783px;
-  width: 355px;
-}
-
-.profile-form-input {
-  width: 355px;
-  height: 33px;
-  margin-top: 8px;
-  padding: 8px 10px;
-
-  border: 1px solid #000000;
-  border-radius: 4px;
-  background: #ffffff;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-}
-
-.profile-form-input::placeholder {
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 100%;
-  color: #000000;
-}
-
-.profile-helper-text {
-  width: 71px;
-  height: 15px;
-  margin: 4px 0 0;
-
-  font-family: Inter, sans-serif;
-  font-weight: 400;
-  font-size: 12px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #ff0000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
-}
-
-/* 수정하기 버튼 */
-.profile-submit-button {
-  position: absolute;
-  top: 693px;
-  left: 783px;
-  width: 355px;
-  height: 33px;
-
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: #aca0eb;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #ffffff;
-
-  cursor: pointer;
-}
-
-/* 회원 탈퇴 */
-.withdraw-button {
-  position: absolute;
-  top: 738px;
-  left: 934px;
-  width: 52px;
-  height: 17px;
-
-  padding: 0;
-  margin: 0;
-  border: none;
-  background: transparent;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* 하단 수정완료 버튼 */
-.profile-complete-button {
-  position: absolute;
-  top: 832px;
-  left: 915px;
-  width: 102px;
-  height: 46px;
-
-  padding: 0;
-  border: none;
-  border-radius: 30px;
-  background: #aca0eb;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 18px;
-  line-height: 120%;
-  letter-spacing: -0.01em;
-  text-align: center;
-  color: #ffffff;
-
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.password-edit-page {
-  position: relative;
-  width: 1920px;
-  height: 1080px;
-  margin: 0 auto;
-  background: #f4f5f7;
-}
-
-.password-edit-section {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1920px;
-  height: 1080px;
-  z-index: 1;
-}
-
-.password-edit-title {
-  position: absolute;
-  top: 265px;
-  left: 874px;
-  width: 172px;
-  height: 37px;
-  margin: 0;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 32px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
-}
-
-.password-edit-form {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 1920px;
-  height: 1080px;
-}
-
-.password-form-group {
-  position: absolute;
-  left: 783px;
-  width: 355px;
-  height: 76px;
-}
-
-.password-form-group--password {
-  top: 355px;
-}
-
-.password-form-group--confirm {
-  top: 429px;
-}
-
-.password-label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 17px;
-  margin: 0;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 100%;
-  color: #000000;
-}
-
+.profile-form-input,
 .password-input {
-  position: absolute;
-  top: 25px;
-  left: 0;
-  width: 355px;
-  height: 33px;
-  padding: 0 8px;
-
-  border: 1px solid #000000;
-  border-radius: 4px;
-  background: #ffffff;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: #fbfdfe;
+  color: var(--color-text);
+  font-size: 14px;
   outline: none;
-  box-sizing: border-box;
-
-  font-family: "42dot Sans", sans-serif;
-  font-size: 14px;
-  color: #000000;
 }
 
+.profile-form-input::placeholder,
+.password-input::placeholder {
+  color: var(--color-subtle);
+}
+
+.profile-form-input:focus,
+.password-input:focus {
+  border-color: var(--color-teal);
+  box-shadow: 0 0 0 3px rgba(15, 183, 181, 0.12);
+}
+
+.profile-helper-text,
 .password-helper-text {
-  position: absolute;
-  top: 62px;
-  left: 0;
-  width: 620px;
-  height: 15px;
+  min-height: 16px;
   margin: 0;
-
-  font-family: Inter, sans-serif;
-  font-weight: 400;
+  color: var(--color-coral);
   font-size: 12px;
-  line-height: 100%;
-  color: #ff0000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
-}
-
-.password-edit-button {
-  position: absolute;
-  top: 526px;
-  left: 783px;
-  width: 355px;
-  height: 33px;
-  padding: 0;
-
-  border: none;
-  border-radius: 4px;
-  background: #aca0eb;
-
-  font-family: Arial, sans-serif;
   font-weight: 700;
-  font-size: 14px;
-  color: #ffffff;
-
-  cursor: not-allowed;
+  line-height: 1.35;
 }
 
-.password-edit-button:not(:disabled) {
-  background: #7f6aee;
+.profile-submit-button,
+.password-edit-button {
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--radius-sm);
+  background: var(--color-teal);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
+}
+
+.profile-submit-button:hover,
+.password-edit-button:not(:disabled):hover {
+  background: var(--color-teal-dark);
 }
 
 .password-edit-button:disabled {
-  background: #aca0eb;
-}
-
-.password-confirm-group {
-  margin-top: 4px;
-}
-
-.password-form-label {
-  display: block;
-  width: max-content;
-  height: 17px;
-  margin-bottom: 8px;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-
-  white-space: nowrap;
-  word-break: keep-all;
-  overflow: visible;
-}
-
-.password-form-input {
-  width: 355px;
-  height: 33px;
-  padding: 8px 10px;
-
-  border: 1px solid #000000;
-  border-radius: 4px;
-  background: #ffffff;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-}
-
-.password-form-input::placeholder {
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  color: #000000;
-}
-
-.password-submit-button {
-  width: 355px;
-  height: 33px;
-  margin-top: 4px;
-
-  padding: 0;
-  border: none;
-  border-radius: 4px;
-  background: #aca0eb;
-
-  font-family: Arial, sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #ffffff;
-
+  background: #c7d9df;
   cursor: not-allowed;
 }
 
-.password-submit-button:not(:disabled) {
-  background: #7f6aee;
+.withdraw-button {
+  justify-self: center;
+  padding: 0;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
 }
 
-.password-submit-button:disabled {
-  background: #aca0eb;
+.withdraw-button:hover {
+  color: var(--color-coral);
+  text-decoration: underline;
 }
 
 .toast-message {
   position: fixed;
-  top: 884px;
   left: 50%;
-  transform: translateX(-50%);
-
-  width: 102px;
-  height: 46px;
-  border-radius: 30px;
-  background: #aca0eb;
-
+  bottom: 34px;
+  z-index: 5000;
+  min-width: 118px;
+  min-height: 44px;
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  font-family: "42dot Sans", sans-serif;
-  font-weight: 400;
-  font-size: 18px;
-  line-height: 120%;
-  letter-spacing: -0.01em;
+  border-radius: var(--radius-md);
+  background: var(--color-navy-900);
   color: #ffffff;
-
-  z-index: 5000;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: var(--shadow-soft);
+  transform: translateX(-50%);
 }
 
 .toast-message.is-hidden {
   display: none;
 }
 
-body.modal-open {
-  overflow: hidden;
-}
+@media (max-width: 840px) {
+  .profile-edit-section,
+  .password-edit-section {
+    display: block;
+  }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  .account-side-panel,
+  .profile-edit-form,
+  .password-edit-form {
+    margin-top: 16px;
+  }
 
-  background: rgba(0, 0, 0, 0.5);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  z-index: 9999;
-}
-
-.modal-overlay.is-hidden {
-  display: none;
-}
-
-.confirm-modal {
-  width: 408px;
-  height: 242px;
-  border-radius: 12px;
-  background: #ffffff;
-
-  position: relative;
-}
-
-.confirm-modal__title {
-  position: absolute;
-  top: 49px;
-  left: 70px;
-  width: 268px;
-  height: 29px;
-  margin: 0;
-
-  font-family: "Pretendard", sans-serif;
-  font-weight: 700;
-  font-size: 24px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  white-space: nowrap;
-}
-
-.confirm-modal__description {
-  position: absolute;
-  top: 102px;
-  left: 68px;
-  width: 273px;
-  height: 24px;
-  margin: 0;
-
-  font-family: "Pretendard", sans-serif;
-  font-weight: 400;
-  font-size: 20px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-  color: #000000;
-
-  white-space: nowrap;
-}
-
-.confirm-modal__actions {
-  position: absolute;
-  top: 154px;
-  left: 56px;
-  width: 296px;
-  height: 44px;
-
-  display: flex;
-  gap: 42px;
-}
-
-.confirm-modal__button {
-  width: 127px;
-  height: 44px;
-  border: none;
-  border-radius: 12px;
-  padding: 0;
-
-  font-family: "Pretendard", sans-serif;
-  font-weight: 400;
-  font-size: 20px;
-  line-height: 100%;
-  letter-spacing: 0;
-  text-align: center;
-
-  cursor: pointer;
-}
-
-.confirm-modal__button--cancel {
-  background: #242424;
-  color: #ffffff;
-}
-
-.confirm-modal__button--confirm {
-  background: #c4a5fa;
-  color: #000000;
+  .account-side-panel {
+    position: static;
+  }
 }

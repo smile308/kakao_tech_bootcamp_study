@@ -14,9 +14,9 @@ const postId = urlParams.get("postId");
 const { fileToDataUrl } = window.utils;
 
 if (!postId) {
-  alert("게시글 정보를 찾을 수 없습니다.");
+  alert("평가 정보를 찾을 수 없습니다.");
   window.location.href = "./posts.html";
-  throw new Error("postId가 없어 게시글 수정 페이지 초기화를 중단합니다.");
+  throw new Error("postId가 없어 평가 수정 페이지 초기화를 중단합니다.");
 }
 
 let originalPost = null;
@@ -50,7 +50,7 @@ function validatePostEditForm() {
   const content = postContentInput.value.trim();
 
   if (!title || !content) {
-    postEditHelper.textContent = "*제목, 내용을 모두 작성해주세요.";
+    postEditHelper.textContent = "*평가 제목과 피드백 내용을 모두 작성해주세요.";
     return false;
   }
 
@@ -63,8 +63,8 @@ async function loadPost() {
     const post = await api.getPost(postId);
     renderOriginalPost(post);
   } catch (error) {
-    console.error("게시글 조회 실패:", error);
-    postEditHelper.textContent = "*게시글 정보를 불러오지 못했습니다.";
+    console.error("평가 조회 실패:", error);
+    postEditHelper.textContent = "*평가 정보를 불러오지 못했습니다.";
   }
 }
 
@@ -119,8 +119,8 @@ postEditForm.addEventListener("submit", async (event) => {
 
     window.location.href = `./post-detail.html?postId=${postId}`;
   } catch (error) {
-    console.error("게시글 수정 실패:", error);
-    postEditHelper.textContent = "*게시글 수정에 실패했습니다.";
+    console.error("평가 수정 실패:", error);
+    postEditHelper.textContent = "*평가 수정에 실패했습니다.";
   }
 });
 

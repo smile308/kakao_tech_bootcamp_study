@@ -8,7 +8,7 @@ const postCreateHelper = document.querySelector("#postCreateHelper");
 const postCreateSubmitButton = document.querySelector("#postCreateSubmitButton");
 
 const MAX_TITLE_LENGTH = 26;
-const EMPTY_MESSAGE = "*제목,내용을 모두 작성해주세요";
+const EMPTY_MESSAGE = "*평가 제목과 피드백 내용을 모두 작성해주세요";
 
 const { fileToDataUrl } = window.utils;
 
@@ -98,8 +98,8 @@ postCreateForm.addEventListener("submit", async (event) => {
 
     window.location.href = "./posts.html";
   } catch (error) {
-    console.error("게시글 작성 실패:", error);
-    postCreateHelper.textContent = "*게시글 작성에 실패했습니다.";
+    console.error("평가 작성 실패:", error);
+    postCreateHelper.textContent = "*평가 작성에 실패했습니다.";
   }
 });
 

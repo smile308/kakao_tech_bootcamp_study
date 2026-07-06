@@ -48,6 +48,25 @@ function formatDateTime(dateTimeValue) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function getDesignRating(post) {
+  const seed = Number(post.postId) || post.title.length || 8;
+  return Math.min(10, Math.max(1, 6 + (seed % 5)));
+}
+
+function getStudentCode(post) {
+  const seed = String(post.postId || "0").padStart(4, "0").slice(-4);
+  return `2021${seed}`;
+}
+
 function normalizePostForList(post) {
   return {
     postId: post.postId,
@@ -63,49 +82,56 @@ function normalizePostForList(post) {
 
 function createPostCard(rawPost) {
   const post = normalizePostForList(rawPost);
+  const rating = getDesignRating(post);
+  const hasTeacherComment = Number(post.commentCount) > 0;
+  const isClosed = Number(post.postId || 0) % 3 !== 0;
 
   const article = document.createElement("article");
   article.className = "post-card";
 
   article.innerHTML = `
-    <div class="post-card__inner">
-      <div class="post-card__content">
-        <div class="post-card__top">
-          <div class="post-card__top-inner">
-            <div class="post-card__title-area">
-              <h3 class="post-card__title">${truncateTitle(post.title)}</h3>
+    <span class="post-card__select" aria-hidden="true"></span>
 
-              <div class="post-card__meta">
-                <span class="post-card__meta-item">좋아요 ${formatCount(post.likeCount)}</span>
-                <span class="post-card__meta-item">댓글 ${formatCount(post.commentCount)}</span>
-                <span class="post-card__meta-item">조회수 ${formatCount(post.viewCount)}</span>
-              </div>
-            </div>
+    <div class="post-card__author">
+      <div class="post-card__author-image-box ${post.authorProfileImage ? "" : "is-empty"}">
+        <img
+          class="post-card__author-image"
+          src="${escapeHtml(post.authorProfileImage || "")}"
+          alt="작성자 프로필 이미지"
+        />
+      </div>
 
-            <p class="post-card__date">${formatDateTime(post.createdAt)}</p>
-          </div>
-        </div>
-
-        <div class="post-card__divider"></div>
-
-        <div class="post-card__author">
-          <div class="post-card__author-image-box ${post.authorProfileImage ? "" : "is-empty"}">
-            <img
-              class="post-card__author-image"
-              src="${post.authorProfileImage || ""}"
-              alt="작성자 프로필 이미지"
-            />
-          </div>
-
-          <p class="post-card__author-name">${post.authorNickname}</p>
-        </div>
+      <div class="post-card__author-text">
+        <p class="post-card__author-name">${escapeHtml(post.authorNickname)}</p>
+        <span class="post-card__student-id">${getStudentCode(post)}</span>
       </div>
     </div>
+
+    <span class="post-card__class">컴퓨터구조 01반</span>
+    <span class="post-card__date">${formatDateTime(post.createdAt)}</span>
+    <span class="post-card__rating">${rating}</span>
+
+    <div class="post-card__title-area">
+      <h3 class="post-card__title">${escapeHtml(truncateTitle(post.title) || "강의 평가 답변")}</h3>
+      <div class="post-card__meta" aria-hidden="true">
+        <span class="post-card__meta-item">좋아요 ${formatCount(post.likeCount)}</span>
+        <span class="post-card__meta-item">댓글 ${formatCount(post.commentCount)}</span>
+        <span class="post-card__meta-item">조회수 ${formatCount(post.viewCount)}</span>
+      </div>
+    </div>
+
+    <span class="post-card__status ${hasTeacherComment ? "is-done" : "is-pending"}">
+      ${hasTeacherComment ? "작성완료" : "미작성"}
+    </span>
+
+    <span class="post-card__close ${isClosed ? "is-closed" : "is-open"}">
+      ${isClosed ? "마감" : "미마감"}
+    </span>
   `;
 
   article.addEventListener("click", () => {
   if (!post.postId) {
-    console.error("게시글 ID가 없습니다.", rawPost);
+    console.error("평가 ID가 없습니다.", rawPost);
     return;
   }
 
@@ -139,7 +165,7 @@ async function loadPosts(size) {
     hasNextPage = result.hasNextPage;
     currentPage += 1;
   } catch (error) {
-    console.error("게시글 목록 조회 실패:", error);
+    console.error("평가 목록 조회 실패:", error);
   } finally {
     isLoading = false;
   }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>회원가입</title>
+  <title>강의 평가 회원가입</title>
   <link rel="stylesheet" href="../css/common.css" />
   <link rel="stylesheet" href="../css/auth.css" />
 </head>
@@ -14,10 +14,17 @@
         <span class="back-button__icon"></span>
       </button>
 
-      <h1 class="page-header__title">아무 말 대잔치</h1>
+      <h1 class="page-header__title">강의 평가 시스템</h1>
     </header>
 
     <main class="signup-section">
+      <section class="auth-copy-panel signup-copy-panel" aria-label="가입 안내">
+        <p>Account Setup</p>
+        <h2>강사와 학생의 피드백 흐름을 한 곳에서 관리합니다.</h2>
+        <span>역할 선택 기능은 추후 구현 예정이며, 현재 가입 동작은 기존 프로젝트와 동일합니다.</span>
+      </section>
+
+      <section class="auth-form-panel signup-form-panel">
       <h2 class="signup-section__title">회원가입</h2>
 
       <form id="signupForm" class="signup-form" novalidate>
@@ -94,6 +101,7 @@
 </form>
 
       <a href="./login.html" class="go-login-link">로그인하러 가기</a>
+      </section>
     </main>
   </div>
   <script src="../js/api.js"></script>

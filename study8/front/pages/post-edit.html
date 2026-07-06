@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>게시글 수정</title>
+  <title>강의 평가 수정</title>
   <link rel="stylesheet" href="../css/common.css" />
   <link rel="stylesheet" href="../css/posts.css" />
 </head>
@@ -14,7 +14,7 @@
         <span class="detail-back-button__icon"></span>
       </button>
 
-      <h1 class="page-header__title">아무 말 대잔치</h1>
+      <h1 class="page-header__title">평가 수정</h1>
 
       <div class="header-profile">
   <button
@@ -51,11 +51,22 @@
     </header>
 
     <main class="post-edit-main">
-      <h2 class="post-edit-title">게시글 수정</h2>
+      <h2 class="post-edit-title">강의 평가 수정</h2>
+
+      <aside class="evaluation-form-aside" aria-label="수정 안내">
+        <p class="evaluation-form-aside__eyebrow">수정 가능 평가</p>
+        <strong>컴퓨터구조 01반</strong>
+        <span>마감 전까지 학생 본인만 수정할 수 있습니다.</span>
+        <dl>
+          <div><dt>평가일</dt><dd>2025-05-16</dd></div>
+          <div><dt>상태</dt><dd>미마감</dd></div>
+          <div><dt>강사 댓글</dt><dd>확인 가능</dd></div>
+        </dl>
+      </aside>
 
       <form id="postEditForm" class="post-edit-form" novalidate>
         <label for="postTitleInput" class="post-edit-label post-edit-label--title">
-          제목*
+          평가 제목*
         </label>
 
         <div class="post-edit-line post-edit-line--title-top"></div>
@@ -71,7 +82,7 @@
         <div class="post-edit-line post-edit-line--title-bottom"></div>
 
         <label for="postContentInput" class="post-edit-label post-edit-label--content">
-          내용*
+          피드백 내용*
         </label>
 
         <div class="post-edit-line post-edit-line--content-top"></div>
@@ -83,7 +94,7 @@
         <p id="postEditHelper" class="post-edit-helper"></p>
 
         <label class="post-edit-label post-edit-label--image">
-          이미지
+          첨부 이미지
         </label>
 
         <div class="post-image-file-area">
@@ -104,7 +115,7 @@
         </div>
 
         <button id="postEditSubmitButton" type="submit" class="post-edit-submit-button">
-          수정하기
+          평가 수정
         </button>
       </form>
     </main>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>게시글 작성</title>
+  <title>강의 평가 작성</title>
   <link rel="stylesheet" href="../css/common.css" />
   <link rel="stylesheet" href="../css/posts.css" />
 </head>
@@ -14,7 +14,7 @@
         <span class="detail-back-button__icon"></span>
       </button>
 
-      <h1 class="page-header__title">아무 말 대잔치</h1>
+      <h1 class="page-header__title">평가 작성</h1>
 
       <div class="header-profile">
   <button
@@ -51,35 +51,46 @@
     </header>
 
     <main class="post-create-main">
-      <h2 class="post-create-title">게시글 작성</h2>
+      <h2 class="post-create-title">강의 평가 작성</h2>
+
+      <aside class="evaluation-form-aside" aria-label="작성 안내">
+        <p class="evaluation-form-aside__eyebrow">오늘의 평가</p>
+        <strong>컴퓨터구조 01반</strong>
+        <span>2025-05-16 수업</span>
+        <dl>
+          <div><dt>입력 항목</dt><dd>제목 · 답변 · 이미지</dd></div>
+          <div><dt>마감 상태</dt><dd>미마감</dd></div>
+          <div><dt>작성 규칙</dt><dd>하루 1회 제출</dd></div>
+        </dl>
+      </aside>
 
       <form id="postCreateForm" class="post-create-form" novalidate>
         <label for="postTitleInput" class="post-create-label post-create-label--title">
-          제목*
+          평가 제목*
         </label>
 
         <input
           type="text"
           id="postTitleInput"
           class="post-create-title-input"
-          placeholder="제목을 입력해주세요. (최대 26글자)"
+          placeholder="평가 제목을 입력해주세요. (최대 26글자)"
           maxlength="26"
         />
 
         <label for="postContentInput" class="post-create-label post-create-label--content">
-          내용*
+          피드백 내용*
         </label>
 
         <textarea
           id="postContentInput"
           class="post-create-content-input"
-          placeholder="내용을 입력해주세요."
+          placeholder="오늘 강의에서 좋았던 점과 개선되면 좋을 점을 입력해주세요."
         ></textarea>
 
-        <p id="postCreateHelper" class="post-create-helper">*제목,내용을 모두 작성해주세요</p>
+        <p id="postCreateHelper" class="post-create-helper">*평가 제목과 피드백 내용을 모두 작성해주세요</p>
 
         <label class="post-create-label post-create-label--image">
-          이미지
+          첨부 이미지
         </label>
 
         <div class="post-create-file-area">
