@@ -133,40 +133,11 @@ a {
   text-transform: uppercase;
 }
 
-.header-mode-tabs {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.header-mode-tabs__item {
-  min-width: 82px;
-  padding: 9px 14px;
-  border-radius: var(--radius-sm);
-  color: #c9d8e8;
-  font-size: 13px;
-  font-weight: 700;
-  text-align: center;
-}
-
-.header-mode-tabs__item.is-active {
-  background: var(--color-teal);
-  color: #ffffff;
-}
-
 .header-profile {
   position: relative;
   z-index: 1200;
   margin-left: auto;
   flex: 0 0 auto;
-}
-
-.header-mode-tabs + .header-profile {
-  margin-left: 8px;
 }
 
 .header-profile__button {
@@ -353,7 +324,4 @@ body.modal-open {
     font-size: 19px;
   }
 
-  .header-mode-tabs {
-    display: none;
-  }
 }
