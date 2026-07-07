@@ -106,18 +106,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-line);
+  border: 1px solid rgba(92, 158, 112, 0.28);
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-teal), #ffffff);
+  background: #eef6ef url("../assets/images/default-avatar.svg") center / cover no-repeat;
   overflow: hidden;
   cursor: pointer;
 }
 
 .profile-image-box::before {
-  content: "프로필";
-  color: var(--color-text);
-  font-size: 14px;
-  font-weight: 800;
+  content: "";
 }
 
 .profile-edit-image {
