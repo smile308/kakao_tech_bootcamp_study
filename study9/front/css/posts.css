@@ -4,7 +4,8 @@
 .post-edit-page {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, rgba(15, 183, 181, 0.06), transparent 280px),
+    linear-gradient(180deg, rgba(255, 216, 77, 0.18), transparent 280px),
+    linear-gradient(135deg, rgba(79, 157, 122, 0.08), transparent 520px),
     var(--color-bg);
 }
 
@@ -86,7 +87,7 @@
 .post-create-submit-button:not(:disabled),
 .post-edit-submit-button {
   background: var(--color-teal);
-  color: #ffffff;
+  color: var(--color-text);
   cursor: pointer;
 }
 
@@ -94,7 +95,7 @@
 .comment-submit-button:not(:disabled):hover,
 .post-create-submit-button.is-active:hover,
 .post-edit-submit-button:hover {
-  background: var(--color-teal-dark);
+  background: var(--color-amber);
 }
 
 .evaluation-list-header,
@@ -109,7 +110,7 @@
   min-height: 40px;
   padding: 0 18px;
   border-bottom: 1px solid var(--color-line);
-  background: #f8fbfc;
+  background: #fffdf2;
   color: var(--color-muted);
   font-size: 12px;
   font-weight: 800;
@@ -132,7 +133,7 @@
 .post-card:hover {
   position: relative;
   z-index: 1;
-  background: #f2fbfb;
+  background: #fff5c7;
   box-shadow: inset 3px 0 0 var(--color-teal);
 }
 
@@ -149,7 +150,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #d9f4f4, #ffe6b8);
+  background: linear-gradient(135deg, var(--color-teal), #ffffff);
   overflow: hidden;
   flex: 0 0 auto;
 }
@@ -163,7 +164,7 @@
   height: 100%;
   align-items: center;
   justify-content: center;
-  color: var(--color-teal-dark);
+  color: var(--color-text);
   font-size: 12px;
   font-weight: 800;
 }
@@ -241,9 +242,8 @@
 
 .detail-post-title {
   margin: 0;
-  padding: 22px 24px 0;
+  padding: 22px 24px 14px;
   border: 1px solid var(--color-line);
-  border-bottom: 0;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   background: #ffffff;
   color: var(--color-text);
@@ -253,25 +253,32 @@
 }
 
 .detail-author-area {
-  padding: 14px 24px 18px;
+  min-height: 58px;
+  padding: 14px 24px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   border-right: 1px solid var(--color-line);
   border-left: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
   background: #ffffff;
 }
 
 .detail-created-at {
-  margin: 0 0 0 8px;
+  margin: 0 0 0 auto;
 }
 
 .detail-post-actions {
-  margin-top: -62px;
-  padding-right: 24px;
+  margin: 0;
+  padding: 10px 24px;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  border-right: 1px solid var(--color-line);
+  border-left: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  background: #ffffff;
   pointer-events: none;
 }
 
@@ -291,12 +298,17 @@
 .detail-small-button:hover,
 .comment-action-button:hover {
   border-color: var(--color-teal);
-  color: var(--color-teal-dark);
+  color: var(--color-text);
+  background: var(--color-bg-soft);
 }
 
 .detail-divider {
   height: 1px;
   background: var(--color-line);
+}
+
+.detail-divider--top {
+  display: none;
 }
 
 .detail-divider--comment-top {
@@ -307,7 +319,7 @@
   max-height: 420px;
   border-right: 1px solid var(--color-line);
   border-left: 1px solid var(--color-line);
-  background: #eff6f8;
+  background: #f8f0de;
   overflow: hidden;
 }
 
@@ -354,7 +366,7 @@
   justify-content: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fbfdfe;
+  background: #fffef8;
 }
 
 button.detail-stat-card {
@@ -362,8 +374,8 @@ button.detail-stat-card {
 }
 
 button.detail-stat-card.is-liked {
-  border-color: #ffe1a6;
-  background: #fff8e8;
+  border-color: var(--color-teal);
+  background: #fff1b8;
 }
 
 .detail-stat-number {
@@ -501,7 +513,7 @@ button.detail-stat-card.is-liked {
   width: 100%;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fbfdfe;
+  background: #fffef8;
   color: var(--color-text);
   outline: none;
 }
@@ -533,7 +545,7 @@ button.detail-stat-card.is-liked {
 .post-create-content-input:focus,
 .post-content-input:focus {
   border-color: var(--color-teal);
-  box-shadow: 0 0 0 3px rgba(15, 183, 181, 0.12);
+  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.3);
 }
 
 .post-edit-line {
@@ -568,7 +580,8 @@ button.detail-stat-card.is-liked {
 .post-create-file-button:hover,
 .post-image-file-button:hover {
   border-color: var(--color-teal);
-  color: var(--color-teal-dark);
+  color: var(--color-text);
+  background: var(--color-bg-soft);
 }
 
 .post-create-file-name,

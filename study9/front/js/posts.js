@@ -62,6 +62,11 @@ function getDesignRating(post) {
   return Math.min(10, Math.max(1, 6 + (seed % 5)));
 }
 
+function getSelfRating(post) {
+  const seed = Number(post.postId) || post.authorNickname.length || 7;
+  return Math.min(10, Math.max(1, 5 + ((seed + 2) % 6)));
+}
+
 function getStudentCode(post) {
   const seed = String(post.postId || "0").padStart(4, "0").slice(-4);
   return `2021${seed}`;
@@ -83,7 +88,7 @@ function normalizePostForList(post) {
 function createPostCard(rawPost) {
   const post = normalizePostForList(rawPost);
   const rating = getDesignRating(post);
-  const hasTeacherComment = Number(post.commentCount) > 0;
+  const selfRating = getSelfRating(post);
   const isClosed = Number(post.postId || 0) % 3 !== 0;
 
   const article = document.createElement("article");
@@ -109,15 +114,11 @@ function createPostCard(rawPost) {
 
     <span class="post-card__class">컴퓨터구조 01반</span>
     <span class="post-card__date">${formatDateTime(post.createdAt)}</span>
-    <span class="post-card__rating">${rating}</span>
+    <span class="post-card__rating">${rating} / ${selfRating}</span>
 
     <div class="post-card__title-area">
       <h3 class="post-card__title">${escapeHtml(truncateTitle(post.title) || "강의 평가 답변")}</h3>
     </div>
-
-    <span class="post-card__status ${hasTeacherComment ? "is-done" : "is-pending"}">
-      ${hasTeacherComment ? "작성완료" : "미작성"}
-    </span>
 
     <span class="post-card__close ${isClosed ? "is-closed" : "is-open"}">
       ${isClosed ? "마감" : "미마감"}

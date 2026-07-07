@@ -106,7 +106,7 @@
           <h2>평가 현황</h2>
           <dl>
             <div><dt>전체 평가</dt><dd>23</dd></div>
-            <div><dt>댓글 완료</dt><dd>16</dd></div>
+            <div><dt>작성 완료</dt><dd>16</dd></div>
             <div><dt>마감 처리</dt><dd>20</dd></div>
             <div><dt>미마감</dt><dd>3</dd></div>
           </dl>
@@ -130,9 +130,9 @@
         </div>
 
         <section class="board-stat-strip" aria-label="평가 요약">
-          <article><span>평균 별점</span><strong>8.2</strong></article>
+          <article><span>교육 평점</span><strong>8.2</strong></article>
+          <article><span>성과 평점</span><strong>7.6</strong></article>
           <article><span>미작성 학생</span><strong>7</strong></article>
-          <article><span>강사 댓글</span><strong>16</strong></article>
           <article><span>미마감 평가</span><strong>3</strong></article>
         </section>
 
@@ -141,9 +141,8 @@
           <span>작성 학생</span>
           <span>담당 반</span>
           <span>평가일</span>
-          <span>별점</span>
+          <span>교육/성과</span>
           <span>답변 요약</span>
-          <span>강사 댓글</span>
           <span>마감</span>
         </div>
 
@@ -164,26 +163,28 @@
         </div>
 
         <div class="detail-panel-card rating-card">
-          <p class="detail-panel-card__eyebrow">평균 별점</p>
-          <strong>8.2</strong>
+          <p class="detail-panel-card__eyebrow">평점 요약</p>
+          <strong>교육 8.2 · 성과 7.6</strong>
           <span class="rating-stars" aria-hidden="true">★★★★★</span>
           <div class="rating-bars">
             <span><b style="width: 82%"></b></span>
-            <span><b style="width: 64%"></b></span>
-            <span><b style="width: 38%"></b></span>
+            <span><b style="width: 76%"></b></span>
+            <span><b style="width: 58%"></b></span>
           </div>
         </div>
 
         <div class="detail-panel-card">
-          <p class="detail-panel-card__eyebrow">학생 평가 내용</p>
-          <p class="panel-text">개념 설명이 명확하고 이해하기 쉬웠습니다. 실습 예제가 도움이 많이 되었어요.</p>
+          <p class="detail-panel-card__eyebrow">고정 질문 목록</p>
+          <ol class="question-list">
+            <li class="question-item"><strong><span class="question-number">Q1.</span> 교육/세미나 중 아쉬웠던 점</strong><span>최대 250자</span></li>
+            <li class="question-item"><strong><span class="question-number">Q2.</span> 교육/세미나 중 좋았던 점</strong><span>최대 250자</span></li>
+            <li class="question-item"><strong><span class="question-number">Q3.</span> 강사에 대한 피드백</strong><span>최대 250자</span></li>
+            <li class="question-item"><strong><span class="question-number">Q4.</span> 교육/세미나 평점</strong><span>1점부터 10점</span></li>
+            <li class="question-item"><strong><span class="question-number">Q5.</span> 교육/세미나 평점 이유</strong><span>최대 350자</span></li>
+            <li class="question-item"><strong><span class="question-number">Q6.</span> 오늘 학습한 내용 요약</strong><span>최대 350자</span></li>
+          </ol>
         </div>
 
-        <div class="detail-panel-card">
-          <p class="detail-panel-card__eyebrow">강사 댓글</p>
-          <p class="panel-text">좋은 평가 감사합니다. 다음 수업에서도 예제를 더 보강하겠습니다.</p>
-          <span class="status-badge is-done">작성완료</span>
-        </div>
       </aside>
     </main>
   </div>

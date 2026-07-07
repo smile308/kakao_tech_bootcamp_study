@@ -2,7 +2,8 @@
 .password-edit-page {
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(15, 183, 181, 0.08), transparent 340px),
+    linear-gradient(135deg, rgba(255, 216, 77, 0.24), transparent 340px),
+    linear-gradient(180deg, rgba(79, 157, 122, 0.08), transparent 520px),
     var(--color-bg);
 }
 
@@ -84,7 +85,7 @@
   padding: 20px;
   border: 1px dashed var(--color-line-strong);
   border-radius: var(--radius-md);
-  background: #fbfdfe;
+  background: #fffef8;
 }
 
 .profile-image-label,
@@ -105,14 +106,14 @@
   justify-content: center;
   border: 1px solid var(--color-line);
   border-radius: 50%;
-  background: linear-gradient(135deg, #d9f4f4, #ffe6b8);
+  background: linear-gradient(135deg, var(--color-teal), #ffffff);
   overflow: hidden;
   cursor: pointer;
 }
 
 .profile-image-box::before {
   content: "프로필";
-  color: var(--color-teal-dark);
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 800;
 }
@@ -170,7 +171,7 @@
   align-items: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #f8fbfc;
+  background: #fffdf2;
   color: var(--color-muted);
   font-size: 14px;
 }
@@ -182,7 +183,7 @@
   padding: 0 14px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fbfdfe;
+  background: #fffef8;
   color: var(--color-text);
   font-size: 14px;
   outline: none;
@@ -196,7 +197,7 @@
 .profile-form-input:focus,
 .password-input:focus {
   border-color: var(--color-teal);
-  box-shadow: 0 0 0 3px rgba(15, 183, 181, 0.12);
+  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.3);
 }
 
 .profile-helper-text,
@@ -215,7 +216,7 @@
   min-height: 44px;
   border-radius: var(--radius-sm);
   background: var(--color-teal);
-  color: #ffffff;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -223,7 +224,7 @@
 
 .profile-submit-button:hover,
 .password-edit-button:not(:disabled):hover {
-  background: var(--color-teal-dark);
+  background: var(--color-amber);
 }
 
 .password-edit-button:disabled {

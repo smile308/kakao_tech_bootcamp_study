@@ -20,14 +20,31 @@
     <main class="signup-section">
       <section class="auth-copy-panel signup-copy-panel" aria-label="가입 안내">
         <p>Account Setup</p>
-        <h2>평가를 작성하고 댓글을 확인할 계정을 만듭니다.</h2>
-        <span>현재 가입 화면은 이메일, 비밀번호, 닉네임, 프로필 사진 입력을 지원합니다.</span>
+        <h2>수업 경험을 기록할 계정을 만듭니다.</h2>
+        <span>가입 유형을 고르고 이메일, 비밀번호, 닉네임, 프로필 사진을 입력합니다.</span>
       </section>
 
       <section class="auth-form-panel signup-form-panel">
       <h2 class="signup-section__title">회원가입</h2>
 
       <form id="signupForm" class="signup-form" novalidate>
+  <section class="role-choice-area" aria-label="가입 유형 선택">
+    <label class="profile-label">가입 유형*</label>
+    <div class="role-choice-grid">
+      <label class="role-choice-card">
+        <input type="radio" name="signupRole" value="student" checked />
+        <strong>학생</strong>
+        <span>수업 회고를 작성하고 내 기록을 확인합니다.</span>
+      </label>
+
+      <label class="role-choice-card">
+        <input type="radio" name="signupRole" value="instructor" />
+        <strong>강사</strong>
+        <span>반을 운영하고 제출된 기록을 살펴봅니다.</span>
+      </label>
+    </div>
+  </section>
+
   <section class="profile-upload-area">
     <label class="profile-label">프로필 사진*</label>
     <p id="profileHelper" class="signup-helper-text profile-helper"></p>
