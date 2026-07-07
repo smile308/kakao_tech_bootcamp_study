@@ -92,7 +92,7 @@ function createPostCard(rawPost) {
     </div>
 
     <div class="post-card__title-area">
-      <h3 class="post-card__title">${escapeHtml(truncateTitle(post.title) || "강의 평가")}</h3>
+      <h3 class="post-card__title">${escapeHtml(truncateTitle(post.title) || "대나무숲 글")}</h3>
     </div>
 
     <span class="post-card__date">${formatDateTime(post.createdAt)}</span>
@@ -103,7 +103,7 @@ function createPostCard(rawPost) {
 
   article.addEventListener("click", () => {
     if (!post.postId) {
-      console.error("평가 ID가 없습니다.", rawPost);
+      console.error("글 ID가 없습니다.", rawPost);
       return;
     }
 
@@ -137,7 +137,7 @@ async function loadPosts(size) {
     hasNextPage = result.hasNextPage;
     currentPage += 1;
   } catch (error) {
-    console.error("평가 목록 조회 실패:", error);
+    console.error("글 목록 조회 실패:", error);
   } finally {
     isLoading = false;
   }

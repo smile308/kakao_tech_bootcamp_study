@@ -2,8 +2,10 @@
 .password-edit-page {
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(255, 216, 77, 0.24), transparent 340px),
-    linear-gradient(180deg, rgba(79, 157, 122, 0.08), transparent 520px),
+    url("../assets/images/bamboo-watermark.svg") right -140px bottom -160px / min(52vw, 520px) auto no-repeat,
+    radial-gradient(circle at 14% 14%, rgba(213, 230, 117, 0.3), transparent 300px),
+    linear-gradient(135deg, rgba(111, 191, 115, 0.18), transparent 340px),
+    linear-gradient(180deg, rgba(47, 143, 85, 0.08), transparent 520px),
     var(--color-bg);
 }
 
@@ -85,7 +87,7 @@
   padding: 20px;
   border: 1px dashed var(--color-line-strong);
   border-radius: var(--radius-md);
-  background: #fffef8;
+  background: #fbfff7;
 }
 
 .profile-image-label,
@@ -143,7 +145,7 @@
   justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
-  background: rgba(6, 26, 50, 0.72);
+  background: rgba(16, 36, 25, 0.78);
   color: #ffffff;
 }
 
@@ -171,7 +173,7 @@
   align-items: center;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fffdf2;
+  background: #f7fbef;
   color: var(--color-muted);
   font-size: 14px;
 }
@@ -183,7 +185,7 @@
   padding: 0 14px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fffef8;
+  background: #fbfff7;
   color: var(--color-text);
   font-size: 14px;
   outline: none;
@@ -197,7 +199,7 @@
 .profile-form-input:focus,
 .password-input:focus {
   border-color: var(--color-teal);
-  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.3);
+  box-shadow: 0 0 0 3px rgba(111, 191, 115, 0.24);
 }
 
 .profile-helper-text,
@@ -228,7 +230,7 @@
 }
 
 .password-edit-button:disabled {
-  background: #c7d9df;
+  background: #b9c8b2;
   cursor: not-allowed;
 }
 

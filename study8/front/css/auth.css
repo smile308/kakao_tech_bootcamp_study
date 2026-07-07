@@ -2,8 +2,10 @@
 .signup-page {
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(255, 216, 77, 0.28), transparent 360px),
-    linear-gradient(180deg, rgba(79, 157, 122, 0.08), transparent 520px),
+    url("../assets/images/bamboo-watermark.svg") right -130px bottom -150px / min(54vw, 540px) auto no-repeat,
+    radial-gradient(circle at 12% 18%, rgba(213, 230, 117, 0.32), transparent 300px),
+    linear-gradient(135deg, rgba(111, 191, 115, 0.2), transparent 360px),
+    linear-gradient(180deg, rgba(47, 143, 85, 0.08), transparent 520px),
     var(--color-bg);
 }
 
@@ -38,8 +40,9 @@
   flex-direction: column;
   justify-content: flex-end;
   background:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.82), transparent 28%),
-    linear-gradient(160deg, #fff1a8, #fffaf0 58%, #eaf7ef);
+    url("../assets/images/bamboo-watermark.svg") right -86px top -74px / 286px auto no-repeat,
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.78), transparent 28%),
+    linear-gradient(160deg, #dff0d4, #fffdf5 58%, #e7f4de);
   color: var(--color-text);
   overflow: hidden;
 }
@@ -49,14 +52,13 @@
   width: 58px;
   height: 58px;
   margin-bottom: auto;
-  border-radius: 22px;
+  border-radius: 18px;
   background:
-    linear-gradient(135deg, transparent 40%, var(--color-navy-900) 41% 48%, transparent 49%),
-    radial-gradient(circle at 68% 72%, var(--color-navy-900) 0 8%, transparent 9%),
-    linear-gradient(135deg, #fff8d0, var(--color-teal));
+    url("../assets/images/bamboo-logo.svg") center / 42px 42px no-repeat,
+    linear-gradient(135deg, #f8fff0, #dff0d4);
   box-shadow:
     inset 0 0 0 3px rgba(255, 255, 255, 0.72),
-    0 10px 24px rgba(185, 133, 25, 0.18);
+    0 10px 24px rgba(37, 107, 59, 0.18);
 }
 
 .signup-copy-panel {
@@ -91,7 +93,7 @@
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  border: 1px solid rgba(185, 133, 25, 0.18);
+  border: 1px solid rgba(37, 107, 59, 0.18);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.58);
 }
@@ -156,7 +158,7 @@
   padding: 0 14px;
   border: 1px solid var(--color-line);
   border-radius: var(--radius-md);
-  background: #fffef8;
+  background: #fbfff7;
   color: var(--color-text);
   font-size: 14px;
   outline: none;
@@ -168,7 +170,7 @@
 
 .form-input:focus {
   border-color: var(--color-teal);
-  box-shadow: 0 0 0 3px rgba(255, 216, 77, 0.3);
+  box-shadow: 0 0 0 3px rgba(111, 191, 115, 0.24);
 }
 
 .helper-text,
@@ -188,7 +190,7 @@
   height: 44px;
   margin-top: 2px;
   border-radius: var(--radius-sm);
-  background: #c7d9df;
+  background: #b9c8b2;
   color: #ffffff;
   font-size: 14px;
   font-weight: 800;
@@ -230,7 +232,7 @@
   padding: 18px;
   border: 1px dashed var(--color-line-strong);
   border-radius: var(--radius-md);
-  background: #fffef8;
+  background: #fbfff7;
 }
 
 .profile-label {

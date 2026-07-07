@@ -27,27 +27,27 @@
 }
 
 :root {
-  --color-navy-950: #2d2a24;
-  --color-navy-900: #3a342a;
-  --color-navy-800: #5a4b35;
+  --color-navy-950: #102419;
+  --color-navy-900: #193826;
+  --color-navy-800: #28543a;
   --color-surface: #ffffff;
-  --color-bg: #fff9e8;
-  --color-bg-soft: #fff1b8;
-  --color-line: #eadfca;
-  --color-line-strong: #d5c6ad;
-  --color-text: #2d2a24;
-  --color-muted: #70685b;
-  --color-subtle: #a59b8b;
-  --color-teal: #ffd84d;
-  --color-teal-dark: #b98519;
-  --color-amber: #ffe77a;
-  --color-green: #4f9d7a;
-  --color-green-soft: #eaf7ef;
-  --color-coral: #d66a4a;
-  --color-coral-soft: #fff0e9;
-  --color-blue-soft: #f4edd8;
-  --shadow-soft: 0 16px 42px rgba(58, 52, 42, 0.1);
-  --shadow-panel: 0 1px 2px rgba(58, 52, 42, 0.08);
+  --color-bg: #f3f8ed;
+  --color-bg-soft: #e4f2d4;
+  --color-line: #cddfc5;
+  --color-line-strong: #a8c99f;
+  --color-text: #14231a;
+  --color-muted: #62705f;
+  --color-subtle: #8ba084;
+  --color-teal: #6fbf73;
+  --color-teal-dark: #256b3b;
+  --color-amber: #d5e675;
+  --color-green: #2f8f55;
+  --color-green-soft: #e7f4de;
+  --color-coral: #c65e45;
+  --color-coral-soft: #fff1e9;
+  --color-blue-soft: #eef5ea;
+  --shadow-soft: 0 16px 42px rgba(25, 56, 38, 0.12);
+  --shadow-panel: 0 1px 2px rgba(25, 56, 38, 0.08);
   --radius-sm: 6px;
   --radius-md: 8px;
 }
@@ -94,25 +94,24 @@ a {
   display: flex;
   align-items: center;
   gap: 18px;
-  background: rgba(255, 250, 240, 0.96);
+  background: rgba(248, 252, 243, 0.96);
   border-bottom: 1px solid var(--color-line);
   color: var(--color-text);
-  box-shadow: 0 8px 22px rgba(58, 52, 42, 0.08);
+  box-shadow: 0 8px 22px rgba(25, 56, 38, 0.08);
 }
 
 .page-header::before {
   content: "";
   width: 34px;
   height: 34px;
-  border-radius: 13px;
+  border-radius: 10px;
   flex: 0 0 auto;
   background:
-    linear-gradient(135deg, transparent 40%, var(--color-navy-900) 41% 48%, transparent 49%),
-    radial-gradient(circle at 68% 72%, var(--color-navy-900) 0 8%, transparent 9%),
-    linear-gradient(135deg, #fff7c8, var(--color-teal));
+    url("../assets/images/bamboo-logo.svg") center / 24px 24px no-repeat,
+    linear-gradient(135deg, #f8fff0, #dff0d4);
   box-shadow:
-    inset 0 0 0 2px rgba(255, 255, 255, 0.7),
-    0 0 0 1px rgba(185, 133, 25, 0.22);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.86),
+    0 0 0 1px rgba(37, 107, 59, 0.22);
 }
 
 .page-header__title {
@@ -126,7 +125,7 @@ a {
 }
 
 .page-header__title::before {
-  content: "DAILY FEEDBACK";
+  content: "BAMBOO FOREST";
   display: block;
   margin-bottom: 3px;
   color: var(--color-teal-dark);
@@ -147,17 +146,17 @@ a {
   width: 38px;
   height: 38px;
   padding: 0;
-  border: 2px solid rgba(255, 216, 77, 0.92);
+  border: 2px solid rgba(111, 191, 115, 0.92);
   border-radius: 50%;
   background:
-    linear-gradient(135deg, rgba(255, 216, 77, 0.55), rgba(255, 255, 255, 0.9)),
-    #fff9e8;
+    linear-gradient(135deg, rgba(111, 191, 115, 0.34), rgba(255, 255, 255, 0.9)),
+    #f3f8ed;
   overflow: hidden;
   cursor: pointer;
 }
 
 .header-profile__button.is-empty::before {
-  content: "김";
+  content: "숲";
   display: flex;
   width: 100%;
   height: 100%;
@@ -232,9 +231,9 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(185, 133, 25, 0.28);
+  border: 1px solid rgba(37, 107, 59, 0.28);
   border-radius: var(--radius-md);
-  background: rgba(255, 216, 77, 0.22);
+  background: rgba(111, 191, 115, 0.16);
   cursor: pointer;
 }
 
