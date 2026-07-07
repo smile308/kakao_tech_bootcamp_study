@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강의 평가 로그인</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+</head>
+<body>
+  <div class="login-page">
+    <header class="page-header">
+      <h1 class="page-header__title">강의 평가 시스템</h1>
+    </header>
+
+    <main class="login-section">
+      <section class="auth-copy-panel" aria-label="서비스 소개">
+        <p>Feedback Operations</p>
+        <h2>작성한 평가와 댓글을 한눈에 확인하세요.</h2>
+        <dl>
+          <div><dt>평가 작성</dt><dd>제목과 내용을 게시글로 등록</dd></div>
+          <div><dt>댓글 확인</dt><dd>평가별 댓글과 활동 정보 확인</dd></div>
+        </dl>
+      </section>
+
+      <section class="auth-form-panel">
+      <h2 class="login-section__title">로그인</h2>
+
+      <form id="loginForm" class="login-form" novalidate>
+  <div class="form-group">
+    <label for="email" class="form-label">이메일</label>
+    <input
+      type="email"
+      id="email"
+      class="form-input"
+      placeholder="이메일을 입력하세요"
+      autocomplete="email"
+    />
+  </div>
+
+  <div class="form-group">
+    <label for="password" class="form-label">비밀번호</label>
+    <input
+      type="password"
+      id="password"
+      class="form-input"
+      placeholder="비밀번호를 입력하세요"
+      autocomplete="current-password"
+    />
+  </div>
+
+  <p id="loginHelper" class="helper-text" aria-live="polite"></p>
+
+  <button id="loginButton" type="submit" class="login-button" disabled>
+    로그인
+  </button>
+</form>
+
+<a href="./signup.html" id="signupLink" class="signup-link">회원가입</a>
+
+      </section>
+
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+<script src="../js/login.js"></script>
+</body>
+</html>

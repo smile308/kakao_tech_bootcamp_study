@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>강의 평가 목록</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/posts.css" />
+  <link rel="stylesheet" href="../css/future.css" />
+</head>
+<body>
+  <div class="posts-page">
+    <header class="page-header">
+      <h1 class="page-header__title">피드백 보드</h1>
+
+      <div class="header-mode-tabs" aria-label="현재 화면 모드">
+        <span class="header-mode-tabs__item is-active">강사 모드</span>
+        <span class="header-mode-tabs__item">학생 모드</span>
+      </div>
+
+      <div class="header-profile">
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
+
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
+    </header>
+
+    <main class="posts-main">
+      <aside class="feedback-sidebar" aria-label="강의와 평가일 요약">
+        <section class="sidebar-panel course-panel">
+          <div class="sidebar-panel__header">
+            <h2>강의 선택</h2>
+            <span class="panel-add-button" aria-hidden="true">+</span>
+          </div>
+
+          <div class="course-list">
+            <article class="course-item is-active">
+              <span class="course-item__icon" aria-hidden="true">C</span>
+              <div>
+                <strong>컴퓨터구조 01반</strong>
+                <span>2025-1학기</span>
+              </div>
+            </article>
+
+            <article class="course-item">
+              <span class="course-item__icon" aria-hidden="true">A</span>
+              <div>
+                <strong>알고리즘 02반</strong>
+                <span>2025-1학기</span>
+              </div>
+            </article>
+
+            <article class="course-item">
+              <span class="course-item__icon" aria-hidden="true">D</span>
+              <div>
+                <strong>데이터베이스 01반</strong>
+                <span>2025-1학기</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="sidebar-panel calendar-panel">
+          <div class="sidebar-panel__header">
+            <h2>평가일</h2>
+            <span>2025년 5월</span>
+          </div>
+
+          <div class="calendar-grid" aria-hidden="true">
+            <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
+            <span class="is-muted">27</span><span class="is-muted">28</span><span class="is-muted">29</span><span class="is-muted">30</span><span>1</span><span>2</span><span>3</span>
+            <span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+            <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span class="is-selected">16</span><span>17</span>
+            <span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
+          </div>
+        </section>
+
+        <section class="sidebar-panel status-panel">
+          <h2>평가 현황</h2>
+          <dl>
+            <div><dt>전체 평가</dt><dd>23</dd></div>
+            <div><dt>댓글 완료</dt><dd>16</dd></div>
+            <div><dt>마감 처리</dt><dd>20</dd></div>
+            <div><dt>미마감</dt><dd>3</dd></div>
+          </dl>
+        </section>
+      </aside>
+
+      <section class="evaluation-board" aria-label="날짜별 평가 목록">
+        <div class="board-toolbar">
+          <div>
+            <p class="posts-welcome">컴퓨터구조 01반 · 2025-05-16</p>
+            <h2>날짜별 강의 평가</h2>
+          </div>
+
+          <div class="board-toolbar__actions">
+            <div class="board-search" aria-hidden="true">학생 이름 또는 평가 내용 검색</div>
+            <span class="filter-chip" aria-hidden="true">필터</span>
+            <button type="button" id="writePostButton" class="write-post-button">
+              평가 작성
+            </button>
+          </div>
+        </div>
+
+        <section class="board-stat-strip" aria-label="평가 요약">
+          <article><span>평균 별점</span><strong>8.2</strong></article>
+          <article><span>미작성 학생</span><strong>7</strong></article>
+          <article><span>강사 댓글</span><strong>16</strong></article>
+          <article><span>미마감 평가</span><strong>3</strong></article>
+        </section>
+
+        <div class="evaluation-list-header" aria-hidden="true">
+          <span></span>
+          <span>작성 학생</span>
+          <span>담당 반</span>
+          <span>평가일</span>
+          <span>별점</span>
+          <span>답변 요약</span>
+          <span>강사 댓글</span>
+          <span>마감</span>
+        </div>
+
+        <section id="postsList" class="posts-list"></section>
+      </section>
+
+      <aside class="feedback-detail-panel" aria-label="선택 평가 미리보기">
+        <div class="detail-panel-card selected-student-card">
+          <p class="detail-panel-card__eyebrow">선택된 평가 1건</p>
+          <div class="selected-student">
+            <span class="selected-student__avatar">이</span>
+            <div>
+              <strong>이준호</strong>
+              <span>20211234 · 컴퓨터구조 01반</span>
+            </div>
+          </div>
+          <p>2025-05-16 14:32 작성</p>
+        </div>
+
+        <div class="detail-panel-card rating-card">
+          <p class="detail-panel-card__eyebrow">평균 별점</p>
+          <strong>8.2</strong>
+          <span class="rating-stars" aria-hidden="true">★★★★★</span>
+          <div class="rating-bars">
+            <span><b style="width: 82%"></b></span>
+            <span><b style="width: 64%"></b></span>
+            <span><b style="width: 38%"></b></span>
+          </div>
+        </div>
+
+        <div class="detail-panel-card">
+          <p class="detail-panel-card__eyebrow">학생 평가 내용</p>
+          <p class="panel-text">개념 설명이 명확하고 이해하기 쉬웠습니다. 실습 예제가 도움이 많이 되었어요.</p>
+        </div>
+
+        <div class="detail-panel-card">
+          <p class="detail-panel-card__eyebrow">강사 댓글</p>
+          <p class="panel-text">좋은 평가 감사합니다. 다음 수업에서도 예제를 더 보강하겠습니다.</p>
+          <span class="status-badge is-done">작성완료</span>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/header-menu.js"></script>
+  <script src="../js/posts.js"></script>
+</body>
+</html>
