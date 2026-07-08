@@ -73,16 +73,17 @@ class PostTest {
         post.addReply();
         post.deleteReply();
         post.like();
-        post.likeCancle();
         post.view();
         post.delete();
 
         assertAll(
                 () -> assertThat(post.getReplyCount()).isZero(),
-                () -> assertThat(post.getLikeCount()).isZero(),
+                () -> assertThat(post.getLikeCount()).isEqualTo(1),
                 () -> assertThat(post.getViewCount()).isEqualTo(1),
                 () -> assertThat(post.isDeleted()).isTrue()
         );
+        post.likeCancle();
+        assertThat(post.getLikeCount()).isEqualTo(0);
     }
 
     @Test
