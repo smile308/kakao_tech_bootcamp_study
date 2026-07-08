@@ -1,14 +1,16 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.auth.CustomUserDetails;
 import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.user.SessionDeleteResponseDto;
 import kr.adapterz.springdatajpa.dto.user.SessionRequestDto;
 import kr.adapterz.springdatajpa.dto.user.SessionResponseDto;
-import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
-import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,26 +18,31 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional
 public class SessionService {
-    private final UserRepository userRepository;
+
+    private final AuthenticationManager authenticationManager;
     private final JwtProvider jwtProvider;
-    private final PasswordEncoder passwordEncoder;
 
-    //로그인
-    public SessionResponseDto createSession(SessionRequestDto request){
-        User user = userRepository.findByEmailAndDeletedFalse(request.getEmail())
-                .orElseThrow(() -> new LoginFailedException("Login_Failed"));
+    public SessionResponseDto createSession(SessionRequestDto request) {
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+
+            String accessToken = jwtProvider.createAccessToken(userDetails.getUserId());
+
+            return new SessionResponseDto(accessToken, userDetails.getUserId());
+
+        } catch (AuthenticationException e) {
             throw new LoginFailedException("Login_Failed");
         }
-
-        String accessToken = jwtProvider.createAccessToken(user.getUserId());
-
-        return new SessionResponseDto(accessToken, user.getUserId());
     }
 
-
-    public SessionDeleteResponseDto deleteSession(){
+    public SessionDeleteResponseDto deleteSession() {
         return new SessionDeleteResponseDto();
     }
 }
