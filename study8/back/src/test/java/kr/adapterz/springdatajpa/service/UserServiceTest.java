@@ -114,7 +114,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입 시 이메일과 닉네임이 중복되지 않으면 유저가 저장된다")
+    @DisplayName("회원가입 시 이메일과 닉네임이 중복되지 않으면 입력값과 암호화된 비밀번호로 유저가 저장된다")
     void createUserSuccess() {
         // given
         UserRequestDto request = createUserRequest(
@@ -134,10 +134,13 @@ class UserServiceTest {
 
         when(userRepository.existsByEmailAndDeletedFalse("test@test.com"))
                 .thenReturn(false);
+
         when(userRepository.existsByNicknameAndDeletedFalse("tester"))
                 .thenReturn(false);
+
         when(passwordEncoder.encode("Password1!"))
                 .thenReturn("encoded-password");
+
         when(userRepository.save(any(User.class)))
                 .thenReturn(savedUser);
 
@@ -151,7 +154,15 @@ class UserServiceTest {
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
-        assertThat(userCaptor.getValue().getPassword()).isEqualTo("encoded-password");
+
+        User capturedUser = userCaptor.getValue();
+
+        assertThat(capturedUser.getEmail()).isEqualTo("test@test.com");
+        assertThat(capturedUser.getNickname()).isEqualTo("tester");
+        assertThat(capturedUser.getProfileImage()).isEqualTo("profile.png");
+
+        assertThat(capturedUser.getPassword()).isEqualTo("encoded-password");
+        assertThat(capturedUser.getPassword()).isNotEqualTo("Password1!");
     }
 
     @Test
@@ -259,6 +270,43 @@ class UserServiceTest {
     }
 
     @Test
+    @DisplayName("비밀번호 수정 시 비밀번호가 일치하면 암호화된 비밀번호로 변경된다")
+    void setPasswordSuccess() {
+        // given
+        Long loginUserId = 1L;
+
+        User loginUser = new User(
+                "test@test.com",
+                "old-encoded-password",
+                "tester",
+                "profile.png"
+        );
+
+        ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
+
+        UserPasswordRequestDto request = createUserPasswordRequest(
+                "NewPassword1!",
+                "NewPassword1!"
+        );
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+
+        when(passwordEncoder.encode("NewPassword1!"))
+                .thenReturn("new-encoded-password");
+
+        // when
+        userService.setPassword(loginUserId, request);
+
+        // then
+        verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+        verify(passwordEncoder).encode("NewPassword1!");
+
+        assertThat(loginUser.getPassword()).isEqualTo("new-encoded-password");
+        assertThat(loginUser.getPassword()).isNotEqualTo("NewPassword1!");
+    }
+
+    @Test
     @DisplayName("회원 탈퇴 시 로그인 유저가 없으면 No_User 예외가 발생한다")
     void deleteUserFailByNoUser() {
         // given
@@ -291,6 +339,35 @@ class UserServiceTest {
         ReflectionTestUtils.setField(request, "profileImage", profileImage);
 
         return request;
+    }
+
+    @Test
+    @DisplayName("회원 탈퇴 시 유저가 삭제 처리되고 닉네임과 프로필 이미지가 마스킹된다")
+    void deleteUserSuccess() {
+        // given
+        Long loginUserId = 1L;
+
+        User loginUser = new User(
+                "test@test.com",
+                "encoded-password",
+                "tester",
+                "profile.png"
+        );
+
+        ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+
+        // when
+        userService.deleteUser(loginUserId);
+
+        // then
+        verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+
+        assertThat(loginUser.isDeleted()).isTrue();
+        assertThat(loginUser.getNickname()).isEqualTo("삭제된 유저");
+        assertThat(loginUser.getProfileImage()).isNull();
     }
 
     private UserPatchRequestDto createUserPatchRequest(

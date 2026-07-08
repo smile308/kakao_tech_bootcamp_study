@@ -1,95 +1,99 @@
 package kr.adapterz.springdatajpa.service;
 
+import kr.adapterz.springdatajpa.auth.CustomUserDetails;
 import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.user.SessionRequestDto;
 import kr.adapterz.springdatajpa.dto.user.SessionResponseDto;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
-import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SessionServiceTest {
 
     @Mock
-    private UserRepository userRepository;
+    private AuthenticationManager authenticationManager;
 
     @Mock
     private JwtProvider jwtProvider;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
+    private Authentication authentication;
 
     @InjectMocks
     private SessionService sessionService;
 
     @Test
-    @DisplayName("로그인 시 이메일에 맞는 유저가 없으면 Login_Failed 예외가 발생한다")
-    void createSessionFailByNoUser() {
+    @DisplayName("로그인 인증 실패 시 Login_Failed 예외가 발생한다")
+    void createSessionFailByAuthenticationFail() {
+        // given
         SessionRequestDto request = createSessionRequest("test@test.com", "Password1!");
 
-        when(userRepository.findByEmailAndDeletedFalse("test@test.com"))
-                .thenReturn(Optional.empty());
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new BadCredentialsException("Bad credentials"));
 
+        // when & then
         assertThatThrownBy(() -> sessionService.createSession(request))
                 .isInstanceOf(LoginFailedException.class)
                 .hasMessage("Login_Failed");
 
-        verify(passwordEncoder, never()).matches("Password1!", "encoded-password");
-        verify(jwtProvider, never()).createAccessToken(1L);
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(jwtProvider, never()).createAccessToken(anyLong());
     }
 
     @Test
-    @DisplayName("로그인 시 비밀번호가 암호화된 비밀번호와 맞지 않으면 Login_Failed 예외가 발생한다")
-    void createSessionFailByWrongPassword() {
-        SessionRequestDto request = createSessionRequest("test@test.com", "Password1!");
-        User user = createUser(1L, "encoded-password");
-
-        when(userRepository.findByEmailAndDeletedFalse("test@test.com"))
-                .thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("Password1!", "encoded-password"))
-                .thenReturn(false);
-
-        assertThatThrownBy(() -> sessionService.createSession(request))
-                .isInstanceOf(LoginFailedException.class)
-                .hasMessage("Login_Failed");
-
-        verify(jwtProvider, never()).createAccessToken(1L);
-    }
-
-    @Test
-    @DisplayName("로그인 성공 시 암호화된 비밀번호를 비교한 뒤 JWT를 발급한다")
+    @DisplayName("로그인 성공 시 AuthenticationManager로 인증한 뒤 JWT를 발급한다")
     void createSessionSuccess() {
+        // given
         SessionRequestDto request = createSessionRequest("test@test.com", "Password1!");
-        User user = createUser(1L, "encoded-password");
 
-        when(userRepository.findByEmailAndDeletedFalse("test@test.com"))
-                .thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("Password1!", "encoded-password"))
-                .thenReturn(true);
+        User user = createUser(1L, "test@test.com", "encoded-password");
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenReturn(authentication);
+
+        when(authentication.getPrincipal())
+                .thenReturn(userDetails);
+
         when(jwtProvider.createAccessToken(1L))
                 .thenReturn("access-token");
 
+        // when
         SessionResponseDto response = sessionService.createSession(request);
 
+        // then
         assertThat(response.getMessage()).isEqualTo("login_success");
         assertThat(response.getAccessToken()).isEqualTo("access-token");
         assertThat(response.getUserId()).isEqualTo(1L);
+
+        ArgumentCaptor<UsernamePasswordAuthenticationToken> tokenCaptor =
+                ArgumentCaptor.forClass(UsernamePasswordAuthenticationToken.class);
+
+        verify(authenticationManager).authenticate(tokenCaptor.capture());
+
+        UsernamePasswordAuthenticationToken token = tokenCaptor.getValue();
+
+        assertThat(token.getPrincipal()).isEqualTo("test@test.com");
+        assertThat(token.getCredentials()).isEqualTo("Password1!");
+
+        verify(jwtProvider).createAccessToken(1L);
     }
 
     private SessionRequestDto createSessionRequest(String email, String password) {
@@ -99,8 +103,8 @@ class SessionServiceTest {
         return request;
     }
 
-    private User createUser(Long userId, String encodedPassword) {
-        User user = new User("test@test.com", encodedPassword, "tester", "profile.png");
+    private User createUser(Long userId, String email, String encodedPassword) {
+        User user = new User(email, encodedPassword, "tester", "profile.png");
         ReflectionTestUtils.setField(user, "userId", userId);
         return user;
     }
