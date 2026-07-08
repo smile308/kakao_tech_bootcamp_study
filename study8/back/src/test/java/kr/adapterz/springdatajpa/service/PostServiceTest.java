@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
 import kr.adapterz.springdatajpa.entity.Like;
 import kr.adapterz.springdatajpa.entity.Post;
@@ -43,9 +42,6 @@ class PostServiceTest {
     @Mock
     private LikeRepository likeRepository;
 
-    @Mock
-    private JwtProvider jwtProvider;
-
     @InjectMocks
     private PostService postService;
 
@@ -68,84 +64,69 @@ class PostServiceTest {
     @Test
     @DisplayName("게시글 수정 시 작성자가 아니면 No_Auth 예외가 발생한다")
     void fixPostFailByNoAuth() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
         Post post = createPost(postId, createUser(writerId));
         PostFixRequestDto request = createPostFixRequest("new title", "new content");
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.fixPost(postId, authorizationHeader, request))
+        assertThatThrownBy(() -> postService.fixPost(postId, loginUserId, request))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("No_Auth");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(postRepository).findByPostIdAndDeletedFalse(postId);
     }
 
     @Test
     @DisplayName("게시글 삭제 시 게시글이 없으면 No_Post 예외가 발생한다")
     void deletePostFailByNoPost() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.deletePost(postId, authorizationHeader))
+        assertThatThrownBy(() -> postService.deletePost(postId, loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(postRepository).findByPostIdAndDeletedFalse(postId);
     }
 
     @Test
     @DisplayName("게시글 삭제 시 작성자가 아니면 No_Auth 예외가 발생한다")
     void deletePostFailByNoAuth() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
         Post post = createPost(postId, createUser(writerId));
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.deletePost(postId, authorizationHeader))
+        assertThatThrownBy(() -> postService.deletePost(postId, loginUserId))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("No_Auth");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(postRepository).findByPostIdAndDeletedFalse(postId);
     }
 
     @Test
     @DisplayName("좋아요 시 로그인 유저가 없으면 No_User 예외가 발생한다")
     void likePostFailByNoUser() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long loginUserId = 1L;
         Post post = createPost(postId, createUser(2L));
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.likePost(postId, authorizationHeader))
+        assertThatThrownBy(() -> postService.likePost(postId, loginUserId))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("No_User");
 
@@ -155,7 +136,6 @@ class PostServiceTest {
     @Test
     @DisplayName("이미 좋아요한 게시글이면 Already_Liked 예외가 발생한다")
     void likePostFailByAlreadyLiked() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long loginUserId = 1L;
         User loginUser = createUser(loginUserId);
@@ -163,14 +143,12 @@ class PostServiceTest {
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
         when(likeRepository.existsByPostAndUser(post, loginUser))
                 .thenReturn(true);
 
-        assertThatThrownBy(() -> postService.likePost(postId, authorizationHeader))
+        assertThatThrownBy(() -> postService.likePost(postId, loginUserId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Already_Liked");
 
@@ -180,7 +158,6 @@ class PostServiceTest {
     @Test
     @DisplayName("좋아요 취소 시 좋아요 내역이 없으면 Not_Liked 예외가 발생한다")
     void cancelLikeFailByNotLiked() {
-        String authorizationHeader = "Bearer token";
         Long postId = 1L;
         Long loginUserId = 1L;
         User loginUser = createUser(loginUserId);
@@ -188,14 +165,12 @@ class PostServiceTest {
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
         when(likeRepository.findByPostAndUser(post, loginUser))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.cancelLike(postId, authorizationHeader))
+        assertThatThrownBy(() -> postService.cancelLike(postId, loginUserId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Not_Liked");
 

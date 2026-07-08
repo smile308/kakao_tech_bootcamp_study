@@ -25,7 +25,7 @@ public class SessionController {
     //로그아웃
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public SessionDeleteResponseDto deleteSession(@RequestHeader("Authorization") String authorizationHeader){
-        return sessionService.deleteSession(authorizationHeader);
+    public SessionDeleteResponseDto deleteSession(){
+        return sessionService.deleteSession();
     }
 }

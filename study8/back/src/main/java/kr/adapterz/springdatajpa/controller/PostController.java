@@ -1,11 +1,13 @@
 package kr.adapterz.springdatajpa.controller;
 
 import jakarta.validation.Valid;
+import kr.adapterz.springdatajpa.auth.CustomUserDetails;
 import kr.adapterz.springdatajpa.dto.post.*;
 
 import kr.adapterz.springdatajpa.service.PostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -28,10 +30,10 @@ public class PostController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public PostResponseDto createPost(
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody PostRequestDto request
     ){
-        return postService.createPost(authorizationHeader, request);
+        return postService.createPost(userDetails.getUserId(), request);
     }
     //게시글 상세조회
     @GetMapping("/{postId}")
@@ -42,28 +44,28 @@ public class PostController {
     @PatchMapping("/{postId}")
     public PostFixResponseDto fixPost(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody PostFixRequestDto request
     ){
-        return postService.fixPost(postId, authorizationHeader, request);
+        return postService.fixPost(postId, userDetails.getUserId(), request);
     }
     //게시글 삭제
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public PostDeleteResponseDto deletePost(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ){
-        return postService.deletePost(postId, authorizationHeader);
+        return postService.deletePost(postId, userDetails.getUserId());
     }
     //좋아요
     @PostMapping("/{postId}/likes")
     @ResponseStatus(HttpStatus.CREATED)
     public LikeResponseDto likePost(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ){
-        return postService.likePost(postId, authorizationHeader);
+        return postService.likePost(postId, userDetails.getUserId());
     }
 
     //좋아요 취소
@@ -71,8 +73,8 @@ public class PostController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public LikeCancelResponseDto cancelLike(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader
+            @AuthenticationPrincipal CustomUserDetails userDetails
     ){
-        return postService.cancelLike(postId, authorizationHeader);
+        return postService.cancelLike(postId, userDetails.getUserId());
     }
 }

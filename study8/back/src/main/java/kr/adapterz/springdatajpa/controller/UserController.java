@@ -1,9 +1,11 @@
 package kr.adapterz.springdatajpa.controller;
 
 import jakarta.validation.Valid;
+import kr.adapterz.springdatajpa.auth.CustomUserDetails;
 import kr.adapterz.springdatajpa.dto.user.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import kr.adapterz.springdatajpa.service.UserService;
 
@@ -22,30 +24,30 @@ public class UserController {
 
     //내 회원정보 조회
     @GetMapping("/me")
-    public UserInfoResponseDto getMyInfo(@RequestHeader("Authorization") String authorizationHeader){
-        return userService.getMyInfo(authorizationHeader);
+    public UserInfoResponseDto getMyInfo(@AuthenticationPrincipal CustomUserDetails userDetails){
+        return userService.getMyInfo(userDetails.getUserId());
     }
 
     //회원 탈퇴
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public UserDeleteResponseDto deleteUser(@RequestHeader("Authorization") String authorizationHeader){
-        return userService.deleteUser(authorizationHeader);
+    public UserDeleteResponseDto deleteUser(@AuthenticationPrincipal CustomUserDetails userDetails){
+        return userService.deleteUser(userDetails.getUserId());
     }
     //회원정보 수정
     @PatchMapping
     public UserPatchResponseDto patchUser(
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UserPatchRequestDto request
     ){
-        return userService.patchUser(authorizationHeader, request);
+        return userService.patchUser(userDetails.getUserId(), request);
     }
     //비밀번호 수정
     @PatchMapping("/password")
     public UserPasswordResponseDto setPassword(
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @Valid @RequestBody UserPasswordRequestDto request
     ){
-        return userService.setPassword(authorizationHeader, request);
+        return userService.setPassword(userDetails.getUserId(), request);
     }
 }

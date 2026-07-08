@@ -1,12 +1,12 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.user.*;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
-    private final JwtProvider jwtProvider;
+    private final PasswordEncoder passwordEncoder;
 
 
     //회원가입
@@ -34,7 +34,7 @@ public class UserService {
         }
         User user = new User(
                 request.getEmail(),
-                request.getPassword(),
+                passwordEncoder.encode(request.getPassword()),
                 request.getNickname(),
                 request.getProfileImage()
         );
@@ -45,21 +45,21 @@ public class UserService {
 
     //내 회원정보 조회
     @Transactional(readOnly = true)
-    public UserInfoResponseDto getMyInfo(String authorizationHeader){
-        User user = getLoginUser(authorizationHeader);
+    public UserInfoResponseDto getMyInfo(Long loginUserId){
+        User user = getLoginUser(loginUserId);
         return new UserInfoResponseDto(user);
     }
 
     //회원 탈퇴
-    public UserDeleteResponseDto deleteUser(String authorizationHeader){
+    public UserDeleteResponseDto deleteUser(Long loginUserId){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
-        User user = getLoginUser(authorizationHeader);
+        User user = getLoginUser(loginUserId);
         user.delete();
         return userDeleteResponseDto;
     }
     //회원 정보 수정
-    public UserPatchResponseDto patchUser(String authorizationHeader, UserPatchRequestDto request){
-        User user = getLoginUser(authorizationHeader);
+    public UserPatchResponseDto patchUser(Long loginUserId, UserPatchRequestDto request){
+        User user = getLoginUser(loginUserId);
 
         //닉네임 중복 체크
         if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(), user.getUserId())) {
@@ -71,20 +71,19 @@ public class UserService {
         return userPatchResponseDto;
     }
     //비밀번호 수정
-    public UserPasswordResponseDto setPassword(String authorizationHeader, UserPasswordRequestDto request){
+    public UserPasswordResponseDto setPassword(Long loginUserId, UserPasswordRequestDto request){
         //비밀번호 확인
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
-        User user = getLoginUser(authorizationHeader);
+        User user = getLoginUser(loginUserId);
 
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         return userPasswordResponseDto;
     }
 
-    private User getLoginUser(String authorizationHeader) {
-        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
+    private User getLoginUser(Long loginUserId) {
         return userRepository.findByUserIdAndDeletedFalse(loginUserId)
                 .orElseThrow(() -> new DataNullException("No_User"));
     }

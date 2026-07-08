@@ -50,17 +50,4 @@ public class JwtProvider {
             throw new AuthException("Invalid_Token");
         }
     }
-
-    public Long getUserIdFromAuthorizationHeader(String authorizationHeader) {
-        String token = resolveToken(authorizationHeader);
-        return getUserId(token);
-    }
-
-    public String resolveToken(String authorizationHeader) {
-        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            throw new AuthException("No_Token");
-        }
-
-        return authorizationHeader.substring(7);
-    }
 }

@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.*;
 import kr.adapterz.springdatajpa.entity.Comment;
@@ -34,7 +33,6 @@ public class PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
-    private final JwtProvider jwtProvider;
 
     //게시물 목록 조회
     public PostPageResponseDto getPostList(int page, int size) {
@@ -53,9 +51,9 @@ public class PostService {
 
     // 게시물 추가
     @Transactional
-    public PostResponseDto createPost(String authorizationHeader, PostRequestDto request) {
+    public PostResponseDto createPost(Long loginUserId, PostRequestDto request) {
         PostResponseDto postResponseDto= new PostResponseDto();
-        User user = getLoginUser(authorizationHeader);
+        User user = getLoginUser(loginUserId);
         Post post = new Post(
                 user,
                 request.getTitle(),
@@ -89,9 +87,8 @@ public class PostService {
 
     //게시물 수정
     @Transactional
-    public PostFixResponseDto fixPost(Long postId, String authorizationHeader, PostFixRequestDto request) {
+    public PostFixResponseDto fixPost(Long postId, Long loginUserId, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
-        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Post post = getActivePost(postId);
 
         //실제 작성자가 맞는지 확인
@@ -107,9 +104,8 @@ public class PostService {
     }
     //게시글 삭제
     @Transactional
-    public PostDeleteResponseDto deletePost(Long postId, String authorizationHeader){
+    public PostDeleteResponseDto deletePost(Long postId, Long loginUserId){
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
-        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
         Post post = getActivePost(postId);
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
@@ -122,10 +118,10 @@ public class PostService {
 
     //게시물 좋아요
     @Transactional
-    public LikeResponseDto likePost(Long postId, String authorizationHeader) {
+    public LikeResponseDto likePost(Long postId, Long loginUserId) {
         Post post = getActivePost(postId);
 
-        User user = getLoginUser(authorizationHeader);
+        User user = getLoginUser(loginUserId);
 
         if (likeRepository.existsByPostAndUser(post, user)) {
             throw new InvalidRequestException("Already_Liked");
@@ -139,10 +135,10 @@ public class PostService {
 
     //좋아요 취소
     @Transactional
-    public LikeCancelResponseDto cancelLike(Long postId, String authorizationHeader) {
+    public LikeCancelResponseDto cancelLike(Long postId, Long loginUserId) {
         Post post = getActivePost(postId);
 
-        User user = getLoginUser(authorizationHeader);
+        User user = getLoginUser(loginUserId);
 
         Like postLike = likeRepository.findByPostAndUser(post, user)
                 .orElseThrow(() -> new InvalidRequestException("Not_Liked"));
@@ -154,8 +150,7 @@ public class PostService {
     }
 
 
-    private User getLoginUser(String authorizationHeader) {
-        Long loginUserId = jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader);
+    private User getLoginUser(Long loginUserId) {
         return userRepository.findByUserIdAndDeletedFalse(loginUserId)
                 .orElseThrow(() -> new AuthException("No_User"));
     }

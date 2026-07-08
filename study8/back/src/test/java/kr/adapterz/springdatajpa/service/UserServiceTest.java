@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.service;
 
-import kr.adapterz.springdatajpa.auth.JwtProvider;
 import kr.adapterz.springdatajpa.dto.user.UserPasswordRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserPatchRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserRequestDto;
@@ -11,13 +10,16 @@ import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -29,7 +31,7 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private JwtProvider jwtProvider;
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private UserService userService;
@@ -54,6 +56,7 @@ class UserServiceTest {
         verify(userRepository, never()).existsByEmailAndDeletedFalse(anyString());
         verify(userRepository, never()).existsByNicknameAndDeletedFalse(anyString());
         verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -79,6 +82,7 @@ class UserServiceTest {
         verify(userRepository).existsByEmailAndDeletedFalse("test@test.com");
         verify(userRepository, never()).existsByNicknameAndDeletedFalse(anyString());
         verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -106,6 +110,7 @@ class UserServiceTest {
         verify(userRepository).existsByEmailAndDeletedFalse("test@test.com");
         verify(userRepository).existsByNicknameAndDeletedFalse("tester");
         verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -122,7 +127,7 @@ class UserServiceTest {
 
         User savedUser = new User(
                 "test@test.com",
-                "Password1!",
+                "encoded-password",
                 "tester",
                 "profile.png"
         );
@@ -131,6 +136,8 @@ class UserServiceTest {
                 .thenReturn(false);
         when(userRepository.existsByNicknameAndDeletedFalse("tester"))
                 .thenReturn(false);
+        when(passwordEncoder.encode("Password1!"))
+                .thenReturn("encoded-password");
         when(userRepository.save(any(User.class)))
                 .thenReturn(savedUser);
 
@@ -140,14 +147,17 @@ class UserServiceTest {
         // then
         verify(userRepository).existsByEmailAndDeletedFalse("test@test.com");
         verify(userRepository).existsByNicknameAndDeletedFalse("tester");
-        verify(userRepository).save(any(User.class));
+        verify(passwordEncoder).encode("Password1!");
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getPassword()).isEqualTo("encoded-password");
     }
 
     @Test
     @DisplayName("회원정보 수정 시 다른 사용자가 이미 쓰는 닉네임이면 Existed_Nickname 예외가 발생한다")
     void patchUserFailByDuplicatedNickname() {
         // given
-        String authorizationHeader = "Bearer token";
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -164,19 +174,16 @@ class UserServiceTest {
                 "new-profile.png"
         );
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
         when(userRepository.existsByNicknameAndDeletedFalseAndUserIdNot("duplicatedNickname", loginUserId))
                 .thenReturn(true);
 
         // when & then
-        assertThatThrownBy(() -> userService.patchUser(authorizationHeader, request))
+        assertThatThrownBy(() -> userService.patchUser(loginUserId, request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Existed_Nickname");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
         verify(userRepository).existsByNicknameAndDeletedFalseAndUserIdNot("duplicatedNickname", loginUserId);
         verify(userRepository, never()).save(any(User.class));
@@ -186,7 +193,6 @@ class UserServiceTest {
     @DisplayName("회원정보 수정 시 내 userId를 제외하고 닉네임 중복이 없으면 수정된다")
     void patchUserSuccess() {
         // given
-        String authorizationHeader = "Bearer token";
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -203,43 +209,36 @@ class UserServiceTest {
                 "new-profile.png"
         );
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
         when(userRepository.existsByNicknameAndDeletedFalseAndUserIdNot("newNickname", loginUserId))
                 .thenReturn(false);
 
         // when
-        userService.patchUser(authorizationHeader, request);
+        userService.patchUser(loginUserId, request);
 
         // then
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
         verify(userRepository).existsByNicknameAndDeletedFalseAndUserIdNot("newNickname", loginUserId);
 
-        org.assertj.core.api.Assertions.assertThat(loginUser.getNickname()).isEqualTo("newNickname");
-        org.assertj.core.api.Assertions.assertThat(loginUser.getProfileImage()).isEqualTo("new-profile.png");
+        assertThat(loginUser.getNickname()).isEqualTo("newNickname");
+        assertThat(loginUser.getProfileImage()).isEqualTo("new-profile.png");
     }
 
     @Test
     @DisplayName("내 정보 조회 시 로그인 유저가 없으면 No_User 예외가 발생한다")
     void getMyInfoFailByNoUser() {
         // given
-        String authorizationHeader = "Bearer token";
         Long loginUserId = 1L;
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> userService.getMyInfo(authorizationHeader))
+        assertThatThrownBy(() -> userService.getMyInfo(loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_User");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
     }
 
@@ -247,36 +246,32 @@ class UserServiceTest {
     @DisplayName("비밀번호 수정 시 비밀번호 확인이 다르면 Invalid_Password 예외가 발생한다")
     void setPasswordFailByPasswordMismatch() {
         // given
-        String authorizationHeader = "Bearer token";
+        Long loginUserId = 1L;
         UserPasswordRequestDto request = createUserPasswordRequest("Password1!", "WrongPassword1!");
 
         // when & then
-        assertThatThrownBy(() -> userService.setPassword(authorizationHeader, request))
+        assertThatThrownBy(() -> userService.setPassword(loginUserId, request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Invalid_Password");
 
-        verify(jwtProvider, never()).getUserIdFromAuthorizationHeader(anyString());
         verify(userRepository, never()).findByUserIdAndDeletedFalse(anyLong());
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
     @DisplayName("회원 탈퇴 시 로그인 유저가 없으면 No_User 예외가 발생한다")
     void deleteUserFailByNoUser() {
         // given
-        String authorizationHeader = "Bearer token";
         Long loginUserId = 1L;
 
-        when(jwtProvider.getUserIdFromAuthorizationHeader(authorizationHeader))
-                .thenReturn(loginUserId);
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
 
         // when & then
-        assertThatThrownBy(() -> userService.deleteUser(authorizationHeader))
+        assertThatThrownBy(() -> userService.deleteUser(loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_User");
 
-        verify(jwtProvider).getUserIdFromAuthorizationHeader(authorizationHeader);
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
     }
 

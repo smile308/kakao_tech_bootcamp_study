@@ -1,9 +1,11 @@
 package kr.adapterz.springdatajpa.controller;
 
+import kr.adapterz.springdatajpa.auth.CustomUserDetails;
 import kr.adapterz.springdatajpa.dto.comment.*;
 import kr.adapterz.springdatajpa.service.CommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,10 +19,10 @@ public class CommentController {
     @ResponseStatus(HttpStatus.CREATED)
     public CommentPostResponseDto commentPost(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CommentPostRequestDto request
     ){
-        return commentService.commentPost(postId, authorizationHeader, request);
+        return commentService.commentPost(postId, userDetails.getUserId(), request);
     }
 
     //댓글 삭제
@@ -28,19 +30,19 @@ public class CommentController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public CommentDeleteResponseDto commentDelete(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CommentDeleteRequestDto request
     ){
-        return commentService.commentDelete(postId, authorizationHeader, request);
+        return commentService.commentDelete(postId, userDetails.getUserId(), request);
     }
 
     //댓글 수정
     @PatchMapping
     public CommentFixResponseDto commentFix(
             @PathVariable("postId") Long postId,
-            @RequestHeader("Authorization") String authorizationHeader,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CommentFixRequestDto request
     ){
-        return commentService.commentFix(postId, authorizationHeader, request);
+        return commentService.commentFix(postId, userDetails.getUserId(), request);
     }
 }

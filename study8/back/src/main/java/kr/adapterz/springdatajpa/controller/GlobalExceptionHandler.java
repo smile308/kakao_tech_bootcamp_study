@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handleAuthException(AuthException e){
         ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
         return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
+                .status(HttpStatus.UNAUTHORIZED)
                 .body(response);
     }
     //데이터가 없을 경우

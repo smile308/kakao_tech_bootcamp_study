@@ -1,9 +1,9 @@
 INSERT INTO users
 (user_id, email, password, nickname, profile_image, deleted)
 VALUES
-    (1, 'test@example.com', 'Password1!', '더미작성자1', NULL, false),
-    (2, 'second@example.com', 'Password1!', '두번째작성자', NULL, false),
-    (3, 'admin@example.com', 'Password1!', '관리자', NULL, false);
+    (1, 'test@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '더미작성자1', NULL, false),
+    (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, false),
+    (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, false);
 
 INSERT INTO posts
 (post_id, user_id, post_title, post_content, is_fixed, like_count, reply_count, view_count, created_at, deleted)
