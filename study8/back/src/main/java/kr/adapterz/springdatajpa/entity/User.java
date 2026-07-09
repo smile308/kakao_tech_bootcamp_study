@@ -29,25 +29,40 @@ public class User {
     @Lob
     @Column(name = "profile_image", columnDefinition = "TEXT")
     private String profileImage;
+
+    @Column(name = "received_report_count", nullable = false)
+    private int receivedReportCount;
+
     @Column(name ="deleted", nullable = false)
     private boolean deleted;
 
-    //profile_image가 없는 경우 null 삽입
-    public User( String email, String password, String nickname) {
-        this.email = email;
-        this.password = password;
-        this.nickname = nickname;
-        this.profileImage = null;
-        deleted=false;
-    }
-
-    //profile_image가 없는 경우 null 삽입
-    public User(String email, String password, String nickname, String profileImage) {
+    public User(
+            String email,
+            String password,
+            String nickname,
+            String profileImage,
+            int receivedReportCount
+    ) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
         this.profileImage = profileImage;
-        deleted=false;
+        this.receivedReportCount = receivedReportCount;
+        this.deleted = false;
+    }
+
+    public User(
+            String email,
+            String password,
+            String nickname,
+            int receivedReportCount
+    ) {
+        this.email = email;
+        this.password = password;
+        this.nickname = nickname;
+        this.profileImage = null;
+        this.receivedReportCount = receivedReportCount;
+        this.deleted = false;
     }
 
     public void update(String nickname, String profileImage) {
@@ -60,6 +75,11 @@ public class User {
         this.deleted = true;
         this.nickname = "삭제된 유저";
         this.profileImage = null;
+    }
+
+    //신고 카운
+    public void receiveReport() {
+        receivedReportCount++;
     }
 
     public void setPassword(String password)

@@ -217,7 +217,7 @@ class CommentServiceTest {
     }
 
     private User createUser(Long userId) {
-        User user = new User("test" + userId + "@test.com", "Password1!", "tester" + userId, "profile.png");
+        User user = new User("test" + userId + "@test.com", "Password1!", "tester" + userId, "profile.png",0);
         ReflectionTestUtils.setField(user, "userId", userId);
         return user;
     }

@@ -104,7 +104,7 @@ class SessionServiceTest {
     }
 
     private User createUser(Long userId, String email, String encodedPassword) {
-        User user = new User(email, encodedPassword, "tester", "profile.png");
+        User user = new User(email, encodedPassword, "tester", "profile.png",0);
         ReflectionTestUtils.setField(user, "userId", userId);
         return user;
     }

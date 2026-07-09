@@ -2,17 +2,11 @@ package kr.adapterz.springdatajpa.service;
 
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.*;
-import kr.adapterz.springdatajpa.entity.Comment;
-import kr.adapterz.springdatajpa.entity.Like;
-import kr.adapterz.springdatajpa.entity.Post;
-import kr.adapterz.springdatajpa.entity.User;
+import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
-import kr.adapterz.springdatajpa.repository.CommentRepository;
-import kr.adapterz.springdatajpa.repository.LikeRepository;
-import kr.adapterz.springdatajpa.repository.PostRepository;
-import kr.adapterz.springdatajpa.repository.UserRepository;
+import kr.adapterz.springdatajpa.repository.*;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,6 +27,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final LikeRepository likeRepository;
+    private final PostReportRepository postReportRepository;
 
     //게시물 목록 조회
     public PostPageResponseDto getPostList(int page, int size) {
@@ -67,8 +62,9 @@ public class PostService {
 
     //게시물
     @Transactional
-    public PostViewResponseDto getPostView(Long postId) {
+    public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
         Post post = getActivePost(postId);
+        User loginUser = getLoginUser(loginUserId);
 
         List<Comment> comments = commentRepository.findByPostWithUser(post);
         List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
@@ -76,13 +72,19 @@ public class PostService {
         for (Comment comment : comments) {
             CommentResponseDto commentResponseDto =
                     new CommentResponseDto(comment, comment.getUser());
-
             commentResponseDtos.add(commentResponseDto);
         }
 
+        boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser);
+
         post.view();
 
-        return new PostViewResponseDto(post, post.getUser(), commentResponseDtos);
+        return new PostViewResponseDto(
+                post,
+                post.getUser(),
+                commentResponseDtos,
+                isLiked
+        );
     }
 
     //게시물 수정
@@ -147,6 +149,38 @@ public class PostService {
         post.likeCancle();
 
         return new LikeCancelResponseDto(post.getLikeCount());
+    }
+
+    //게시물 신고
+    @Transactional
+    public PostReportResponseDto reportPost(
+            Long postId,
+            Long loginUserId
+    ) {
+        Post post = getActivePost(postId);
+        User reporter = getLoginUser(loginUserId);
+        User writer = post.getUser();
+
+        if (writer.getUserId().equals(reporter.getUserId())) {
+            throw new InvalidRequestException("Cannot_Report_Own_Post");
+        }
+
+        if (postReportRepository.existsByPostAndUser(post, reporter)) {
+            throw new InvalidRequestException("Already_Reported");
+        }
+
+
+        postReportRepository.save(new PostReport(post, reporter));
+
+        post.report();
+        writer.receiveReport();
+
+        return new PostReportResponseDto(
+                post.getPostId(),
+                post.getReportCount(),
+                writer.getUserId(),
+                writer.getReceivedReportCount()
+        );
     }
 
 

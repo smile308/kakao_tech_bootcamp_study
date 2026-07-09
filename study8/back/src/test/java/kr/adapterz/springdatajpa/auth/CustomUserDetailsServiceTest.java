@@ -46,7 +46,7 @@ class CustomUserDetailsServiceTest {
     @DisplayName("이메일에 맞는 유저가 있으면 CustomUserDetails를 반환한다")
     void loadUserByUsernameSuccess() {
         // given
-        User user = new User("test@test.com", "encoded-password", "tester", "profile.png");
+        User user = new User("test@test.com", "encoded-password", "tester", "profile.png",0);
         ReflectionTestUtils.setField(user, "userId", 1L);
 
         when(userRepository.findByEmailAndDeletedFalse("test@test.com"))

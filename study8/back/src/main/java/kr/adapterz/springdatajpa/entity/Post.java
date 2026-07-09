@@ -41,6 +41,9 @@ public class Post {
     @Column(name ="like_count", nullable = false)
     private int likeCount;
 
+    @Column(name = "report_count", nullable = false)
+    private int reportCount;
+
     @Column(name ="reply_count", nullable = false)
     private int replyCount;
 
@@ -69,6 +72,7 @@ public class Post {
 
         isFixed=false;
         likeCount=0;
+        reportCount=0;
         replyCount=0;
         viewCount=0;
         createdAt = LocalDateTime.now();
@@ -163,4 +167,9 @@ public class Post {
 
     //삭제
     public void delete(){deleted=true;}
+
+    //신고
+    public void report() {
+        reportCount++;
+    }
 }

@@ -55,10 +55,5 @@
     redirectIfLoggedIn();
   }
 
-  window.auth = {
-    isLoggedIn,
-    clearAuth,
-    requireLogin,
-    redirectIfLoggedIn,
-  };
+  
 })();

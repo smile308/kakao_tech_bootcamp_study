@@ -14,6 +14,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 public class PostViewResponseDto {
+
     private Long postId;
     private boolean isFixed;
     private String postTitle;
@@ -29,23 +30,33 @@ public class PostViewResponseDto {
     private String userName;
     private String userProfileImage;
 
-    //댓글들 리스트
+    // 추가
+    private Boolean isLiked;
+
     private List<CommentResponseDto> comments;
-    public PostViewResponseDto(Post post, User user, List<CommentResponseDto> comments){
-        this.postId=post.getPostId();
-        this.isFixed=post.isFixed();
-        this.postTitle=post.getPostTitle();
-        this.postContent=post.getPostContent();
-        this.imageFile=post.getImageFile();
-        this.imageFiles=getImageFiles(post);
-        this.likeCount=post.getLikeCount();
-        this.replyCount=post.getReplyCount();
-        this.viewCount=post.getViewCount();
-        this.createdAt=post.getCreatedAt();
-        this.userId=user.getUserId();
-        this.userName=user.getNickname();
-        this.userProfileImage=user.getProfileImage();
-        this.comments=comments;
+
+    public PostViewResponseDto(
+            Post post,
+            User user,
+            List<CommentResponseDto> comments,
+            Boolean isLiked
+    ) {
+        this.postId = post.getPostId();
+        this.isFixed = post.isFixed();
+        this.postTitle = post.getPostTitle();
+        this.postContent = post.getPostContent();
+        this.imageFile = post.getImageFile();
+        this.imageFiles = getImageFiles(post);
+        this.likeCount = post.getLikeCount();
+        this.replyCount = post.getReplyCount();
+        this.viewCount = post.getViewCount();
+        this.createdAt = post.getCreatedAt();
+        this.userId = user.getUserId();
+        this.userName = user.getNickname();
+        this.userProfileImage = user.getProfileImage();
+        this.isLiked = isLiked;
+        this.reportCount = post.getReportCount();
+        this.comments = comments;
     }
 
     private List<String> getImageFiles(Post post) {

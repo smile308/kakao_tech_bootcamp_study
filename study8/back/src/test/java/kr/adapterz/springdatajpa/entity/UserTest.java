@@ -17,7 +17,7 @@ class UserTest {
         String nickname = "tester";
 
         // when
-        User user = new User(email, password, nickname);
+        User user = new User(email, password, nickname, 0);
 
         // then
         assertAll(
@@ -25,7 +25,8 @@ class UserTest {
                 () -> assertThat(user.getPassword()).isEqualTo(password),
                 () -> assertThat(user.getNickname()).isEqualTo(nickname),
                 () -> assertThat(user.getProfileImage()).isNull(),
-                () -> assertThat(user.isDeleted()).isFalse()
+                () -> assertThat(user.isDeleted()).isFalse(),
+                () -> assertThat(user.getReceivedReportCount()).isZero()
         );
     }
 
@@ -37,7 +38,8 @@ class UserTest {
                 "test@test.com",
                 "Password1!",
                 "tester",
-                "old-profile.png"
+                "old-profile.png",
+                5
         );
 
         // when
@@ -58,7 +60,8 @@ class UserTest {
                 "test@test.com",
                 "Password1!",
                 "tester",
-                "profile.png"
+                "profile.png",
+                0
         );
 
         // when
@@ -79,7 +82,8 @@ class UserTest {
         User user = new User(
                 "test@test.com",
                 "OldPassword1!",
-                "tester"
+                "tester",
+                5
         );
 
         // when
@@ -87,5 +91,25 @@ class UserTest {
 
         // then
         assertThat(user.getPassword()).isEqualTo("NewPassword1!");
+    }
+
+    @Test
+    @DisplayName("작성한 게시글이 신고되면 누적 신고 수가 증가한다")
+    void receiveReport() {
+        // given
+        User user = new User(
+                "test@test.com",
+                "Password1!",
+                "tester",
+                "profile.png",
+                0
+        );
+
+        // when
+        user.receiveReport();
+        user.receiveReport();
+
+        // then
+        assertThat(user.getReceivedReportCount()).isEqualTo(2);
     }
 }

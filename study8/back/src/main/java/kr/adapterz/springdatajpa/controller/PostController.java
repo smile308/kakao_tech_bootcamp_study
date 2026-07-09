@@ -37,8 +37,11 @@ public class PostController {
     }
     //게시글 상세조회
     @GetMapping("/{postId}")
-    public PostViewResponseDto getPostView(@PathVariable("postId") Long postId) {
-        return postService.getPostView(postId);
+    public PostViewResponseDto getPostView(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        return postService.getPostView(postId, userDetails.getUserId());
     }
     //게시글 수정
     @PatchMapping("/{postId}")
@@ -76,5 +79,14 @@ public class PostController {
             @AuthenticationPrincipal CustomUserDetails userDetails
     ){
         return postService.cancelLike(postId, userDetails.getUserId());
+    }
+
+    //신고
+    @PostMapping("/{postId}/reports")
+    @ResponseStatus(HttpStatus.CREATED)
+    public PostReportResponseDto reportPost(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal CustomUserDetails userDetails){
+        return postService.reportPost(postId, userDetails.getUserId());
     }
 }

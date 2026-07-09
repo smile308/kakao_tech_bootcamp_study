@@ -18,27 +18,38 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
 
-    //회원가입
-    public UserResponseDto createUser(UserRequestDto request){
-        //비밀번호 확인
+    // 회원가입
+    public UserResponseDto createUser(UserRequestDto request) {
+        // 비밀번호 확인
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
-        //이메일 중복 체크
+
+        // 활성 이메일 중복 체크
         if (userRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
             throw new InvalidRequestException("Existed_Email");
         }
-        //닉네임 중복 체크
+
+        // 활성 닉네임 중복 체크
         if (userRepository.existsByNicknameAndDeletedFalse(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
+
+        // 추가: 같은 이메일의 삭제 계정까지 포함해서 기존 누적 신고 수 조회
+        int previousReceivedReportCount =
+                userRepository.findMaxReceivedReportCountByEmailIncludingDeleted(
+                        request.getEmail()
+                );
+
         User user = new User(
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
                 request.getNickname(),
-                request.getProfileImage()
+                request.getProfileImage(),
+                previousReceivedReportCount
         );
-        User  savedUser = userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
 
         return new UserResponseDto(savedUser);
     }

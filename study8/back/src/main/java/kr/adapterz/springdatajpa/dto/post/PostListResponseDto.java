@@ -28,6 +28,7 @@ public class PostListResponseDto {
         this.createdAt=post.getCreatedAt();
         this.userName=user.getNickname();
         this.userProfileImage=user.getProfileImage();
+        this.reportCount = post.getReportCount();
     }
 
 }

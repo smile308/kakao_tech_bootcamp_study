@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.service;
 import kr.adapterz.springdatajpa.dto.user.UserPasswordRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserPatchRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserRequestDto;
+import kr.adapterz.springdatajpa.dto.user.UserResponseDto;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
@@ -129,7 +130,8 @@ class UserServiceTest {
                 "test@test.com",
                 "encoded-password",
                 "tester",
-                "profile.png"
+                "profile.png",
+                0
         );
 
         when(userRepository.existsByEmailAndDeletedFalse("test@test.com"))
@@ -175,7 +177,8 @@ class UserServiceTest {
                 "test@test.com",
                 "Password1!",
                 "tester",
-                "profile.png"
+                "profile.png",
+                0
         );
 
         ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
@@ -210,7 +213,8 @@ class UserServiceTest {
                 "test@test.com",
                 "Password1!",
                 "oldNickname",
-                "old-profile.png"
+                "old-profile.png",
+                0
         );
 
         ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
@@ -279,7 +283,8 @@ class UserServiceTest {
                 "test@test.com",
                 "old-encoded-password",
                 "tester",
-                "profile.png"
+                "profile.png",
+                0
         );
 
         ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
@@ -351,7 +356,8 @@ class UserServiceTest {
                 "test@test.com",
                 "encoded-password",
                 "tester",
-                "profile.png"
+                "profile.png",
+                0
         );
 
         ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
@@ -368,6 +374,50 @@ class UserServiceTest {
         assertThat(loginUser.isDeleted()).isTrue();
         assertThat(loginUser.getNickname()).isEqualTo("삭제된 유저");
         assertThat(loginUser.getProfileImage()).isNull();
+    }
+
+    @Test
+    @DisplayName("탈퇴 후 같은 이메일로 재가입하면 이전 누적 신고 수를 계승한다")
+    void createUserWithPreviousReceivedReportCount() {
+        // given
+        UserRequestDto request = createUserRequest(
+                "test@test.com",
+                "Password1!",
+                "Password1!",
+                "tester",
+                "profile.png"
+        );
+
+        when(userRepository.existsByEmailAndDeletedFalse("test@test.com"))
+                .thenReturn(false);
+
+        when(userRepository.existsByNicknameAndDeletedFalse("tester"))
+                .thenReturn(false);
+
+        when(userRepository.findMaxReceivedReportCountByEmailIncludingDeleted("test@test.com"))
+                .thenReturn(5);
+
+        when(passwordEncoder.encode("Password1!"))
+                .thenReturn("encoded-password");
+
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+        UserResponseDto response = userService.createUser(request);
+
+        // then
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+
+        verify(userRepository).save(userCaptor.capture());
+
+        User savedUser = userCaptor.getValue();
+
+        assertThat(savedUser.getEmail()).isEqualTo("test@test.com");
+        assertThat(savedUser.getPassword()).isEqualTo("encoded-password");
+        assertThat(savedUser.getNickname()).isEqualTo("tester");
+        assertThat(savedUser.getProfileImage()).isEqualTo("profile.png");
+        assertThat(savedUser.getReceivedReportCount()).isEqualTo(5);
     }
 
     private UserPatchRequestDto createUserPatchRequest(

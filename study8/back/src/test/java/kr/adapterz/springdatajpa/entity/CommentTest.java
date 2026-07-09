@@ -11,7 +11,7 @@ class CommentTest {
     @DisplayName("댓글 내용을 수정하면 새로운 내용으로 변경된다")
     void changeComment() {
         // given
-        User user = new User("test@test.com", "Password1!", "tester");
+        User user = new User("test@test.com", "Password1!", "tester",0);
         Post post = new Post(user, "title", "content");
         Comment comment = new Comment(user, post, "old");
 
