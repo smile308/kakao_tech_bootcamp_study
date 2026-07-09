@@ -29,6 +29,7 @@ public class PostViewResponseDto {
     private Long userId;
     private String userName;
     private String userProfileImage;
+    private boolean isReported;
 
     // 추가
     private Boolean isLiked;
@@ -39,7 +40,8 @@ public class PostViewResponseDto {
             Post post,
             User user,
             List<CommentResponseDto> comments,
-            Boolean isLiked
+            Boolean isLiked,
+            Boolean isReported
     ) {
         this.postId = post.getPostId();
         this.isFixed = post.isFixed();

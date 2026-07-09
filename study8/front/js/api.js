@@ -197,6 +197,13 @@ async getPosts({ page = 0, size = 10 } = {}) {
   return result;
 },
 
+reportPost(postId) {
+  return request(`/posts/${postId}/reports`, {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
+},
+
   likePost(postId, payload) {
     return request(`/posts/${postId}/likes`, {
       method: "POST",

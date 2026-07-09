@@ -352,7 +352,8 @@
 
 .detail-stats {
   padding: 18px 24px 24px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   border: 1px solid var(--color-line);
   border-top: 0;
@@ -379,6 +380,34 @@ button.detail-stat-card {
 button.detail-stat-card.is-liked {
   border-color: var(--color-teal);
   background: #e1f2d1;
+}
+
+button.detail-stat-card--reports {
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+button.detail-stat-card--reports:hover:not(:disabled) {
+  border-color: #d86a6a;
+  background: #fff3f3;
+}
+
+button.detail-stat-card--reports.is-reported {
+  border-color: #d86a6a;
+  background: #ffe5e5;
+}
+
+button.detail-stat-card--reports.is-reported .detail-stat-number,
+button.detail-stat-card--reports.is-reported .detail-stat-label {
+  color: #b83232;
+}
+
+button.detail-stat-card--reports.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.detail-stat-card:disabled {
+  cursor: not-allowed;
 }
 
 .detail-stat-number {
@@ -616,10 +645,13 @@ button.detail-stat-card.is-liked {
 }
 
 @media (max-width: 900px) {
-  .board-toolbar,
-  .detail-stats {
+  .board-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .detail-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .evaluation-list-header {
@@ -648,6 +680,10 @@ button.detail-stat-card.is-liked {
 @media (max-width: 640px) {
   .post-card {
     padding: 12px;
+  }
+
+  .detail-stats {
+  grid-template-columns: 1fr;
   }
 
   .comment-item {

@@ -76,6 +76,7 @@ public class PostService {
         }
 
         boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser);
+        boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
 
         post.view();
 
@@ -83,7 +84,8 @@ public class PostService {
                 post,
                 post.getUser(),
                 commentResponseDtos,
-                isLiked
+                isLiked,
+                isReported
         );
     }
 
