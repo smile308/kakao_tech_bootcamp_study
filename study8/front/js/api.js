@@ -15,38 +15,6 @@ function getAccessSession() {
   return localStorage.getItem("accessSession");
 }
 
-function getDeletedPostIds() {
-  try {
-    return JSON.parse(localStorage.getItem("deletedPostIds") || "[]");
-  } catch (error) {
-    console.error("삭제 게시글 목록 파싱 실패:", error);
-    return [];
-  }
-}
-
-function rememberDeletedPostId(postId) {
-  const id = Number(postId);
-
-  if (!id) {
-    return;
-  }
-
-  const deletedPostIds = getDeletedPostIds();
-
-  if (!deletedPostIds.includes(id)) {
-    deletedPostIds.push(id);
-    localStorage.setItem("deletedPostIds", JSON.stringify(deletedPostIds));
-  }
-}
-
-function filterDeletedPosts(posts) {
-  const deletedPostIds = getDeletedPostIds();
-
-  return posts.filter((post) => {
-    const postId = Number(post.postId);
-    return !deletedPostIds.includes(postId);
-  });
-}
 
 async function request(endpoint, options = {}) {
   const accessToken = localStorage.getItem("accessToken");
@@ -191,8 +159,6 @@ async getPosts({ page = 0, size = 10 } = {}) {
     method: "DELETE",
     body: JSON.stringify(payload),
   });
-
-  rememberDeletedPostId(postId);
 
   return result;
 },
