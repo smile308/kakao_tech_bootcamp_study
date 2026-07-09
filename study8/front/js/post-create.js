@@ -12,7 +12,7 @@ const EMPTY_MESSAGE = "*글 제목과 이야기 내용을 모두 작성해주세
 
 const { fileToDataUrl } = window.utils;
 
-let selectedImageFile = null;
+let selectedImageFiles = [];
 
 function isPostCreateFormValid() {
   const title = postTitleInput.value.trim();
@@ -40,6 +40,16 @@ function validateAndRenderHelper() {
   return true;
 }
 
+function renderSelectedFileNames(files) {
+  if (!files || files.length === 0) {
+    selectedFileName.textContent = "파일을 선택해주세요.";
+    return;
+  }
+
+  const fileNames = files.map((file) => file.name).join(", ");
+  selectedFileName.textContent = `${files.length}개 선택: ${fileNames}`;
+}
+
 postTitleInput.addEventListener("input", () => {
   if (postTitleInput.value.length > MAX_TITLE_LENGTH) {
     postTitleInput.value = postTitleInput.value.slice(0, MAX_TITLE_LENGTH);
@@ -61,16 +71,8 @@ postContentInput.addEventListener("input", () => {
 });
 
 postImageInput.addEventListener("change", () => {
-  const file = postImageInput.files[0];
-
-  if (!file) {
-    selectedImageFile = null;
-    selectedFileName.textContent = "파일을 선택해주세요.";
-    return;
-  }
-
-  selectedImageFile = file;
-  selectedFileName.textContent = file.name;
+  selectedImageFiles = Array.from(postImageInput.files || []);
+  renderSelectedFileNames(selectedImageFiles);
 });
 
 postCreateForm.addEventListener("submit", async (event) => {
@@ -84,15 +86,16 @@ postCreateForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    const imageFile = selectedImageFile
-      ? await fileToDataUrl(selectedImageFile)
-      : null;
-    const imageFiles = imageFile ? [imageFile] : [];
+    const imageFiles = await Promise.all(
+      selectedImageFiles.map((file) => fileToDataUrl(file))
+    );
 
     await api.createPost({
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
-      imageFile,
+
+      imageFile: imageFiles[0] ?? null,
+
       imageFiles,
     });
 
@@ -106,7 +109,5 @@ postCreateForm.addEventListener("submit", async (event) => {
 backButton.addEventListener("click", () => {
   window.location.href = "./posts.html";
 });
-
-
 
 updateSubmitButtonState();

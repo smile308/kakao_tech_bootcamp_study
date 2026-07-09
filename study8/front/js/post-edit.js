@@ -20,16 +20,51 @@ if (!postId) {
 }
 
 let originalPost = null;
-let selectedNewImageFile = null;
+let selectedNewImageFiles = null;
+
+function normalizeImageFiles(post) {
+  if (Array.isArray(post.imageFiles) && post.imageFiles.length > 0) {
+    return post.imageFiles.filter(
+      (imageFile) => imageFile && !String(imageFile).startsWith("null")
+    );
+  }
+
+  if (post.imageFile) {
+    return [post.imageFile];
+  }
+
+  return [];
+}
 
 function normalizePostForEdit(post) {
+  const imageFiles = normalizeImageFiles(post);
+
   return {
     postId: post.postId,
     title: post.postTitle ?? "",
     content: post.postContent ?? "",
-    imageFileName: post.imageFile ?? null,
-    imageFiles: post.imageFiles ?? (post.imageFile ? [post.imageFile] : []),
+    imageFileName: imageFiles[0] ?? null,
+    imageFiles,
   };
+}
+
+function renderImageFileSummary(imageFiles) {
+  if (!imageFiles || imageFiles.length === 0) {
+    selectedFileName.textContent = "파일을 선택해주세요.";
+    return;
+  }
+
+  selectedFileName.textContent = `${imageFiles.length}개 이미지가 첨부되어 있습니다.`;
+}
+
+function renderSelectedFileNames(files) {
+  if (!files || files.length === 0) {
+    renderImageFileSummary(originalPost?.imageFiles ?? []);
+    return;
+  }
+
+  const fileNames = files.map((file) => file.name).join(", ");
+  selectedFileName.textContent = `${files.length}개 선택: ${fileNames}`;
 }
 
 function renderOriginalPost(post) {
@@ -37,12 +72,7 @@ function renderOriginalPost(post) {
 
   postTitleInput.value = originalPost.title;
   postContentInput.value = originalPost.content;
-
-  if (originalPost.imageFileName) {
-    selectedFileName.textContent = originalPost.imageFileName;
-  } else {
-    selectedFileName.textContent = "파일을 선택해주세요.";
-  }
+  renderImageFileSummary(originalPost.imageFiles);
 }
 
 function validatePostEditForm() {
@@ -75,22 +105,10 @@ postTitleInput.addEventListener("input", () => {
 });
 
 postImageInput.addEventListener("change", () => {
-  const file = postImageInput.files[0];
+  const files = Array.from(postImageInput.files || []);
 
-  if (!file) {
-    selectedNewImageFile = null;
-
-    if (originalPost && originalPost.imageFileName) {
-      selectedFileName.textContent = originalPost.imageFileName;
-    } else {
-      selectedFileName.textContent = "파일을 선택해주세요.";
-    }
-
-    return;
-  }
-
-  selectedNewImageFile = file;
-  selectedFileName.textContent = file.name;
+  selectedNewImageFiles = files.length > 0 ? files : null;
+  renderSelectedFileNames(selectedNewImageFiles);
 });
 
 postEditForm.addEventListener("submit", async (event) => {
@@ -103,17 +121,18 @@ postEditForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    const imageFile = selectedNewImageFile
-      ? await fileToDataUrl(selectedNewImageFile)
-      : originalPost.imageFileName;
-    const imageFiles = selectedNewImageFile
-      ? [imageFile]
+    const imageFiles = selectedNewImageFiles
+      ? await Promise.all(
+          selectedNewImageFiles.map((file) => fileToDataUrl(file))
+        )
       : originalPost.imageFiles;
 
     await api.updatePost(postId, {
       title: postTitleInput.value.trim(),
       contents: postContentInput.value.trim(),
-      imageFile,
+
+      imageFile: imageFiles[0] ?? null,
+
       imageFiles,
     });
 
@@ -127,7 +146,5 @@ postEditForm.addEventListener("submit", async (event) => {
 backButton.addEventListener("click", () => {
   window.location.href = `./post-detail.html?postId=${postId}`;
 });
-
-
 
 loadPost();

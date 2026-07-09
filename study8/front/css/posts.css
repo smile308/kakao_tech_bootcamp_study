@@ -315,11 +315,14 @@
 }
 
 .detail-post-image-box {
-  max-height: 420px;
   border-right: 1px solid var(--color-line);
   border-left: 1px solid var(--color-line);
   background: #edf5e6;
   overflow: hidden;
+}
+
+.detail-post-image + .detail-post-image {
+  border-top: 8px solid #ffffff;
 }
 
 .detail-post-image-box.is-hidden {
@@ -329,8 +332,9 @@
 .detail-post-image {
   display: block;
   width: 100%;
-  height: min(420px, 48vw);
-  object-fit: cover;
+  max-height: 420px;
+  object-fit: contain;
+  background: #edf5e6;
 }
 
 .detail-post-content {
@@ -585,8 +589,11 @@ button.detail-stat-card.is-liked {
 
 .post-create-file-name,
 .post-image-file-name {
+  max-width: 100%;
   color: var(--color-muted);
   font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .post-create-file-input,

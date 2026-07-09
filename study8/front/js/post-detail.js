@@ -10,7 +10,6 @@ const authorImage = document.querySelector("#authorImage");
 const authorNickname = document.querySelector("#authorNickname");
 const postCreatedAt = document.querySelector("#postCreatedAt");
 const postImageBox = document.querySelector("#postImageBox");
-const postImage = document.querySelector("#postImage");
 const postContent = document.querySelector("#postContent");
 
 const likeButton = document.querySelector("#likeButton");
@@ -89,6 +88,18 @@ function formatDateTime(dateTimeValue) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+function normalizePostImageUrls(rawPost) {
+  if (Array.isArray(rawPost.imageFiles) && rawPost.imageFiles.length > 0) {
+    return rawPost.imageFiles.filter((imageUrl) => Boolean(imageUrl));
+  }
+
+  if (rawPost.imageFile) {
+    return [rawPost.imageFile];
+  }
+
+  return [];
+}
+
 function normalizePostForDetail(rawPost) {
   return {
     postId: rawPost.postId,
@@ -98,7 +109,7 @@ function normalizePostForDetail(rawPost) {
     authorProfileImage: rawPost.userProfileImage ?? null,
     createdAt: rawPost.createdAt ?? new Date().toISOString(),
     imageUrl: rawPost.imageFile ?? null,
-    imageUrls: rawPost.imageFiles ?? [],
+  imageUrls: normalizePostImageUrls(rawPost),
     content: rawPost.postContent ?? "",
     likeCount: rawPost.likeCount ?? 0,
     viewCount: rawPost.viewCount ?? 0,
@@ -159,17 +170,27 @@ function renderPost() {
 
   setImage(authorImageBox, authorImage, post.authorProfileImage);
 
-  const firstImageUrl = post.imageUrls.length > 0
-    ? post.imageUrls[0]
-    : post.imageUrl;
+  renderPostImages(post.imageUrls);
+}
 
-  if (!firstImageUrl) {
+function renderPostImages(imageUrls) {
+  postImageBox.innerHTML = "";
+
+  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
     postImageBox.classList.add("is-hidden");
-    postImage.removeAttribute("src");
-  } else {
-    postImageBox.classList.remove("is-hidden");
-    postImage.src = firstImageUrl;
+    return;
   }
+
+  postImageBox.classList.remove("is-hidden");
+
+  imageUrls.forEach((imageUrl, index) => {
+    const imageElement = document.createElement("img");
+    imageElement.className = "detail-post-image";
+    imageElement.src = imageUrl;
+    imageElement.alt = `글 첨부 이미지 ${index + 1}`;
+
+    postImageBox.appendChild(imageElement);
+  });
 }
 
 function createCommentItem(comment) {
