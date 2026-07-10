@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>대나무숲 글 목록</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/posts.css" />
+</head>
+<body>
+  <div class="posts-page">
+    <header class="page-header">
+      <h1 class="page-header__title">대나무숲</h1>
+
+      <div class="header-profile">
+  <button
+    type="button"
+    id="profileMenuButton"
+    class="header-profile__button is-empty"
+    aria-label="사용자 메뉴 열기"
+  >
+    <img
+      src=""
+      alt="프로필 이미지"
+      class="header-profile__image"
+    />
+  </button>
+
+  <nav id="profileMenu" class="profile-menu" aria-label="사용자 메뉴">
+    <a href="./profile-edit.html" class="profile-menu__item">
+      회원정보 수정
+    </a>
+
+    <a href="./password-edit.html" class="profile-menu__item">
+      비밀번호 수정
+    </a>
+
+    <button
+      type="button"
+      id="logoutButton"
+      class="profile-menu__item profile-menu__logout"
+    >
+      로그아웃
+    </button>
+  </nav>
+</div>
+    </header>
+
+    <main class="posts-main">
+      <section class="evaluation-board" aria-label="대나무숲 글 목록">
+        <div class="board-toolbar">
+          <div>
+            <p class="posts-welcome">조용히 남겨진 이야기들이 모이는 공간</p>
+            <h2>대나무숲 글 목록</h2>
+          </div>
+
+          <div class="board-toolbar__actions">
+            <button type="button" id="writePostButton" class="write-post-button">
+              글 작성
+            </button>
+          </div>
+        </div>
+
+        <div class="evaluation-list-header" aria-hidden="true">
+          <span>작성자</span>
+          <span>글 제목</span>
+          <span>작성일</span>
+          <span>좋아요</span>
+          <span>댓글</span>
+          <span>조회수</span>
+        </div>
+
+        <section id="postsList" class="posts-list"></section>
+      </section>
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/header-menu.js"></script>
+  <script src="../js/posts.js"></script>
+</body>
+</html>

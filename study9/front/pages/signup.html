@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>대나무숲 회원가입</title>
+  <link rel="stylesheet" href="../css/common.css" />
+  <link rel="stylesheet" href="../css/auth.css" />
+</head>
+<body>
+  <div class="signup-page">
+    <header class="page-header">
+      <button type="button" class="back-button" aria-label="뒤로가기">
+        <span class="back-button__icon"></span>
+      </button>
+
+      <h1 class="page-header__title">대나무숲</h1>
+    </header>
+
+    <main class="signup-section">
+      <section class="auth-copy-panel signup-copy-panel" aria-label="가입 안내">
+        <p>Bamboo Account</p>
+        <h2>대나무숲에 글과 댓글을 남길 계정을 만듭니다.</h2>
+        <span>이메일, 비밀번호, 닉네임, 프로필 사진으로 나만의 숲속 프로필을 준비하세요.</span>
+      </section>
+
+      <section class="auth-form-panel signup-form-panel">
+      <h2 class="signup-section__title">회원가입</h2>
+
+      <form id="signupForm" class="signup-form" novalidate>
+  <section class="profile-upload-area">
+    <label class="profile-label">프로필 사진*</label>
+    <p id="profileHelper" class="signup-helper-text profile-helper"></p>
+
+    <label for="profileImage" class="profile-image-circle">
+      <img id="profilePreview" class="profile-preview-image" alt="프로필 미리보기" />
+      <span class="profile-plus-icon" aria-hidden="true"></span>
+    </label>
+
+    <input
+      type="file"
+      id="profileImage"
+      class="profile-image-input"
+      accept="image/*"
+    />
+  </section>
+
+  <section class="signup-input-area">
+    <div class="signup-form-group">
+      <label for="signupEmail" class="form-label">이메일*</label>
+      <input
+        type="text"
+        id="signupEmail"
+        class="form-input"
+        placeholder="이메일을 입력하세요"
+        autocomplete="email"
+      />
+      <p id="emailHelper" class="signup-helper-text"></p>
+    </div>
+
+    <div class="signup-form-group">
+      <label for="signupPassword" class="form-label">비밀번호*</label>
+      <input
+        type="password"
+        id="signupPassword"
+        class="form-input"
+        placeholder="비밀번호를 입력하세요"
+        autocomplete="new-password"
+      />
+      <p id="passwordHelper" class="signup-helper-text"></p>
+    </div>
+
+    <div class="signup-form-group">
+      <label for="signupPasswordConfirm" class="form-label">비밀번호 확인*</label>
+      <input
+        type="password"
+        id="signupPasswordConfirm"
+        class="form-input"
+        placeholder="비밀번호를 한번 더 입력하세요"
+        autocomplete="new-password"
+      />
+      <p id="passwordConfirmHelper" class="signup-helper-text"></p>
+    </div>
+
+    <div class="signup-form-group">
+      <label for="nickname" class="form-label">닉네임*</label>
+      <input
+        type="text"
+        id="nickname"
+        class="form-input"
+        placeholder="닉네임을 입력하세요"
+        autocomplete="nickname"
+      />
+      <p id="nicknameHelper" class="signup-helper-text"></p>
+    </div>
+
+    <button id="signupButton" type="submit" class="signup-button" disabled>
+      회원가입
+    </button>
+  </section>
+</form>
+
+      <a href="./login.html" class="go-login-link">로그인하러 가기</a>
+      </section>
+    </main>
+  </div>
+  <script src="../js/api.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../js/signup.js"></script>
+</body>
+</html>
