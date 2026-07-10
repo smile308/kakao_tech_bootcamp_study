@@ -1,11 +1,11 @@
 package kr.adapterz.springdatajpa.service;
 
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
-import kr.adapterz.springdatajpa.entity.Like;
-import kr.adapterz.springdatajpa.entity.Post;
-import kr.adapterz.springdatajpa.entity.User;
+import kr.adapterz.springdatajpa.dto.post.PostViewResponseDto;
+import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.*;
 import org.junit.jupiter.api.DisplayName;
@@ -16,10 +16,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import kr.adapterz.springdatajpa.dto.post.PostReportResponseDto;
-import kr.adapterz.springdatajpa.entity.PostReport;
 import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +48,7 @@ class PostServiceTest {
 
     @Mock
     private PostReportRepository postReportRepository;
+
 
     @Test
     @DisplayName("게시글 상세 조회 시 게시글이 없으면 No_Post 예외가 발생한다")
@@ -202,22 +203,39 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 수정 시 작성자가 아니면 No_Auth 예외가 발생한다")
-    void fixPostFailByNoAuth() {
+    @DisplayName("게시글 수정 시 작성자가 아니면 권한 예외가 발생한다")
+    void fixPostFailByForbidden() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
-        Post post = createPost(postId, createUser(writerId));
-        PostFixRequestDto request = createPostFixRequest("new title", "new content");
+
+        Post post =
+                createPost(postId, createUser(writerId));
+
+        PostFixRequestDto request =
+                createPostFixRequest(
+                        "new title",
+                        "new content"
+                );
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.fixPost(postId, loginUserId, request))
-                .isInstanceOf(AuthException.class)
-                .hasMessage("No_Auth");
+        assertThatThrownBy(
+                () -> postService.fixPost(
+                        postId,
+                        loginUserId,
+                        request
+                )
+        )
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
 
-        verify(postRepository).findByPostIdAndDeletedFalse(postId);
+        assertThat(post.getPostTitle())
+                .isEqualTo("title");
+
+        assertThat(post.getPostContent())
+                .isEqualTo("content");
     }
 
     @Test
@@ -237,21 +255,28 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 삭제 시 작성자가 아니면 No_Auth 예외가 발생한다")
-    void deletePostFailByNoAuth() {
+    @DisplayName("게시글 삭제 시 작성자가 아니면 권한 예외가 발생한다")
+    void deletePostFailByForbidden() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
-        Post post = createPost(postId, createUser(writerId));
+
+        Post post =
+                createPost(postId, createUser(writerId));
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.deletePost(postId, loginUserId))
-                .isInstanceOf(AuthException.class)
-                .hasMessage("No_Auth");
+        assertThatThrownBy(
+                () -> postService.deletePost(
+                        postId,
+                        loginUserId
+                )
+        )
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
 
-        verify(postRepository).findByPostIdAndDeletedFalse(postId);
+        assertThat(post.isDeleted()).isFalse();
     }
 
     @Test
@@ -317,6 +342,106 @@ class PostServiceTest {
         verify(likeRepository, never()).delete(any(Like.class));
     }
 
+    @Test
+    @DisplayName("게시글 상세 조회 시 본인 게시글과 댓글의 isMine이 true로 반환된다")
+    void getPostViewSuccessByOwner() {
+        // given
+        Long postId = 1L;
+        Long loginUserId = 1L;
+        Long otherUserId = 2L;
+
+        User loginUser = createUser(loginUserId);
+        User otherUser = createUser(otherUserId);
+
+        Post post = createPost(postId, loginUser);
+
+        Comment myComment =
+                createComment(10L, loginUser, post);
+
+        Comment otherComment =
+                createComment(11L, otherUser, post);
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+
+        when(commentRepository.findByPostWithUser(post))
+                .thenReturn(List.of(myComment, otherComment));
+
+        when(likeRepository.existsByPostAndUser(post, loginUser))
+                .thenReturn(false);
+
+        when(postReportRepository.existsByPostAndUser(post, loginUser))
+                .thenReturn(false);
+
+        // when
+        PostViewResponseDto response =
+                postService.getPostView(postId, loginUserId);
+
+        // then
+        assertThat(response.getIsMine()).isTrue();
+
+        assertThat(response.getComments()).hasSize(2);
+
+        assertThat(
+                response.getComments().get(0).getIsMine()
+        ).isTrue();
+
+        assertThat(
+                response.getComments().get(1).getIsMine()
+        ).isFalse();
+
+        assertThat(response.getViewCount()).isEqualTo(1);
+
+        verify(postRepository)
+                .findByPostIdAndDeletedFalse(postId);
+
+        verify(userRepository)
+                .findByUserIdAndDeletedFalse(loginUserId);
+
+        verify(commentRepository)
+                .findByPostWithUser(post);
+    }
+
+    @Test
+    @DisplayName("게시글 상세 조회 시 다른 사람의 게시글이면 isMine이 false로 반환된다")
+    void getPostViewSuccessByNonOwner() {
+        // given
+        Long postId = 1L;
+        Long writerId = 1L;
+        Long loginUserId = 2L;
+
+        User writer = createUser(writerId);
+        User loginUser = createUser(loginUserId);
+
+        Post post = createPost(postId, writer);
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+
+        when(commentRepository.findByPostWithUser(post))
+                .thenReturn(List.of());
+
+        when(likeRepository.existsByPostAndUser(post, loginUser))
+                .thenReturn(false);
+
+        when(postReportRepository.existsByPostAndUser(post, loginUser))
+                .thenReturn(false);
+
+        // when
+        PostViewResponseDto response =
+                postService.getPostView(postId, loginUserId);
+
+        // then
+        assertThat(response.getIsMine()).isFalse();
+        assertThat(response.getComments()).isEmpty();
+    }
+
     private User createUser(Long userId) {
         User user = new User("test" + userId + "@test.com", "Password1!", "tester" + userId, "profile.png",0);
         ReflectionTestUtils.setField(user, "userId", userId);
@@ -334,5 +459,12 @@ class PostServiceTest {
         ReflectionTestUtils.setField(request, "title", title);
         ReflectionTestUtils.setField(request, "contents", contents);
         return request;
+    }
+
+    private Comment createComment(Long commentId, User user, Post post) {
+        Comment comment =
+                new Comment(user, post, "comment");
+        ReflectionTestUtils.setField(comment, "commentId", commentId);
+        return comment;
     }
 }

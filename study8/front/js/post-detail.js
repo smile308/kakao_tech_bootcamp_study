@@ -1,4 +1,3 @@
-const CURRENT_USER_ID = api.getCurrentUserId();
 
 const backButton = document.querySelector("#backButton");
 const postEditButton = document.querySelector("#postEditButton");
@@ -56,7 +55,7 @@ function setPostActionsVisible(isVisible) {
 }
 
 function isCurrentUserPost() {
-  return Number(post?.authorId) === Number(CURRENT_USER_ID);
+  return post?.isMine === true;
 }
 
 function formatCount(count) {
@@ -106,7 +105,7 @@ function normalizePostForDetail(rawPost) {
   return {
     postId: rawPost.postId,
     title: rawPost.postTitle ?? "",
-    authorId: rawPost.userId ?? null,
+    isMine: rawPost.isMine === true,
     authorNickname: rawPost.userName ?? "삭제된 사용자",
     authorProfileImage: rawPost.userProfileImage ?? null,
     createdAt: rawPost.createdAt ?? new Date().toISOString(),
@@ -126,7 +125,7 @@ function normalizePostForDetail(rawPost) {
 function normalizeCommentForDetail(rawComment) {
   return {
     commentId: rawComment.commentId,
-    authorId: rawComment.userId ?? null,
+    isMine: rawComment.isMine === true,
     authorNickname: rawComment.userName ?? "삭제된 사용자",
     authorProfileImage: rawComment.userProfileImage ?? null,
     createdAt: rawComment.createdAt ?? "",
@@ -160,7 +159,7 @@ function renderPost() {
   postContent.textContent = post.content;
 
   const isMyPost = isCurrentUserPost();
-  setPostActionsVisible(isMyPost);
+  setPostActionsVisible(post.isMine === true);
 
   reportCount.textContent = formatCount(post.reportCount);
   likeCount.textContent = formatCount(post.likeCount);
@@ -218,7 +217,7 @@ function createCommentItem(comment) {
   commentItem.className = "comment-item";
 
 
-  const isMyComment = Number(comment.authorId) === Number(CURRENT_USER_ID);
+  const isMyComment = comment.isMine === true;
 
 
   commentItem.innerHTML = `
@@ -380,20 +379,25 @@ postDeleteButton.addEventListener("click", () => {
     description: "삭제한 내용은 복구 할 수 없습니다.",
     onConfirm: async () => {
       try {
-        const userId = api.getCurrentUserId();
-
-        if (!userId) {
-          alert("로그인이 필요합니다.");
-          window.location.href = "./login.html";
-          return;
-        }
 
         await api.deletePost(post.postId);
 
         window.location.href = "./posts.html";
       } catch (error) {
         console.error("글 삭제 실패:", error);
-        alert("글 삭제에 실패했습니다. 작성자 본인인지 확인해주세요.");
+        if (error.status === 403) {
+    alert("이 게시글을 삭제할 권한이 없습니다.");
+    await loadPostDetail();
+    return;
+  }
+
+  if (error.status === 404) {
+    alert("존재하지 않거나 이미 삭제된 게시글입니다.");
+    window.location.href = "./posts.html";
+    return;
+  }
+
+  alert("글 삭제에 실패했습니다.");
       }
     },
   });
@@ -503,8 +507,24 @@ commentForm.addEventListener("submit", async (event) => {
     await loadPostDetail();
     resetCommentForm();
   } catch (error) {
-    console.error("댓글 저장 실패:", error);
+  console.error("댓글 저장 실패:", error);
+
+  if (error.status === 403) {
+    alert("이 댓글을 수정할 권한이 없습니다.");
+    resetCommentForm();
+    await loadPostDetail();
+    return;
   }
+
+  if (error.status === 404) {
+    alert("존재하지 않거나 삭제된 댓글입니다.");
+    resetCommentForm();
+    await loadPostDetail();
+    return;
+  }
+
+  alert("댓글 저장에 실패했습니다.");
+}
 });
 
 commentList.addEventListener("click", (event) => {
@@ -547,8 +567,22 @@ commentList.addEventListener("click", (event) => {
           await loadPostDetail();
           resetCommentForm();
         } catch (error) {
-          console.error("댓글 삭제 실패:", error);
-        }
+            console.error("댓글 삭제 실패:", error);
+
+            if (error.status === 403) {
+              alert("이 댓글을 삭제할 권한이 없습니다.");
+              await loadPostDetail();
+             return;
+          }
+
+      if (error.status === 404) {
+        alert("존재하지 않거나 이미 삭제된 댓글입니다.");
+        await loadPostDetail();
+        return;
+    }
+
+  alert("댓글 삭제에 실패했습니다.");
+}
       },
     });
   }

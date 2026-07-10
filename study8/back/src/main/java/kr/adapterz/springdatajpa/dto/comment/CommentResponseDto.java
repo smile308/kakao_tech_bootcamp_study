@@ -8,17 +8,22 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class CommentResponseDto {
+
     private Long commentId;
     private String content;
     private String userName;
     private String userProfileImage;
-    private Long userId;
+    private Boolean isMine;
 
-    public CommentResponseDto(Comment comment, User user) {
+    public CommentResponseDto(
+            Comment comment,
+            User user,
+            Boolean isMine
+    ) {
         this.commentId = comment.getCommentId();
         this.content = comment.getCommentContent();
         this.userName = user.getNickname();
         this.userProfileImage = user.getProfileImage();
-        this.userId=user.getUserId();
+        this.isMine = isMine;
     }
 }

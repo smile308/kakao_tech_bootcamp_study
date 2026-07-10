@@ -43,9 +43,9 @@ public class SecurityConfig {
                             response.getWriter().write("{\"message\":\"Unauthorized\"}");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
-                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                             response.setContentType("application/json;charset=UTF-8");
-                            response.getWriter().write("{\"message\":\"Unauthorized\"}");
+                            response.getWriter().write("{\"message\":\"Forbidden\"}");
                         })
                 )
 

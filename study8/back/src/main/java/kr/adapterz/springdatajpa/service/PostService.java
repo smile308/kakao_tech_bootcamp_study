@@ -5,6 +5,7 @@ import kr.adapterz.springdatajpa.dto.post.*;
 import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.AuthException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.*;
 
@@ -70,13 +71,15 @@ public class PostService {
         List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
 
         for (Comment comment : comments) {
+            boolean isMyComment=comment.getUser().getUserId().equals(loginUserId);
             CommentResponseDto commentResponseDto =
-                    new CommentResponseDto(comment, comment.getUser());
+                    new CommentResponseDto(comment, comment.getUser(),isMyComment);
             commentResponseDtos.add(commentResponseDto);
         }
 
         boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser);
         boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
+        boolean isMine = post.getUser().getUserId().equals(loginUserId);
 
         post.view();
 
@@ -85,7 +88,8 @@ public class PostService {
                 post.getUser(),
                 commentResponseDtos,
                 isLiked,
-                isReported
+                isReported,
+                isMine
         );
     }
 
@@ -97,7 +101,7 @@ public class PostService {
 
         //실제 작성자가 맞는지 확인
         if (!post.getUser().getUserId().equals(loginUserId)) {
-            throw new AuthException("No_Auth");
+            throw new ForbiddenException("Forbidden_Access");
         }
         post.update(
                 request.getTitle(),
@@ -114,7 +118,7 @@ public class PostService {
 
         //게시물 작성자가 아닐경우 권한이 없다는걸 알림
         if(!post.getUser().getUserId().equals(loginUserId)) {
-            throw new AuthException("No_Auth");
+            throw new ForbiddenException("Forbidden_Access");
         }
         post.delete();
         return postDeleteResponseDto;

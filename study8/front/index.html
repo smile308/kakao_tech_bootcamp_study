@@ -1,8 +1,7 @@
 <script>
   const accessToken = localStorage.getItem("accessToken");
-  const userId = localStorage.getItem("userId");
 
-  if (accessToken && userId) {
+  if (accessToken) {
     window.location.href = "./pages/posts.html";
   } else {
     window.location.href = "./pages/login.html";

@@ -6,6 +6,7 @@ import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
@@ -48,7 +49,7 @@ public class CommentService {
 
         if(!comment.getUser().getUserId().equals(loginUserId))
         {
-            throw new AuthException("No_Auth");
+            throw new ForbiddenException("Forbidden_Access");
         }
         comment.changeComment(request.getCommentContent());
 
@@ -66,7 +67,7 @@ public class CommentService {
         }
 
         if (!comment.getUser().getUserId().equals(loginUserId)) {
-            throw new AuthException("No_Auth");
+            throw new ForbiddenException("Forbidden_Access");
         }
 
         commentRepository.delete(comment);

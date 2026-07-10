@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 //전역 예외 처리기
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -57,6 +58,18 @@ public class GlobalExceptionHandler {
         ErrorResponseDto response = new ErrorResponseDto((e.getMessage()));
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
+                .body(response);
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponseDto> handleForbiddenException(
+            ForbiddenException e
+    ) {
+        ErrorResponseDto response =
+                new ErrorResponseDto(e.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
                 .body(response);
     }
 }

@@ -26,12 +26,12 @@ public class PostViewResponseDto {
     private int replyCount;
     private int viewCount;
     private LocalDateTime createdAt;
-    private Long userId;
+
     private String userName;
     private String userProfileImage;
-    private boolean isReported;
 
-    // 추가
+    private Boolean isMine;
+    private Boolean isReported;
     private Boolean isLiked;
 
     private List<CommentResponseDto> comments;
@@ -41,7 +41,8 @@ public class PostViewResponseDto {
             User user,
             List<CommentResponseDto> comments,
             Boolean isLiked,
-            Boolean isReported
+            Boolean isReported,
+            Boolean isMine
     ) {
         this.postId = post.getPostId();
         this.isFixed = post.isFixed();
@@ -50,14 +51,18 @@ public class PostViewResponseDto {
         this.imageFile = post.getImageFile();
         this.imageFiles = getImageFiles(post);
         this.likeCount = post.getLikeCount();
+        this.reportCount = post.getReportCount();
         this.replyCount = post.getReplyCount();
         this.viewCount = post.getViewCount();
         this.createdAt = post.getCreatedAt();
-        this.userId = user.getUserId();
+
         this.userName = user.getNickname();
         this.userProfileImage = user.getProfileImage();
+
+        this.isMine = isMine;
         this.isLiked = isLiked;
-        this.reportCount = post.getReportCount();
+        this.isReported = isReported;
+
         this.comments = comments;
     }
 

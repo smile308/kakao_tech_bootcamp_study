@@ -8,6 +8,7 @@ import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
@@ -22,6 +23,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -118,22 +120,40 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 수정 시 작성자가 아니면 No_Auth 예외가 발생한다")
-    void commentFixFailByNoAuth() {
+    @DisplayName("댓글 수정 시 작성자가 아니면 권한 예외가 발생한다")
+    void commentFixFailByForbidden() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
         Long commentId = 10L;
+
         User writer = createUser(writerId);
-        Comment comment = createComment(commentId, writer, createPost(postId, writer));
-        CommentFixRequestDto request = createCommentFixRequest(commentId, "fixed");
+        Post post = createPost(postId, writer);
+
+        Comment comment =
+                createComment(commentId, writer, post);
+
+        CommentFixRequestDto request =
+                createCommentFixRequest(
+                        commentId,
+                        "fixed"
+                );
 
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.of(comment));
 
-        assertThatThrownBy(() -> commentService.commentFix(postId, loginUserId, request))
-                .isInstanceOf(AuthException.class)
-                .hasMessage("No_Auth");
+        assertThatThrownBy(
+                () -> commentService.commentFix(
+                        postId,
+                        loginUserId,
+                        request
+                )
+        )
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
+
+        assertThat(comment.getCommentContent())
+                .isEqualTo("comment");
     }
 
     @Test
@@ -193,7 +213,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 삭제 시 작성자가 아니면 No_Auth 예외가 발생한다")
+    @DisplayName("댓글 삭제 시 작성자가 아니면 권한 예외가 발생한다")
     void commentDeleteFailByNoAuth() {
         Long postId = 1L;
         Long writerId = 1L;
@@ -210,8 +230,8 @@ class CommentServiceTest {
                 .thenReturn(Optional.of(comment));
 
         assertThatThrownBy(() -> commentService.commentDelete(postId, loginUserId, request))
-                .isInstanceOf(AuthException.class)
-                .hasMessage("No_Auth");
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
 
         verify(commentRepository, never()).delete(any(Comment.class));
     }

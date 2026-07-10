@@ -1,15 +1,5 @@
 const API_BASE_URL = "http://localhost:8080";
 
-function getCurrentUserId() {
-  const userId = Number(localStorage.getItem("userId"));
-
-  if (!userId) {
-    console.error("로그인 사용자 ID가 없습니다.");
-    return null;
-  }
-
-  return userId;
-}
 
 function getAccessSession() {
   return localStorage.getItem("accessSession");
@@ -52,17 +42,26 @@ async function request(endpoint, options = {}) {
       ? data
       : data?.message || JSON.stringify(data);
 
-  if (response.status === 401 || response.status === 403) {
-    const currentPage = window.location.pathname.split("/").pop();
-    const isPublicPage = currentPage === "login.html" || currentPage === "signup.html";
+  if (response.status === 401) {
+    const currentPage =
+      window.location.pathname.split("/").pop();
+
+    const isPublicPage =
+      currentPage === "login.html" ||
+      currentPage === "signup.html";
 
     localStorage.removeItem("accessToken");
-    localStorage.removeItem("userId");
 
     if (!isPublicPage) {
       window.location.replace("./login.html");
     }
   }
+
+  const error = new Error(errorMessage);
+  error.status = response.status;
+  error.data = data;
+
+  throw error;
 
   throw new Error(errorMessage);
 }
@@ -71,7 +70,6 @@ async function request(endpoint, options = {}) {
 }
 
 window.api = {
-  getCurrentUserId,
   getAccessSession,
 
   getUser() {
@@ -118,7 +116,6 @@ window.api = {
   deleteUser(payload) {
     return request("/users", {
       method: "DELETE",
-      body: JSON.stringify(payload),
     });
   },
 

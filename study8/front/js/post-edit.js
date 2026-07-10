@@ -91,10 +91,22 @@ function validatePostEditForm() {
 async function loadPost() {
   try {
     const post = await api.getPost(postId);
+
+    if (post.isMine !== true) {
+      alert("글 작성자만 수정할 수 있습니다.");
+
+      window.location.replace(
+        `./post-detail.html?postId=${postId}`
+      );
+
+      return;
+    }
+
     renderOriginalPost(post);
   } catch (error) {
     console.error("글 조회 실패:", error);
-    postEditHelper.textContent = "*글 정보를 불러오지 못했습니다.";
+    postEditHelper.textContent =
+      "*글 정보를 불러오지 못했습니다.";
   }
 }
 
@@ -138,9 +150,27 @@ postEditForm.addEventListener("submit", async (event) => {
 
     window.location.href = `./post-detail.html?postId=${postId}`;
   } catch (error) {
-    console.error("글 수정 실패:", error);
-    postEditHelper.textContent = "*글 수정에 실패했습니다.";
+  console.error("글 수정 실패:", error);
+
+  if (error.status === 403) {
+    alert("이 게시글을 수정할 권한이 없습니다.");
+
+    window.location.replace(
+      `./post-detail.html?postId=${postId}`
+    );
+
+    return;
   }
+
+  if (error.status === 404) {
+    alert("존재하지 않거나 삭제된 게시글입니다.");
+    window.location.replace("./posts.html");
+    return;
+  }
+
+  postEditHelper.textContent =
+    "*글 수정에 실패했습니다.";
+}
 });
 
 backButton.addEventListener("click", () => {

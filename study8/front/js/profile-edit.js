@@ -102,17 +102,8 @@ profileEditForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const formData = new FormData();
-  formData.append("userId", String(api.getCurrentUserId()));
-  formData.append("nickname", nicknameInput.value.trim());
-
-  if (selectedProfileImageFile) {
-    formData.append("profileImage", selectedProfileImageFile);
-  }
-
   try {
   await api.updateProfile({
-    userId: api.getCurrentUserId(),
     nickname: nicknameInput.value.trim(),
     profileImage: selectedProfileImageDataUrl,
   });
@@ -134,14 +125,15 @@ modalCancelButton.addEventListener("click", () => {
 
 modalConfirmButton.addEventListener("click", async () => {
   try {
-    await api.deleteUser({
-      userId: api.getCurrentUserId(),
-    });
+    await api.deleteUser();
+
+    localStorage.removeItem("accessToken");
+    closeWithdrawModal();
+
+    window.location.href = "./login.html";
   } catch (error) {
     console.error("회원 탈퇴 실패:", error);
-  } finally {
-    closeWithdrawModal();
-    window.location.href = "./login.html";
+    alert(error.message || "회원 탈퇴에 실패했습니다.");
   }
 });
 

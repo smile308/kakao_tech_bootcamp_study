@@ -74,7 +74,6 @@ loginForm.addEventListener("submit", async (event) => {
     });
 
     localStorage.setItem("accessToken", result.accessToken);
-    localStorage.setItem("userId", result.userId);
 
     window.location.href = "./posts.html";
   } catch (error) {

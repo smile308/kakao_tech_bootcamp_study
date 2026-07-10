@@ -56,7 +56,6 @@ if (logoutButton) {
     } catch (error) {
       console.error("로그아웃 실패:", error);
     } finally {
-      localStorage.removeItem("userId");
       localStorage.removeItem("accessToken");
       window.location.href = "./login.html";
     }

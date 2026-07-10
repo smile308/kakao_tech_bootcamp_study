@@ -15,15 +15,11 @@
   }
 
   function isLoggedIn() {
-    const accessToken = localStorage.getItem("accessToken");
-    const userId = localStorage.getItem("userId");
-
-    return Boolean(accessToken && userId);
+    return Boolean(localStorage.getItem("accessToken"));
   }
 
   function clearAuth() {
     localStorage.removeItem("accessToken");
-    localStorage.removeItem("userId");
   }
 
   function requireLogin() {
