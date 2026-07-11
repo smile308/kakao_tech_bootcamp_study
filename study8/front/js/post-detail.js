@@ -18,6 +18,8 @@ const commentCount = document.querySelector("#commentCount");
 const reportButton = document.querySelector("#reportButton");
 const reportCount = document.querySelector("#reportCount");
 
+const commentStatCard = document.querySelector(".detail-stat-card--comments");
+
 const commentForm = document.querySelector("#commentForm");
 const commentInput = document.querySelector("#commentInput");
 const commentSubmitButton = document.querySelector("#commentSubmitButton");
@@ -87,6 +89,22 @@ function formatDateTime(dateTimeValue) {
   const seconds = String(date.getSeconds()).padStart(2, "0");
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+// 좋아요/댓글/신고가 최대치에 가까울수록 해당 통계 카드가
+// 그 자리를 더 넓게 채우도록(=아래쪽을 꽉 채우도록) 성장 비율을 계산한다.
+const STAT_MAX_VALUE = { like: 100, comment: 50, report: 5 };
+
+function applyStatFullness(cardElement, value, statType) {
+  if (!cardElement) {
+    return;
+  }
+
+  const max = STAT_MAX_VALUE[statType];
+  const ratio = Math.min(Number(value) || 0, max) / max;
+
+  cardElement.style.setProperty("--fullness", (1 + ratio * 9).toFixed(2));
+  cardElement.classList.toggle("is-full", ratio >= 1);
 }
 
 function normalizePostImageUrls(rawPost) {
@@ -165,6 +183,10 @@ function renderPost() {
   likeCount.textContent = formatCount(post.likeCount);
   viewCount.textContent = formatCount(post.viewCount);
   commentCount.textContent = formatCount(comments.length);
+
+  applyStatFullness(likeButton, post.likeCount, "like");
+  applyStatFullness(reportButton, post.reportCount, "report");
+  applyStatFullness(commentStatCard, comments.length, "comment");
 
   if (post.isReported) {
   reportButton.classList.add("is-reported");
@@ -271,6 +293,7 @@ function renderComments() {
   });
 
   commentCount.textContent = formatCount(comments.length);
+  applyStatFullness(commentStatCard, comments.length, "comment");
 }
 
 function updateCommentSubmitButton() {
