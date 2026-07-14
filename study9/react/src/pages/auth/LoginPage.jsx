@@ -45,9 +45,43 @@ function LoginPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isFormValid = isValidEmail(form.email) && isValidPassword(form.password);
-
     
-    return <h1>Login Page</h1>  
+    function handleInputChange(event) {
+        const { name, value } = event.target;
+        setForm(prevForm => ({
+            ...prevForm,
+            [name]: value
+        }));
+    }
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+
+        const validationError = getValidationErrors(form.email, form.password);
+        if(validationError){
+            setHelpMessage(validationError);
+            return;
+        }
+
+        try{
+            setIsSubmitting(true);
+            setHelpMessage("");
+
+            const result = await api.login(form);
+            authStorage.setAccessToken(result.accessToken);
+            navigate("/posts",{replace:true});
+        } catch (error) {
+            setHelpMessage(LOGIN_FAILED_MESSAGE);
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <div className="login-page">
+            <h1>로그인</h1>
+            </div>
+    )
 }
 
 export default LoginPage;
