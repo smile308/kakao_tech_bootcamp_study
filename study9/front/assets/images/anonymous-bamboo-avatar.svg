@@ -1,0 +1,66 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="anonAvatarBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1c342a"/>
+      <stop offset="100%" stop-color="#0f1f19"/>
+    </linearGradient>
+    <linearGradient id="anonStalkDark" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2f4a3c"/>
+      <stop offset="100%" stop-color="#1c3128"/>
+    </linearGradient>
+    <linearGradient id="anonStalkLight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3c5c4a"/>
+      <stop offset="100%" stop-color="#24402f"/>
+    </linearGradient>
+    <linearGradient id="anonMoonSliver" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#f4d98c" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#f4d98c" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#f4d98c" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="anonFireflyGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f0c064" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#f0c064" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="anonBambooCircle">
+      <circle cx="64" cy="64" r="64"/>
+    </clipPath>
+  </defs>
+
+  <rect width="128" height="128" rx="64" fill="url(#anonAvatarBg)"/>
+
+  <g clip-path="url(#anonBambooCircle)">
+    <rect x="0" y="-4" width="13" height="136" fill="url(#anonStalkDark)"/>
+    <rect x="13" y="-4" width="17" height="136" fill="url(#anonStalkLight)"/>
+    <rect x="30" y="-4" width="11" height="136" fill="url(#anonStalkDark)"/>
+    <rect x="41" y="-4" width="19" height="136" fill="url(#anonStalkLight)"/>
+    <rect x="58" y="-4" width="10" height="136" fill="url(#anonMoonSliver)"/>
+    <rect x="60" y="-4" width="14" height="136" fill="url(#anonStalkDark)"/>
+    <rect x="74" y="-4" width="16" height="136" fill="url(#anonStalkLight)"/>
+    <rect x="90" y="-4" width="12" height="136" fill="url(#anonStalkDark)"/>
+    <rect x="102" y="-4" width="18" height="136" fill="url(#anonStalkLight)"/>
+    <rect x="120" y="-4" width="10" height="136" fill="url(#anonStalkDark)"/>
+
+    <rect x="0" y="37" width="13" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="13" y="59" width="17" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="13" y="99" width="17" height="4" fill="#0d1a15" opacity="0.45"/>
+    <rect x="30" y="24" width="11" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="41" y="74" width="19" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="60" y="44" width="14" height="4" fill="#0d1a15" opacity="0.45"/>
+    <rect x="60" y="94" width="14" height="4" fill="#0d1a15" opacity="0.45"/>
+    <rect x="74" y="29" width="16" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="90" y="84" width="12" height="4" fill="#0d1a15" opacity="0.45"/>
+    <rect x="102" y="54" width="18" height="4" fill="#0d1a15" opacity="0.5"/>
+    <rect x="102" y="109" width="18" height="4" fill="#0d1a15" opacity="0.4"/>
+    <rect x="120" y="40" width="10" height="4" fill="#0d1a15" opacity="0.45"/>
+
+    <rect x="0" y="94" width="128" height="34" fill="#0a1712" opacity="0.35"/>
+
+    <circle cx="86" cy="70" r="10" fill="url(#anonFireflyGlow)"/>
+    <circle cx="86" cy="70" r="1.8" fill="#fbe3a4"/>
+    <circle cx="24" cy="92" r="8" fill="url(#anonFireflyGlow)"/>
+    <circle cx="24" cy="92" r="1.5" fill="#fbe3a4"/>
+  </g>
+
+  <circle cx="94" cy="26" r="8" fill="#f0c064" opacity="0.65"/>
+  <circle cx="27" cy="34" r="4" fill="#f0c064" opacity="0.55"/>
+</svg>

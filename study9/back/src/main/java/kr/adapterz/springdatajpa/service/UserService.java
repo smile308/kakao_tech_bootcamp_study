@@ -87,8 +87,14 @@ public class UserService {
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
-        UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
+
         User user = getLoginUser(loginUserId);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new InvalidRequestException("Invalid_Current_Password");
+        }
+
+        UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         return userPasswordResponseDto;

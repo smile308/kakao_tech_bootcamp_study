@@ -262,7 +262,11 @@ class UserServiceTest {
     void setPasswordFailByPasswordMismatch() {
         // given
         Long loginUserId = 1L;
-        UserPasswordRequestDto request = createUserPasswordRequest("Password1!", "WrongPassword1!");
+        UserPasswordRequestDto request = createUserPasswordRequest(
+                "CurrentPassword1!",
+                "Password1!",
+                "WrongPassword1!"
+        );
 
         // when & then
         assertThatThrownBy(() -> userService.setPassword(loginUserId, request))
@@ -271,6 +275,41 @@ class UserServiceTest {
 
         verify(userRepository, never()).findByUserIdAndDeletedFalse(anyLong());
         verify(passwordEncoder, never()).encode(anyString());
+    }
+
+    @Test
+    @DisplayName("비밀번호 수정 시 현재 비밀번호가 다르면 변경하지 않는다")
+    void setPasswordFailByInvalidCurrentPassword() {
+        Long loginUserId = 1L;
+
+        User loginUser = new User(
+                "test@test.com",
+                "old-encoded-password",
+                "tester",
+                "profile.png",
+                0
+        );
+
+        ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
+
+        UserPasswordRequestDto request = createUserPasswordRequest(
+                "WrongPassword1!",
+                "NewPassword1!",
+                "NewPassword1!"
+        );
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+        when(passwordEncoder.matches("WrongPassword1!", "old-encoded-password"))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> userService.setPassword(loginUserId, request))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Invalid_Current_Password");
+
+        verify(passwordEncoder).matches("WrongPassword1!", "old-encoded-password");
+        verify(passwordEncoder, never()).encode(anyString());
+        assertThat(loginUser.getPassword()).isEqualTo("old-encoded-password");
     }
 
     @Test
@@ -290,12 +329,16 @@ class UserServiceTest {
         ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
 
         UserPasswordRequestDto request = createUserPasswordRequest(
+                "CurrentPassword1!",
                 "NewPassword1!",
                 "NewPassword1!"
         );
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
+
+        when(passwordEncoder.matches("CurrentPassword1!", "old-encoded-password"))
+                .thenReturn(true);
 
         when(passwordEncoder.encode("NewPassword1!"))
                 .thenReturn("new-encoded-password");
@@ -305,6 +348,7 @@ class UserServiceTest {
 
         // then
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+        verify(passwordEncoder).matches("CurrentPassword1!", "old-encoded-password");
         verify(passwordEncoder).encode("NewPassword1!");
 
         assertThat(loginUser.getPassword()).isEqualTo("new-encoded-password");
@@ -433,11 +477,13 @@ class UserServiceTest {
     }
 
     private UserPasswordRequestDto createUserPasswordRequest(
+            String currentPassword,
             String password,
             String passwordCheck
     ) {
         UserPasswordRequestDto request = new UserPasswordRequestDto();
 
+        ReflectionTestUtils.setField(request, "currentPassword", currentPassword);
         ReflectionTestUtils.setField(request, "password", password);
         ReflectionTestUtils.setField(request, "passwordCheck", passwordCheck);
 
