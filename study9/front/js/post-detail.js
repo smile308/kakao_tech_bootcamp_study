@@ -89,50 +89,6 @@ function formatDateTime(dateTimeValue) {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
-function normalizePostImageUrls(rawPost) {
-  if (Array.isArray(rawPost.imageFiles) && rawPost.imageFiles.length > 0) {
-    return rawPost.imageFiles.filter((imageUrl) => Boolean(imageUrl));
-  }
-
-  if (rawPost.imageFile) {
-    return [rawPost.imageFile];
-  }
-
-  return [];
-}
-
-function normalizePostForDetail(rawPost) {
-  return {
-    postId: rawPost.postId,
-    title: rawPost.postTitle ?? "",
-    isMine: rawPost.isMine === true,
-    authorNickname: rawPost.userName ?? "삭제된 사용자",
-    authorProfileImage: rawPost.userProfileImage ?? null,
-    createdAt: rawPost.createdAt ?? new Date().toISOString(),
-    imageUrl: rawPost.imageFile ?? null,
-  imageUrls: normalizePostImageUrls(rawPost),
-    content: rawPost.postContent ?? "",
-    likeCount: rawPost.likeCount ?? 0,
-    reportCount: rawPost.reportCount ?? 0,
-    viewCount: rawPost.viewCount ?? 0,
-    commentCount: rawPost.replyCount ?? 0,
-    isLiked: rawPost.isLiked ?? false,
-    isReported: rawPost.isReported ?? false,
-    comments: rawPost.comments ?? [],
-  };
-}
-
-function normalizeCommentForDetail(rawComment) {
-  return {
-    commentId: rawComment.commentId,
-    isMine: rawComment.isMine === true,
-    authorNickname: rawComment.userName ?? "삭제된 사용자",
-    authorProfileImage: rawComment.userProfileImage ?? null,
-    createdAt: rawComment.createdAt ?? "",
-    content: rawComment.content ?? "",
-  };
-}
-
 function setImage(imageBoxElement, imageElement, imageUrl) {
   if (!imageBoxElement || !imageElement) {
     return;
@@ -311,20 +267,14 @@ async function loadPostDetail() {
   }
 
   try {
-    const rawPost = await api.getPost(postId);
-    console.log("상세조회 응답:", rawPost);
+    const postResponse = await api.getPost(postId);
 
-    if (!rawPost || typeof rawPost !== "object") {
+    if (!postResponse || typeof postResponse !== "object") {
       throw new Error("상세조회 응답이 객체가 아닙니다.");
     }
 
-    post = normalizePostForDetail(rawPost);
-
-    comments = Array.isArray(post.comments)
-      ? post.comments.map((comment) => normalizeCommentForDetail(comment))
-      : [];
-
-    console.log("정규화된 글:", post);
+    post = postResponse;
+    comments = post.comments;
 
     renderPost();
     renderComments();

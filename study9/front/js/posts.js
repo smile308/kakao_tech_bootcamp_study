@@ -57,22 +57,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function normalizePostForList(post) {
-  return {
-    postId: post.postId,
-    title: post.title ?? "",
-    likeCount: post.likeCount ?? 0,
-    commentCount: post.replyCount ?? 0,
-    viewCount: post.viewCount ?? 0,
-    createdAt: post.createdAt ?? new Date().toISOString(),
-    authorNickname: post.userName ?? "삭제된 사용자",
-    authorProfileImage: post.userProfileImage ?? null,
-  };
-}
-
-function createPostCard(rawPost) {
-  const post = normalizePostForList(rawPost);
-
+function createPostCard(post) {
   const article = document.createElement("article");
   article.className = "post-card";
 
@@ -103,7 +88,7 @@ function createPostCard(rawPost) {
 
   article.addEventListener("click", () => {
     if (!post.postId) {
-      console.error("글 ID가 없습니다.", rawPost);
+      console.error("글 ID가 없습니다.", post);
       return;
     }
 

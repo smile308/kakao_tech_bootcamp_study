@@ -22,32 +22,6 @@ if (!postId) {
 let originalPost = null;
 let selectedNewImageFiles = null;
 
-function normalizeImageFiles(post) {
-  if (Array.isArray(post.imageFiles) && post.imageFiles.length > 0) {
-    return post.imageFiles.filter(
-      (imageFile) => imageFile && !String(imageFile).startsWith("null")
-    );
-  }
-
-  if (post.imageFile) {
-    return [post.imageFile];
-  }
-
-  return [];
-}
-
-function normalizePostForEdit(post) {
-  const imageFiles = normalizeImageFiles(post);
-
-  return {
-    postId: post.postId,
-    title: post.postTitle ?? "",
-    content: post.postContent ?? "",
-    imageFileName: imageFiles[0] ?? null,
-    imageFiles,
-  };
-}
-
 function renderImageFileSummary(imageFiles) {
   if (!imageFiles || imageFiles.length === 0) {
     selectedFileName.textContent = "파일을 선택해주세요.";
@@ -59,7 +33,7 @@ function renderImageFileSummary(imageFiles) {
 
 function renderSelectedFileNames(files) {
   if (!files || files.length === 0) {
-    renderImageFileSummary(originalPost?.imageFiles ?? []);
+    renderImageFileSummary(originalPost?.imageUrls ?? []);
     return;
   }
 
@@ -68,11 +42,11 @@ function renderSelectedFileNames(files) {
 }
 
 function renderOriginalPost(post) {
-  originalPost = normalizePostForEdit(post);
+  originalPost = post;
 
   postTitleInput.value = originalPost.title;
   postContentInput.value = originalPost.content;
-  renderImageFileSummary(originalPost.imageFiles);
+  renderImageFileSummary(originalPost.imageUrls);
 }
 
 function validatePostEditForm() {
@@ -137,7 +111,7 @@ postEditForm.addEventListener("submit", async (event) => {
       ? await Promise.all(
           selectedNewImageFiles.map((file) => fileToDataUrl(file))
         )
-      : originalPost.imageFiles;
+      : originalPost.imageUrls;
 
     await api.updatePost(postId, {
       title: postTitleInput.value.trim(),

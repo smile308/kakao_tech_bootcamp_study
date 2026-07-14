@@ -69,6 +69,51 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+function normalizePostImageUrls(post) {
+  if (Array.isArray(post?.imageFiles) && post.imageFiles.length > 0) {
+    return post.imageFiles.filter(Boolean);
+  }
+
+  if (post?.imageFile) {
+    return [post.imageFile];
+  }
+
+  return [];
+}
+
+function normalizeCommentResponse(comment) {
+  return {
+    commentId: comment?.commentId ?? null,
+    content: comment?.content ?? "",
+    authorNickname: comment?.userName ?? "삭제된 사용자",
+    authorProfileImage: comment?.userProfileImage ?? null,
+    createdAt: comment?.createdAt ?? "",
+    isMine: comment?.isMine === true,
+  };
+}
+
+function normalizePostResponse(post) {
+  return {
+    postId: post?.postId ?? null,
+    title: post?.title ?? post?.postTitle ?? "",
+    content: post?.postContent ?? "",
+    imageUrls: normalizePostImageUrls(post),
+    likeCount: post?.likeCount ?? 0,
+    reportCount: post?.reportCount ?? 0,
+    commentCount: post?.replyCount ?? 0,
+    viewCount: post?.viewCount ?? 0,
+    createdAt: post?.createdAt ?? "",
+    authorNickname: post?.userName ?? "삭제된 사용자",
+    authorProfileImage: post?.userProfileImage ?? null,
+    isMine: post?.isMine === true,
+    isLiked: post?.isLiked === true,
+    isReported: post?.isReported === true,
+    comments: Array.isArray(post?.comments)
+      ? post.comments.map(normalizeCommentResponse)
+      : [],
+  };
+}
+
 window.api = {
   getAccessSession,
 
@@ -128,13 +173,17 @@ async getPosts({ page = 0, size = 10 } = {}) {
   const result = await request(`/posts?${params.toString()}`);
 
   return {
-    posts: result?.posts || [],
+    posts: Array.isArray(result?.posts)
+      ? result.posts.map(normalizePostResponse)
+      : [],
     hasNextPage: Boolean(result?.hasNextPage),
   };
 },
 
-  getPost(postId) {
-    return request(`/posts/${postId}`);
+  async getPost(postId) {
+    const post = await request(`/posts/${postId}`);
+
+    return normalizePostResponse(post);
   },
 
   createPost(payload) {
