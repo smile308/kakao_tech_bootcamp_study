@@ -108,4 +108,62 @@ export const api ={
         return request(`/posts/${postId}`);
     },
 
+    createPost(payload){
+        return request("/posts", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+
+    updatePost(postId, payload){
+        return request(`/posts/${postId}`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+        });
+    },
+
+    deletePost(postId){
+        return request(`/posts/${postId}`, {
+            method: "DELETE",
+        });
+    },
+
+    reportPost(postId){
+        return request(`/posts/${postId}/reports`, {
+            method: "POST",
+        });
+    },
+
+    likePost(postId){
+        return request(`/posts/${postId}/likes`, {
+            method: "POST",
+        });
+    },
+
+    unlikePost(postId){
+        return request(`/posts/${postId}/likes`, {
+            method: "DELETE",
+        });
+    },
+
+    createComment(postId, payload){
+        return request(`/posts/${postId}/comments`, {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+
+    updateComment(postId, payload){
+        return request(`/posts/${postId}/comments`, {
+            method: "PATCH",
+            body: JSON.stringify(payload),
+        });
+    },
+
+    deleteComment(postId,payload){
+        return request(`/posts/${postId}/comments`, {
+            method: "DELETE",
+            body: JSON.stringify(payload),
+        });
+    },
 }
