@@ -1,5 +1,6 @@
-import {Navigate, Outlet} from "react-router-dom";
-import {authStorage} from "../auth/authStorage.js";
+import { Navigate, Outlet } from "react-router-dom";
+
+import { authStorage } from "../auth/authStorage.js";
 
 function ProtectedRoute() {
     if (!authStorage.isLoggedIn()) {

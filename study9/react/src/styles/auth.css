@@ -172,8 +172,7 @@
   box-shadow: 0 0 0 3px var(--color-gold-soft);
 }
 
-.helper-text,
-.signup-helper-text,
+.form-field__error,
 #profileHelper {
   min-height: 16px;
   margin: 0;

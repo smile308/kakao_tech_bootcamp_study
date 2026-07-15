@@ -19,9 +19,9 @@ function PostEditor({ mode, initialValues, onSubmit }) {
     async function handleSubmit(event) {
         event.preventDefault();
         const title = form.title.trim();
-        const contents = form.content.trim();
+        const content = form.content.trim();
 
-        if (!title || !contents) {
+        if (!title || !content) {
             setError("*글 제목과 이야기 내용을 모두 작성해주세요.");
             return;
         }
@@ -34,8 +34,7 @@ function PostEditor({ mode, initialValues, onSubmit }) {
                 : initialValues?.imageUrls ?? [];
             await onSubmit({
                 title,
-                contents,
-                imageFile: imageFiles[0] ?? null,
+                content,
                 imageFiles,
             });
         } catch (submitError) {

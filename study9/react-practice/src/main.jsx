@@ -5,6 +5,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 
 import "./styles/global.css";
+import "./styles/layout.css";
 import "./styles/auth.css";
 
 createRoot(document.getElementById("root")).render(
@@ -14,4 +15,3 @@ createRoot(document.getElementById("root")).render(
         </BrowserRouter>
     </StrictMode>,
 );
-

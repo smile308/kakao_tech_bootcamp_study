@@ -13,8 +13,8 @@ public class CommentResponseDto {
 
     private Long commentId;
     private String content;
-    private String userName;
-    private String userProfileImage;
+    private String authorNickname;
+    private String authorProfileImage;
     private Boolean isMine;
     private LocalDateTime createdAt;
 
@@ -25,8 +25,8 @@ public class CommentResponseDto {
     ) {
         this.commentId = comment.getCommentId();
         this.content = comment.getCommentContent();
-        this.userName = user.getNickname();
-        this.userProfileImage = user.getProfileImage();
+        this.authorNickname = user.getNickname();
+        this.authorProfileImage = user.getProfileImage();
         this.isMine = isMine;
         this.createdAt = comment.getCreatedAt();
     }

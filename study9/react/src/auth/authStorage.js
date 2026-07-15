@@ -1,20 +1,19 @@
-const ACCESS_TOKEN_KEY = 'accessToken';
+const ACCESS_TOKEN_KEY = "accessToken";
 
 export const authStorage = {
-    getAccessToken(){
+    getAccessToken() {
         return localStorage.getItem(ACCESS_TOKEN_KEY);
     },
 
-    setAccessToken(accessToken){
+    setAccessToken(accessToken) {
         localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
     },
 
-    removeAccessToken(){
+    removeAccessToken() {
         localStorage.removeItem(ACCESS_TOKEN_KEY);
     },
 
-    isLoggedIn(){
-        return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
+    isLoggedIn() {
+        return Boolean(authStorage.getAccessToken());
     },
-
-}
+};

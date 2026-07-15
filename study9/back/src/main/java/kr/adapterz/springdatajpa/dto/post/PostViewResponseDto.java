@@ -17,18 +17,17 @@ public class PostViewResponseDto {
 
     private Long postId;
     private boolean isFixed;
-    private String postTitle;
-    private String postContent;
-    private String imageFile;
-    private List<String> imageFiles;
+    private String title;
+    private String content;
+    private List<String> imageUrls;
     private int likeCount;
     private int reportCount;
-    private int replyCount;
+    private int commentCount;
     private int viewCount;
     private LocalDateTime createdAt;
 
-    private String userName;
-    private String userProfileImage;
+    private String authorNickname;
+    private String authorProfileImage;
 
     private Boolean isMine;
     private Boolean isReported;
@@ -46,18 +45,17 @@ public class PostViewResponseDto {
     ) {
         this.postId = post.getPostId();
         this.isFixed = post.isFixed();
-        this.postTitle = post.getPostTitle();
-        this.postContent = post.getPostContent();
-        this.imageFile = post.getImageFile();
-        this.imageFiles = getImageFiles(post);
+        this.title = post.getPostTitle();
+        this.content = post.getPostContent();
+        this.imageUrls = getImageUrls(post);
         this.likeCount = post.getLikeCount();
         this.reportCount = post.getReportCount();
-        this.replyCount = post.getReplyCount();
+        this.commentCount = post.getReplyCount();
         this.viewCount = post.getViewCount();
         this.createdAt = post.getCreatedAt();
 
-        this.userName = user.getNickname();
-        this.userProfileImage = user.getProfileImage();
+        this.authorNickname = user.getNickname();
+        this.authorProfileImage = user.getProfileImage();
 
         this.isMine = isMine;
         this.isLiked = isLiked;
@@ -66,7 +64,7 @@ public class PostViewResponseDto {
         this.comments = comments;
     }
 
-    private List<String> getImageFiles(Post post) {
+    private List<String> getImageUrls(Post post) {
         List<String> result = new ArrayList<>();
 
         for (PostImage postImage : post.getPostImages()) {

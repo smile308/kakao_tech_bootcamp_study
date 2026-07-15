@@ -4,29 +4,13 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Getter
 @NoArgsConstructor
 public class PostFixRequestDto {
-    @Size(max=26)
+    @Size(max = 26)
     private String title;
-    private String contents;
-    private String imageFile;
+    private String content;
     private List<String> imageFiles;
-
-    public List<String> getPostImageFiles() {
-        if (imageFiles != null) {
-            return imageFiles;
-        }
-
-        List<String> result = new ArrayList<>();
-
-        if (imageFile != null && !imageFile.isBlank()) {
-            result.add(imageFile);
-        }
-
-        return result;
-    }
 }

@@ -115,10 +115,7 @@ postEditForm.addEventListener("submit", async (event) => {
 
     await api.updatePost(postId, {
       title: postTitleInput.value.trim(),
-      contents: postContentInput.value.trim(),
-
-      imageFile: imageFiles[0] ?? null,
-
+      content: postContentInput.value.trim(),
       imageFiles,
     });
 

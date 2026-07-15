@@ -1,7 +1,7 @@
 import { authStorage } from "../auth/authStorage.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
-const PUBLIC_PATHS = new Set(["/login", "/signup"]);
+const PUBLIC_PATHS = ["/login", "/signup"];
 
 export async function request(endpoint, options = {}) {
     const accessToken = authStorage.getAccessToken();
@@ -38,7 +38,7 @@ export async function request(endpoint, options = {}) {
         if (response.status === 401) {
             authStorage.removeAccessToken();
 
-            if (!PUBLIC_PATHS.has(window.location.pathname)) {
+            if (!PUBLIC_PATHS.includes(window.location.pathname)) {
                 window.location.replace("/login");
             }
         }

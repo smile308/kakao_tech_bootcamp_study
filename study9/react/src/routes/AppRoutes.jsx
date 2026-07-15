@@ -37,7 +37,7 @@ function AppRoutes() {
                 <Route path="/password/edit" element={page(<PasswordEditPage />)} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/posts" replace />} />
         </Routes>
     );
 }

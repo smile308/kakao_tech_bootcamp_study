@@ -532,10 +532,10 @@ class PostServiceTest {
         return post;
     }
 
-    private PostFixRequestDto createPostFixRequest(String title, String contents) {
+    private PostFixRequestDto createPostFixRequest(String title, String content) {
         PostFixRequestDto request = new PostFixRequestDto();
         ReflectionTestUtils.setField(request, "title", title);
-        ReflectionTestUtils.setField(request, "contents", contents);
+        ReflectionTestUtils.setField(request, "content", content);
         return request;
     }
 

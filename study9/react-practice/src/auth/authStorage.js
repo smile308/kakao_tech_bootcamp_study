@@ -1,4 +1,4 @@
-const ACCESS_TOKEN_KEY = "accessToken";
+const ACCESS_TOKEN_KEY = "reactPracticeAccessToken";
 
 export const authStorage = {
     getAccessToken() {
@@ -14,6 +14,6 @@ export const authStorage = {
     },
 
     isLoggedIn() {
-        return Boolean(localStorage.getItem(ACCESS_TOKEN_KEY));
+        return Boolean(authStorage.getAccessToken());
     },
 };

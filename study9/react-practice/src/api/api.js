@@ -18,7 +18,8 @@ export async function request(endpoint, options = {}) {
         ...options,
         headers,
     });
-    const contentType = response.headers.get("Content-Type");
+
+    const contentType = response.headers.get("content-type");
     const responseText = await response.text();
     let data = null;
 
@@ -29,17 +30,20 @@ export async function request(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+        const errorMessage =
+            typeof data === "string"
+                ? data
+                : data?.message ?? "요청 처리에 실패했습니다.";
+
         if (response.status === 401) {
             authStorage.removeAccessToken();
+
             if (!PUBLIC_PATHS.includes(window.location.pathname)) {
-                window.location.href = "/login";
+                window.location.replace("/login");
             }
         }
 
-        const message = typeof data === "string"
-            ? data
-            : data?.message ?? "요청 처리에 실패했습니다.";
-        const error = new Error(message);
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.data = data;
         throw error;
@@ -47,4 +51,3 @@ export async function request(endpoint, options = {}) {
 
     return data;
 }
-

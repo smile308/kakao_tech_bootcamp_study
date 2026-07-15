@@ -8,42 +8,74 @@ import AuthLayout from "../../components/layout/AuthLayout.jsx";
 import { isValidEmail, isValidPassword } from "../../utils/validation.js";
 import "../../styles/auth.css";
 
+const EMAIL_EMPTY_MESSAGE = "*이메일을 입력해주세요.";
+const EMAIL_INVALID_MESSAGE = "*올바른 이메일 주소 형식을 입력해주세요.";
+const PASSWORD_EMPTY_MESSAGE = "*비밀번호를 입력해주세요.";
+const PASSWORD_INVALID_MESSAGE = "*비밀번호 형식을 확인해주세요.";
+const LOGIN_FAIL_MESSAGE = "*이메일 또는 비밀번호를 확인해주세요.";
+
+function getFieldError(name, value) {
+    if (name === "email") {
+        const trimmedEmail = value.trim();
+
+        if (!trimmedEmail) {
+            return EMAIL_EMPTY_MESSAGE;
+        }
+        if (!isValidEmail(trimmedEmail)) {
+            return EMAIL_INVALID_MESSAGE;
+        }
+    }
+
+    if (name === "password") {
+        if (!value) {
+            return PASSWORD_EMPTY_MESSAGE;
+        }
+        if (!isValidPassword(value)) {
+            return PASSWORD_INVALID_MESSAGE;
+        }
+    }
+
+    return "";
+}
+
 function LoginPage() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: "", password: "" });
-    const [helpMessage, setHelpMessage] = useState("");
+    const [errors, setErrors] = useState({ email: "", password: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const isValid = isValidEmail(form.email) && isValidPassword(form.password);
+    const isValid = isValidEmail(form.email.trim()) && isValidPassword(form.password);
 
     function handleChange(event) {
         const { name, value } = event.target;
         setForm((previous) => ({ ...previous, [name]: value }));
+        setErrors((previous) => ({
+            ...previous,
+            [name]: getFieldError(name, value),
+        }));
     }
 
     async function handleSubmit(event) {
         event.preventDefault();
 
-        if (!form.email) {
-            setHelpMessage("*이메일을 입력해주세요.");
-            return;
-        }
-        if (!isValidEmail(form.email)) {
-            setHelpMessage("올바른 이메일 주소 형식을 입력해주세요.");
-            return;
-        }
-        if (!form.password || !isValidPassword(form.password)) {
-            setHelpMessage("비밀번호 형식을 확인해주세요.");
+        if (!isValid) {
+            setErrors({
+                email: getFieldError("email", form.email),
+                password: getFieldError("password", form.password),
+            });
             return;
         }
 
         try {
             setIsSubmitting(true);
-            setHelpMessage("");
-            const result = await authApi.login(form);
+            setErrors({ email: "", password: "" });
+            const result = await authApi.login({
+                email: form.email.trim(),
+                password: form.password,
+            });
             authStorage.setAccessToken(result.accessToken);
             navigate("/posts", { replace: true });
         } catch {
-            setHelpMessage("이메일 또는 비밀번호를 확인해주세요.");
+            setErrors((previous) => ({ ...previous, password: LOGIN_FAIL_MESSAGE }));
         } finally {
             setIsSubmitting(false);
         }
@@ -64,7 +96,7 @@ function LoginPage() {
         >
             <LoginForm
                 form={form}
-                helpMessage={helpMessage}
+                errors={errors}
                 isSubmitting={isSubmitting}
                 isValid={isValid}
                 onChange={handleChange}

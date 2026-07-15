@@ -2,7 +2,8 @@ const loginForm = document.querySelector("#loginForm");
 const emailInput = document.querySelector("#email");
 const passwordInput = document.querySelector("#password");
 const loginButton = document.querySelector("#loginButton");
-const loginHelper = document.querySelector("#loginHelper");
+const emailHelper = document.querySelector("#emailHelper");
+const passwordHelper = document.querySelector("#passwordHelper");
 const signupLink = document.querySelector("#signupLink");
 
 const EMAIL_EMPTY_MESSAGE = "*이메일을 입력해주세요.";
@@ -15,7 +16,7 @@ const LOGIN_FAIL_MESSAGE = "*아이디 또는 비밀번호를 확인해주세요
 
 const { isValidEmail, isValidPassword } = window.utils;
 
-function getValidationError(email, password) {
+function getEmailError(email) {
   if (!email) {
     return EMAIL_EMPTY_MESSAGE;
   }
@@ -24,6 +25,10 @@ function getValidationError(email, password) {
     return EMAIL_INVALID_MESSAGE;
   }
 
+  return "";
+}
+
+function getPasswordError(password) {
   if (!password) {
     return PASSWORD_EMPTY_MESSAGE;
   }
@@ -35,8 +40,14 @@ function getValidationError(email, password) {
   return "";
 }
 
-function setHelperMessage(message) {
-  loginHelper.textContent = message;
+function renderEmailHelper() {
+  const email = emailInput.value.trim();
+  emailHelper.textContent = getEmailError(email);
+}
+
+function renderPasswordHelper() {
+  const password = passwordInput.value;
+  passwordHelper.textContent = getPasswordError(password);
 }
 
 function updateLoginButtonState() {
@@ -48,8 +59,15 @@ function updateLoginButtonState() {
   loginButton.disabled = !isValid;
 }
 
-emailInput.addEventListener("input", updateLoginButtonState);
-passwordInput.addEventListener("input", updateLoginButtonState);
+emailInput.addEventListener("input", () => {
+  renderEmailHelper();
+  updateLoginButtonState();
+});
+
+passwordInput.addEventListener("input", () => {
+  renderPasswordHelper();
+  updateLoginButtonState();
+});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -57,10 +75,12 @@ loginForm.addEventListener("submit", async (event) => {
   const email = emailInput.value.trim();
   const password = passwordInput.value;
 
-  const errorMessage = getValidationError(email, password);
+  const emailError = getEmailError(email);
+  const passwordError = getPasswordError(password);
 
-  if (errorMessage) {
-    setHelperMessage(errorMessage);
+  if (emailError || passwordError) {
+    emailHelper.textContent = emailError;
+    passwordHelper.textContent = passwordError;
     updateLoginButtonState();
     return;
   }
@@ -78,7 +98,7 @@ loginForm.addEventListener("submit", async (event) => {
     window.location.href = "./posts.html";
   } catch (error) {
     console.error("로그인 실패:", error);
-    setHelperMessage(LOGIN_FAIL_MESSAGE);
+    passwordHelper.textContent = LOGIN_FAIL_MESSAGE;
   } finally {
     updateLoginButtonState();
   }

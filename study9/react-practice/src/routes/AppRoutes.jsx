@@ -30,10 +30,9 @@ function AppRoutes() {
                 <Route path="/password/edit" element={<PasswordEditPage />} />
             </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/posts" replace />} />
         </Routes>
     );
 }
 
 export default AppRoutes;
-

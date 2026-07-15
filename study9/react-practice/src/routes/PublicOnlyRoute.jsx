@@ -3,10 +3,11 @@ import { Navigate, Outlet } from "react-router-dom";
 import { authStorage } from "../auth/authStorage.js";
 
 function PublicOnlyRoute() {
-    return authStorage.isLoggedIn()
-        ? <Navigate to="/posts" replace />
-        : <Outlet />;
+    if (authStorage.isLoggedIn()) {
+        return <Navigate to="/posts" replace />;
+    }
+
+    return <Outlet />;
 }
 
 export default PublicOnlyRoute;
-

@@ -69,24 +69,16 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
-function normalizePostImageUrls(post) {
-  if (Array.isArray(post?.imageFiles) && post.imageFiles.length > 0) {
-    return post.imageFiles.filter(Boolean);
-  }
-
-  if (post?.imageFile) {
-    return [post.imageFile];
-  }
-
-  return [];
+function normalizePostImageUrls(imageUrls) {
+  return Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
 }
 
 function normalizeCommentResponse(comment) {
   return {
     commentId: comment?.commentId ?? null,
     content: comment?.content ?? "",
-    authorNickname: comment?.userName ?? "삭제된 사용자",
-    authorProfileImage: comment?.userProfileImage ?? null,
+    authorNickname: comment?.authorNickname ?? "삭제된 사용자",
+    authorProfileImage: comment?.authorProfileImage ?? null,
     createdAt: comment?.createdAt ?? "",
     isMine: comment?.isMine === true,
   };
@@ -95,16 +87,16 @@ function normalizeCommentResponse(comment) {
 function normalizePostResponse(post) {
   return {
     postId: post?.postId ?? null,
-    title: post?.title ?? post?.postTitle ?? "",
-    content: post?.postContent ?? "",
-    imageUrls: normalizePostImageUrls(post),
+    title: post?.title ?? "",
+    content: post?.content ?? "",
+    imageUrls: normalizePostImageUrls(post?.imageUrls),
     likeCount: post?.likeCount ?? 0,
     reportCount: post?.reportCount ?? 0,
-    commentCount: post?.replyCount ?? 0,
+    commentCount: post?.commentCount ?? 0,
     viewCount: post?.viewCount ?? 0,
     createdAt: post?.createdAt ?? "",
-    authorNickname: post?.userName ?? "삭제된 사용자",
-    authorProfileImage: post?.userProfileImage ?? null,
+    authorNickname: post?.authorNickname ?? "삭제된 사용자",
+    authorProfileImage: post?.authorProfileImage ?? null,
     isMine: post?.isMine === true,
     isLiked: post?.isLiked === true,
     isReported: post?.isReported === true,
