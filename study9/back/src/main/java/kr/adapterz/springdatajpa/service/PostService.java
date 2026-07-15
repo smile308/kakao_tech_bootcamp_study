@@ -183,9 +183,7 @@ public class PostService {
 
         return new PostReportResponseDto(
                 post.getPostId(),
-                post.getReportCount(),
-                writer.getUserId(),
-                writer.getReceivedReportCount()
+                post.getReportCount()
         );
     }
 

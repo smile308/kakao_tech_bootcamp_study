@@ -19,6 +19,7 @@ import kr.adapterz.springdatajpa.dto.post.PostReportResponseDto;
 import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -100,8 +101,10 @@ class PostServiceTest {
         assertThat(response.getMessage()).isEqualTo("report_success");
         assertThat(response.getPostId()).isEqualTo(postId);
         assertThat(response.getReportCount()).isEqualTo(1);
-        assertThat(response.getWriterUserId()).isEqualTo(writerId);
-        assertThat(response.getWriterReceivedReportCount()).isEqualTo(1);
+        assertThat(
+                Arrays.stream(PostReportResponseDto.class.getDeclaredFields())
+                        .map(field -> field.getName())
+        ).containsExactlyInAnyOrder("message", "postId", "reportCount");
 
         verify(postReportRepository).save(any(PostReport.class));
     }

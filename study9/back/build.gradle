@@ -60,6 +60,12 @@ tasks.named('test') {
 	finalizedBy jacocoTestReport
 }
 
+def coverageIncludes = [
+		'kr/adapterz/springdatajpa/entity/**',
+		'kr/adapterz/springdatajpa/auth/**',
+		'kr/adapterz/springdatajpa/config/**'
+]
+
 tasks.named('jacocoTestReport') {
 	dependsOn test
 
@@ -70,13 +76,13 @@ tasks.named('jacocoTestReport') {
 	}
 
 	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
-		fileTree(dir: it, include: ['kr/adapterz/springdatajpa/entity/**'])
+		fileTree(dir: it, include: coverageIncludes)
 	}))
 }
 
 tasks.named('jacocoTestCoverageVerification') {
 	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
-		fileTree(dir: it, include: ['kr/adapterz/springdatajpa/entity/**'])
+		fileTree(dir: it, include: coverageIncludes)
 	}))
 
 	violationRules {
