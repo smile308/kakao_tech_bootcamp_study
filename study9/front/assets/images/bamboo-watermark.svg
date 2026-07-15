@@ -1,14 +1,51 @@
-<svg width="520" height="520" viewBox="0 0 520 520" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <g opacity="0.62">
-    <path d="M208 42C208 36.4772 212.477 32 218 32H266C271.523 32 276 36.4772 276 42V492C276 497.523 271.523 502 266 502H218C212.477 502 208 497.523 208 492V42Z" fill="#2F8F55"/>
-    <path d="M312 18C312 12.4772 316.477 8 322 8H370C375.523 8 380 12.4772 380 18V468C380 473.523 375.523 478 370 478H322C316.477 478 312 473.523 312 468V18Z" fill="#6FBF73"/>
-    <path d="M208 146H276" stroke="#D5E675" stroke-width="18" stroke-linecap="round"/>
-    <path d="M208 296H276" stroke="#D5E675" stroke-width="18" stroke-linecap="round"/>
-    <path d="M312 126H380" stroke="#F3F8ED" stroke-width="18" stroke-linecap="round"/>
-    <path d="M312 274H380" stroke="#F3F8ED" stroke-width="18" stroke-linecap="round"/>
-    <path d="M168 188C95 168 54 106 54 106C147 84 220 118 252 180C227 195 199 199 168 188Z" fill="#7AB866"/>
-    <path d="M406 188C479 168 520 106 520 106C427 84 354 118 322 180C347 195 375 199 406 188Z" fill="#A6C96F"/>
-    <path d="M134 378C62 360 20 296 20 296C112 276 187 310 222 372C193 389 164 394 134 378Z" fill="#A6C96F"/>
-    <path d="M406 378C478 360 520 296 520 296C428 276 353 310 318 372C347 389 376 394 406 378Z" fill="#7AB866"/>
+<svg width="560" height="560" viewBox="0 0 560 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f4d98c" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#f4d98c" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="fireflyGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f0c064" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#f0c064" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="stalkA" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2f4a3c"/>
+      <stop offset="100%" stop-color="#1c3128"/>
+    </linearGradient>
+    <linearGradient id="stalkB" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3c5c4a"/>
+      <stop offset="100%" stop-color="#24402f"/>
+    </linearGradient>
+  </defs>
+
+  <g opacity="0.9">
+    <circle cx="118" cy="96" r="70" fill="url(#moonGlow)"/>
+    <path d="M118 46C90 46 68 68 68 96C68 124 90 146 118 146C126 146 134 144 141 141C121 133 107 115 107 94C107 73 121 55 141 47C134 44 126 46 118 46Z" fill="#f4e4b8"/>
+  </g>
+
+  <g opacity="0.95">
+    <path d="M226 34C226 28.5 230.5 24 236 24H262C267.5 24 272 28.5 272 34V526C272 531.5 267.5 536 262 536H236C230.5 536 226 531.5 226 526V34Z" fill="url(#stalkA)"/>
+    <path d="M312 8C312 2.5 316.5 -2 322 -2H348C353.5 -2 358 2.5 358 8V500C358 505.5 353.5 510 348 510H322C316.5 510 312 505.5 312 500V8Z" fill="url(#stalkB)"/>
+
+    <path d="M226 152H272" stroke="#0d1a15" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    <path d="M226 312H272" stroke="#0d1a15" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    <path d="M312 128H358" stroke="#0d1a15" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+    <path d="M312 288H358" stroke="#0d1a15" stroke-width="10" stroke-linecap="round" opacity="0.55"/>
+
+    <path d="M186 196C110 176 66 112 66 112C164 90 240 126 274 190C247 206 217 210 186 196Z" fill="#2c4838"/>
+    <path d="M436 196C512 176 556 112 556 112C458 90 382 126 348 190C375 206 405 210 436 196Z" fill="#3c5c48"/>
+    <path d="M150 392C74 372 30 308 30 308C128 286 204 322 238 386C211 402 181 406 150 392Z" fill="#3c5c48"/>
+    <path d="M436 392C512 372 556 308 556 308C458 286 382 322 348 386C375 402 405 406 436 392Z" fill="#2c4838"/>
+  </g>
+
+  <g>
+    <circle cx="96" cy="238" r="16" fill="url(#fireflyGlow)"/>
+    <circle cx="96" cy="238" r="3" fill="#fbe3a4"/>
+    <circle cx="420" cy="150" r="13" fill="url(#fireflyGlow)"/>
+    <circle cx="420" cy="150" r="2.4" fill="#fbe3a4"/>
+    <circle cx="150" cy="440" r="14" fill="url(#fireflyGlow)"/>
+    <circle cx="150" cy="440" r="2.6" fill="#fbe3a4"/>
+    <circle cx="470" cy="420" r="11" fill="url(#fireflyGlow)"/>
+    <circle cx="470" cy="420" r="2" fill="#fbe3a4"/>
   </g>
 </svg>

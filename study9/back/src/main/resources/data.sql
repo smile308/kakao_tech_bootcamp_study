@@ -35,11 +35,11 @@ VALUES
     (25, 1, '더미 게시글 25', '세 번째 페이지 테스트용 게시글입니다.', false, 7350, 0,0, 25200, TIMESTAMP '2026-06-26 10:24:00', false);
 
 INSERT INTO comments
-(comment_id, user_id, post_id, comment_content, origin_id)
+(comment_id, user_id, post_id, comment_content, origin_id, created_at)
 VALUES
-    (1, 1, 1, '첫 번째 댓글입니다.', NULL),
-    (2, 2, 1, '다른 사용자의 댓글입니다.', NULL),
-    (3, 1, 2, '두 번째 게시글 댓글입니다.', NULL);
+    (1, 1, 1, '첫 번째 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:10:00'),
+    (2, 2, 1, '다른 사용자의 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:11:00'),
+    (3, 1, 2, '두 번째 게시글 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:12:00');
 
 ALTER TABLE users ALTER COLUMN user_id RESTART WITH 100;
 ALTER TABLE posts ALTER COLUMN post_id RESTART WITH 100;

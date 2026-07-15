@@ -1,9 +1,18 @@
 const EMAIL_REGEX=/^[A-Za-z]+@[A-Za-z]+(\.[A-Za-z]+)+$/;
 
-const PASSWORD_REGEX=/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'\/~]/;
+const PASSWORD_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\;'/~]/;
 
 export function isValidEmail(email){
     return EMAIL_REGEX.test(email);
+}
+
+export function isValidNickname(nickname) {
+    return (
+        typeof nickname === "string" &&
+        nickname.length > 0 &&
+        nickname.length <= 10 &&
+        !/\s/.test(nickname)
+    );
 }
 
 export function isValidPassword(password){

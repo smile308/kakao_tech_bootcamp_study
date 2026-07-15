@@ -1,0 +1,1 @@
+function e(e){return new Promise((t,n)=>{if(!e){n(Error(`파일이 없습니다.`));return}let r=new FileReader;r.onload=()=>{t(r.result)},r.onerror=()=>{n(r.error)},r.readAsDataURL(e)})}export{e as t};

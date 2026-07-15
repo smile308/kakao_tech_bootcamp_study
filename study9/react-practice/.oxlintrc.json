@@ -1,0 +1,7 @@
+{
+  "plugins": ["react", "react-perf"],
+  "env": {
+    "browser": true
+  }
+}
+

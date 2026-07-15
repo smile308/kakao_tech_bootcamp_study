@@ -5,6 +5,8 @@ import kr.adapterz.springdatajpa.entity.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Getter
 @NoArgsConstructor
 public class CommentResponseDto {
@@ -14,6 +16,7 @@ public class CommentResponseDto {
     private String userName;
     private String userProfileImage;
     private Boolean isMine;
+    private LocalDateTime createdAt;
 
     public CommentResponseDto(
             Comment comment,
@@ -25,5 +28,6 @@ public class CommentResponseDto {
         this.userName = user.getNickname();
         this.userProfileImage = user.getProfileImage();
         this.isMine = isMine;
+        this.createdAt = comment.getCreatedAt();
     }
 }

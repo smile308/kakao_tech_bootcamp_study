@@ -460,6 +460,9 @@ class PostServiceTest {
 
         assertThat(response.getComments()).hasSize(2);
 
+        assertThat(response.getComments().get(0).getCreatedAt())
+                .isNotNull();
+
         assertThat(
                 response.getComments().get(0).getIsMine()
         ).isTrue();

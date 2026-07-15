@@ -1,87 +1,78 @@
-import {useState} from 'react';
-import {Link, useNavigate} from 'react-router';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-import {api} from '../../api/api';
-import {authStorage} from '../../auth/authStorage';
-import {isValidEmail, isValidPassword} from '../../utils/validation';
-
-const EMAIL_EMPTY_MESSAGE = "*이메일을 입력해주세요.";
-const EMAIL_INVALID_MESSAGE = "올바른 이메일 주소 형식을 입력해주세요. (예: example@example.com)";
-const PASSWORD_EMPTY_MESSAGE = "*비밀번호를 입력해주세요.";
-const PASSWORD_INVALID_MESSAGE = "비밀번호는 8자 이상, 20자 이하이며, 대문자, 소문자, 숫자, 특수문자를 각각 최소 1개 포함해야 합니다.";
-const LOGIN_FAILED_MESSAGE = "이메일 또는 비밀번호를 확인해주세요.";
-
-function getValidationErrors(email, password) {
-    if(!email){
-        return EMAIL_EMPTY_MESSAGE;
-    }
-
-    if(!isValidEmail(email)){
-        return EMAIL_INVALID_MESSAGE;
-    }
-
-    if(!password){
-        return PASSWORD_EMPTY_MESSAGE;
-    }
-
-    if(!isValidPassword(password)){
-        return PASSWORD_INVALID_MESSAGE;
-    }
-    
-    return null;
-}
-
+import { authApi } from "../../api/authApi.js";
+import { authStorage } from "../../auth/authStorage.js";
+import LoginForm from "../../components/auth/LoginForm.jsx";
+import AuthLayout from "../../components/layout/AuthLayout.jsx";
+import { isValidEmail, isValidPassword } from "../../utils/validation.js";
+import "../../styles/auth.css";
 
 function LoginPage() {
     const navigate = useNavigate();
-
-    const [form, setForm] = useState({
-        email: "",
-        password: "",
-    });
-
+    const [form, setForm] = useState({ email: "", password: "" });
     const [helpMessage, setHelpMessage] = useState("");
-
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const isValid = isValidEmail(form.email) && isValidPassword(form.password);
 
-    const isFormValid = isValidEmail(form.email) && isValidPassword(form.password);
-    
-    function handleInputChange(event) {
+    function handleChange(event) {
         const { name, value } = event.target;
-        setForm(prevForm => ({
-            ...prevForm,
-            [name]: value
-        }));
+        setForm((previous) => ({ ...previous, [name]: value }));
     }
 
     async function handleSubmit(event) {
         event.preventDefault();
 
-        const validationError = getValidationErrors(form.email, form.password);
-        if(validationError){
-            setHelpMessage(validationError);
+        if (!form.email) {
+            setHelpMessage("*이메일을 입력해주세요.");
+            return;
+        }
+        if (!isValidEmail(form.email)) {
+            setHelpMessage("올바른 이메일 주소 형식을 입력해주세요.");
+            return;
+        }
+        if (!form.password || !isValidPassword(form.password)) {
+            setHelpMessage("비밀번호 형식을 확인해주세요.");
             return;
         }
 
-        try{
+        try {
             setIsSubmitting(true);
             setHelpMessage("");
-
-            const result = await api.login(form);
+            const result = await authApi.login(form);
             authStorage.setAccessToken(result.accessToken);
-            navigate("/posts",{replace:true});
-        } catch (error) {
-            setHelpMessage(LOGIN_FAILED_MESSAGE);
+            navigate("/posts", { replace: true });
+        } catch {
+            setHelpMessage("이메일 또는 비밀번호를 확인해주세요.");
         } finally {
             setIsSubmitting(false);
         }
     }
 
     return (
-        <div className="login-page">
-            <h1>로그인</h1>
-            </div>
-    )
+        <AuthLayout
+            pageClassName="login-page"
+            sectionClassName="login-section"
+            intro={{
+                eyebrow: "Open After Dark",
+                title: "다들 잠든 시간, 여기선 마음을 꺼내도 괜찮아요",
+                items: [
+                    { title: "이름 없는 걸음", description: "누구인지 몰라도 편하게 남기는 하루" },
+                    { title: "반딧불 댓글", description: "서로의 이야기에 살짝 불을 비춰주는 공감" },
+                ],
+            }}
+        >
+            <LoginForm
+                form={form}
+                helpMessage={helpMessage}
+                isSubmitting={isSubmitting}
+                isValid={isValid}
+                onChange={handleChange}
+                onSubmit={handleSubmit}
+                signupTo="/signup"
+            />
+        </AuthLayout>
+    );
 }
 
 export default LoginPage;

@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Getter
 @Entity
@@ -32,6 +33,9 @@ public class Comment {
     @Column(name = "origin_id", nullable = true)
     private Long originId;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     //대댓글이 아닌 경우
     public Comment(User user, Post post, String commentContent)
     {
@@ -39,6 +43,7 @@ public class Comment {
         this.post=post;
         this.commentContent=commentContent;
         originId=null;
+        createdAt=LocalDateTime.now();
     }
 
     //대댓글인 경우(현재 미구현)
@@ -48,6 +53,7 @@ public class Comment {
         this.post=post;
         this.commentContent=commentContent;
         this.originId=originId;
+        this.createdAt=LocalDateTime.now();
     }
 
     //댓글 수정
