@@ -242,6 +242,44 @@ class PostServiceTest {
     }
 
     @Test
+    @DisplayName("신고가 5회 누적된 게시글은 작성자도 수정할 수 없다")
+    void fixPostFailWhenReportCountReachesThreshold() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        increaseReportCount(post, Post.REPORT_BLOCK_THRESHOLD);
+        PostFixRequestDto request = createPostFixRequest("new title", "new content");
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.fixPost(postId, writerId, request))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
+
+        assertThat(post.getPostTitle()).isEqualTo("title");
+        assertThat(post.getPostContent()).isEqualTo("content");
+    }
+
+    @Test
+    @DisplayName("신고가 4회인 게시글은 작성자가 수정할 수 있다")
+    void fixPostSuccessBeforeReportCountReachesThreshold() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        increaseReportCount(post, Post.REPORT_BLOCK_THRESHOLD - 1);
+        PostFixRequestDto request = createPostFixRequest("new title", "new content");
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        postService.fixPost(postId, writerId, request);
+
+        assertThat(post.getPostTitle()).isEqualTo("new title");
+        assertThat(post.getPostContent()).isEqualTo("new content");
+    }
+
+    @Test
     @DisplayName("게시글 삭제 시 게시글이 없으면 No_Post 예외가 발생한다")
     void deletePostFailByNoPost() {
         Long postId = 1L;
@@ -280,6 +318,40 @@ class PostServiceTest {
                 .hasMessage("Forbidden_Access");
 
         assertThat(post.isDeleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("신고가 5회 누적된 게시글은 작성자도 삭제할 수 없다")
+    void deletePostFailWhenReportCountReachesThreshold() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        increaseReportCount(post, Post.REPORT_BLOCK_THRESHOLD);
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> postService.deletePost(postId, writerId))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Forbidden_Access");
+
+        assertThat(post.isDeleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("신고가 4회인 게시글은 작성자가 삭제할 수 있다")
+    void deletePostSuccessBeforeReportCountReachesThreshold() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        increaseReportCount(post, Post.REPORT_BLOCK_THRESHOLD - 1);
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        postService.deletePost(postId, writerId);
+
+        assertThat(post.isDeleted()).isTrue();
     }
 
     @Test
@@ -469,5 +541,11 @@ class PostServiceTest {
                 new Comment(user, post, "comment");
         ReflectionTestUtils.setField(comment, "commentId", commentId);
         return comment;
+    }
+
+    private void increaseReportCount(Post post, int count) {
+        for (int i = 0; i < count; i++) {
+            post.report();
+        }
     }
 }

@@ -1,4 +1,4 @@
-ㅇpackage kr.adapterz.springdatajpa.auth;
+package kr.adapterz.springdatajpa.auth;
 
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;

@@ -34,7 +34,11 @@ public class PostService {
     public PostPageResponseDto getPostList(int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Post> posts = postRepository.findByDeletedFalseOrderByPostIdDesc(pageable);
+        Page<Post> posts = postRepository
+                .findByDeletedFalseAndReportCountLessThanOrderByPostIdDesc(
+                        Post.REPORT_BLOCK_THRESHOLD,
+                        pageable
+                );
 
         List<PostListResponseDto> result = new ArrayList<>();
 
@@ -99,10 +103,8 @@ public class PostService {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
         Post post = getActivePost(postId);
 
-        //실제 작성자가 맞는지 확인
-        if (!post.getUser().getUserId().equals(loginUserId)) {
-            throw new ForbiddenException("Forbidden_Access");
-        }
+        validatePostModificationPermission(post, loginUserId);
+
         post.update(
                 request.getTitle(),
                 request.getContents(),
@@ -116,10 +118,8 @@ public class PostService {
         PostDeleteResponseDto postDeleteResponseDto = new PostDeleteResponseDto();
         Post post = getActivePost(postId);
 
-        //게시물 작성자가 아닐경우 권한이 없다는걸 알림
-        if(!post.getUser().getUserId().equals(loginUserId)) {
-            throw new ForbiddenException("Forbidden_Access");
-        }
+        validatePostModificationPermission(post, loginUserId);
+
         post.delete();
         return postDeleteResponseDto;
     }
@@ -196,5 +196,13 @@ public class PostService {
     private Post getActivePost(Long postId) {
         return postRepository.findByPostIdAndDeletedFalse(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
+    }
+
+    private void validatePostModificationPermission(Post post, Long loginUserId) {
+        boolean isWriter = post.getUser().getUserId().equals(loginUserId);
+
+        if (!isWriter || post.isBlockedByReports()) {
+            throw new ForbiddenException("Forbidden_Access");
+        }
     }
 }

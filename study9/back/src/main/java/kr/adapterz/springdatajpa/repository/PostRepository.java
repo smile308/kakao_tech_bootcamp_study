@@ -11,7 +11,10 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    Page<Post> findByDeletedFalseOrderByPostIdDesc(Pageable pageable);
+    Page<Post> findByDeletedFalseAndReportCountLessThanOrderByPostIdDesc(
+            int reportCount,
+            Pageable pageable
+    );
 
     @EntityGraph(attributePaths = {"user", "postImages"})
     Optional<Post> findByPostIdAndDeletedFalse(Long postId);

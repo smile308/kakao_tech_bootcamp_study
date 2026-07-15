@@ -16,6 +16,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 
 public class Post {
+    public static final int REPORT_BLOCK_THRESHOLD = 5;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name="post_id")
@@ -171,5 +173,9 @@ public class Post {
     //신고
     public void report() {
         reportCount++;
+    }
+
+    public boolean isBlockedByReports() {
+        return reportCount >= REPORT_BLOCK_THRESHOLD;
     }
 }

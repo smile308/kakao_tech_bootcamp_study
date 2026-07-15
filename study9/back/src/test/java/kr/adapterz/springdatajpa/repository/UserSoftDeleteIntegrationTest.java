@@ -77,7 +77,10 @@ class UserSoftDeleteIntegrationTest {
         entityManager.clear();
 
         Post listPost = postRepository
-                .findByDeletedFalseOrderByPostIdDesc(PageRequest.of(0, 100))
+                .findByDeletedFalseAndReportCountLessThanOrderByPostIdDesc(
+                        Post.REPORT_BLOCK_THRESHOLD,
+                        PageRequest.of(0, 100)
+                )
                 .getContent()
                 .stream()
                 .filter(item -> item.getPostId().equals(postId))
