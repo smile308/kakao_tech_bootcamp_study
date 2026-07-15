@@ -1,0 +1,80 @@
+.auth-copy-panel {
+  min-height: 420px;
+  padding: 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background:
+    url("../assets/images/bamboo-watermark.svg")
+      right -80px top -70px / 280px auto no-repeat,
+    radial-gradient(
+      circle at 18% 14%,
+      rgba(240, 192, 100, 0.14),
+      transparent 30%
+    ),
+    linear-gradient(165deg, #16281f, #10201a 62%, #0d1a15);
+  color: var(--color-text);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.auth-copy-panel__logo {
+  margin-bottom: auto;
+}
+
+.auth-copy-panel__eyebrow {
+  margin: 0 0 14px;
+  color: var(--color-gold);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.auth-copy-panel__title {
+  max-width: 430px;
+  margin: 0;
+  font-family: "Gowun Batang", "42dot Sans", serif;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.auth-copy-panel__description {
+  margin: 22px 0 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.auth-copy-panel__items {
+  margin: 34px 0 0;
+  display: grid;
+  gap: 10px;
+}
+
+.auth-copy-panel__item {
+  padding: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: rgba(244, 241, 230, 0.04);
+}
+
+.auth-copy-panel__item dt,
+.auth-copy-panel__item dd {
+  margin: 0;
+  font-size: 14px;
+}
+
+.auth-copy-panel__item dt {
+  font-weight: 700;
+}
+
+.auth-copy-panel__item dd {
+  color: var(--color-muted);
+}
