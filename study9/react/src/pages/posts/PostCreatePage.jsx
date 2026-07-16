@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 
 import { postApi } from "../../api/postApi.js";
 import ErrorView from "../../components/common/ErrorView.jsx";
-import ErrorBoundary from "../../components/common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import PostEditor from "../../components/posts/PostEditor.jsx";
 import "../../styles/posts.css";

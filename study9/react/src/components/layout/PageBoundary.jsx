@@ -1,9 +1,9 @@
 import { Suspense } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import ErrorView from "../common/ErrorView.jsx";
 import LoadingView from "../common/LoadingView.jsx";
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
 
 function PageBoundary({ children }) {
     const location = useLocation();
@@ -12,11 +12,11 @@ function PageBoundary({ children }) {
     return (
         <ErrorBoundary
             key={location.key}
-            fallback={({ reset }) => (
+            fallbackRender={({ resetErrorBoundary }) => (
                 <ErrorView
                     message="페이지를 다시 열거나 게시글 목록으로 이동해주세요."
                     onRetry={() => {
-                        reset();
+                        resetErrorBoundary();
                         navigate(0);
                     }}
                 />

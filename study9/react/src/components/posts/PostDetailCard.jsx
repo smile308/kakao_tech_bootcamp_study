@@ -12,13 +12,17 @@ function getFullness(value, cap) {
     return Math.min(Math.max((Number(value) || 0) / cap, 0), 1);
 }
 
-function PostDetailCard({ post, onDelete, onReport, onLike }) {
+function PostDetailCard({ post, commentCount, onDelete, onReport, onLike }) {
     const canModify = post.isMine && post.reportCount < REPORT_BLOCK_THRESHOLD;
 
     return (
         <>
             <h2 className="detail-post-title">{post.title}</h2>
-            <AuthorSummary post={post} />
+            <AuthorSummary
+                profileImage={post.authorProfileImage}
+                nickname={post.authorNickname}
+                createdAt={post.createdAt}
+            />
             {canModify && (
                 <section className="detail-post-actions">
                     <Link to={`/posts/${post.postId}/edit`} className="detail-small-button">
@@ -50,9 +54,9 @@ function PostDetailCard({ post, onDelete, onReport, onLike }) {
                     className="detail-stat-card--views"
                 />
                 <PostMetricCard
-                    count={post.comments.length}
+                    count={commentCount}
                     label="댓글"
-                    fullness={getFullness(post.comments.length, 100)}
+                    fullness={getFullness(commentCount, 100)}
                     className="detail-stat-card--comments"
                 />
             </section>

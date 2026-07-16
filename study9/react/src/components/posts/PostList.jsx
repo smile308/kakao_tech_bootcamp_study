@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import PostListItem from "./PostListItem.jsx";
 
 function PostItemFallback() {

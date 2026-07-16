@@ -1,11 +1,17 @@
 import { useState } from "react";
 
 import ErrorView from "../common/ErrorView.jsx";
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import CommentEditor from "./CommentEditor.jsx";
 import CommentList from "./CommentList.jsx";
 
-function CommentSection({ postId, comments, onRefresh, onRequestDelete }) {
+function CommentSection({
+    postId,
+    comments,
+    onCommentCreated,
+    onCommentUpdated,
+    onRequestDelete,
+}) {
     const [editingComment, setEditingComment] = useState(null);
 
     return (
@@ -14,7 +20,8 @@ function CommentSection({ postId, comments, onRefresh, onRequestDelete }) {
                 <CommentEditor
                     postId={postId}
                     editingComment={editingComment}
-                    onSaved={onRefresh}
+                    onCreated={onCommentCreated}
+                    onUpdated={onCommentUpdated}
                     onCancelEdit={() => setEditingComment(null)}
                 />
             </ErrorBoundary>

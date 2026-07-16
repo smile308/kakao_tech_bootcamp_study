@@ -23,8 +23,7 @@ public class CommentService {
     private final UserRepository userRepository;
 
     //댓글 등록
-    public CommentPostResponseDto commentPost(Long postId, Long loginUserId, CommentPostRequestDto request){
-        CommentPostResponseDto commentPostResponseDto = new CommentPostResponseDto();
+    public CommentResponseDto commentPost(Long postId, Long loginUserId, CommentPostRequestDto request){
         User user = getLoginUser(loginUserId);
         Post post =postRepository.findById(postId).orElseThrow(()->new DataNullException("No_Post"));
             Comment comment = new Comment(
@@ -35,12 +34,11 @@ public class CommentService {
         commentRepository.save(comment);
         //댓글 수 증가
         post.addReply();
-        return commentPostResponseDto;
+        return new CommentResponseDto(comment, user, true);
     }
 
     //댓글 수정
-    public CommentFixResponseDto commentFix(Long postId, Long loginUserId, CommentFixRequestDto request){
-        CommentFixResponseDto commentFixResponseDto = new CommentFixResponseDto();
+    public CommentResponseDto commentFix(Long postId, Long loginUserId, CommentFixRequestDto request){
         Comment comment= commentRepository.findById(request.getCommentId()).orElseThrow(()-> new DataNullException("No_Comment"));
 
         if (!comment.getPost().getPostId().equals(postId)) {
@@ -53,7 +51,7 @@ public class CommentService {
         }
         comment.changeComment(request.getCommentContent());
 
-        return commentFixResponseDto;
+        return new CommentResponseDto(comment, comment.getUser(), true);
     }
 
     //댓글 삭제

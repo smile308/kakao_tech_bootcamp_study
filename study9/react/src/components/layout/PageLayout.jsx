@@ -1,4 +1,4 @@
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import ErrorView from "../common/ErrorView.jsx";
 import AppHeader from "./AppHeader.jsx";
 

@@ -1,21 +1,14 @@
-import { formatDateTime } from "../../utils/formatter.js";
+import AuthorSummary from "./AuthorSummary.jsx";
 
 function CommentItem({ comment, onEdit, onDelete }) {
     return (
         <article className="comment-item">
-            <div
-                className={`comment-author-image-box ${comment.authorProfileImage ? "" : "is-empty"}`.trim()}
-            >
-                {comment.authorProfileImage && (
-                    <img
-                        src={comment.authorProfileImage}
-                        className="comment-author-image"
-                        alt="댓글 작성자 프로필 이미지"
-                    />
-                )}
-            </div>
-            <p className="comment-author-name">{comment.authorNickname}</p>
-            <p className="comment-created-at">{formatDateTime(comment.createdAt)}</p>
+            <AuthorSummary
+                variant="comment"
+                profileImage={comment.authorProfileImage}
+                nickname={comment.authorNickname}
+                createdAt={comment.createdAt}
+            />
             <p className="comment-content">{comment.content}</p>
             {comment.isMine && (
                 <div className="comment-actions">

@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { postApi } from "../../api/postApi.js";
 import ConfirmModal from "../../components/common/ConfirmModal.jsx";
 import ErrorView from "../../components/common/ErrorView.jsx";
-import ErrorBoundary from "../../components/common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import CommentSection from "../../components/posts/CommentSection.jsx";
 import PostDetailCard from "../../components/posts/PostDetailCard.jsx";
@@ -15,11 +15,14 @@ function PostDetailPage() {
     const navigate = useNavigate();
     const initialRequestRef = useRef(false);
     const [post, setPost] = useState(null);
+    const [comments, setComments] = useState([]);
     const [modal, setModal] = useState(null);
 
     const loadPost = useCallback(async () => {
         try {
-            setPost(await postApi.getPost(postId));
+            const result = await postApi.getPost(postId);
+            setPost(result);
+            setComments(result.comments);
         } catch (requestError) {
             console.error("게시글 상세 조회 실패", requestError);
         }
@@ -97,9 +100,21 @@ function PostDetailPage() {
             "삭제한 내용은 복구할 수 없습니다.",
             async () => {
                 await postApi.deleteComment(post.postId, commentId);
-                await loadPost();
+                setComments((previous) => (
+                    previous.filter((comment) => comment.commentId !== commentId)
+                ));
             },
         );
+    }
+
+    function handleCommentCreated(comment) {
+        setComments((previous) => [...previous, comment]);
+    }
+
+    function handleCommentUpdated(comment) {
+        setComments((previous) => previous.map((item) => (
+            item.commentId === comment.commentId ? comment : item
+        )));
     }
 
     return (
@@ -115,6 +130,7 @@ function PostDetailPage() {
                     <ErrorBoundary fallback={<ErrorView title="게시글을 표시하지 못했습니다." />}>
                         <PostDetailCard
                             post={post}
+                            commentCount={comments.length}
                             onDelete={requestPostDelete}
                             onReport={requestReport}
                             onLike={handleLike}
@@ -123,8 +139,9 @@ function PostDetailPage() {
                     <ErrorBoundary fallback={<ErrorView title="댓글 영역을 표시하지 못했습니다." />}>
                         <CommentSection
                             postId={post.postId}
-                            comments={post.comments}
-                            onRefresh={loadPost}
+                            comments={comments}
+                            onCommentCreated={handleCommentCreated}
+                            onCommentUpdated={handleCommentUpdated}
                             onRequestDelete={requestCommentDelete}
                         />
                     </ErrorBoundary>

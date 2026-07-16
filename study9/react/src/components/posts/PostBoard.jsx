@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import ErrorView from "../common/ErrorView.jsx";
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import PostList from "./PostList.jsx";
 
 function PostBoard({ posts, hasNextPage, onLoadMore }) {

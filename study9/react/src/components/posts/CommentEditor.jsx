@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 
 import { postApi } from "../../api/postApi.js";
 
-function CommentEditor({ postId, editingComment, onSaved, onCancelEdit }) {
+function CommentEditor({
+    postId,
+    editingComment,
+    onCreated,
+    onUpdated,
+    onCancelEdit,
+}) {
     const [content, setContent] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -22,17 +28,18 @@ function CommentEditor({ postId, editingComment, onSaved, onCancelEdit }) {
             setIsSubmitting(true);
             setError("");
             if (editingComment) {
-                await postApi.updateComment(
+                const comment = await postApi.updateComment(
                     postId,
                     editingComment.commentId,
                     trimmedContent,
                 );
+                onUpdated(comment);
             } else {
-                await postApi.createComment(postId, trimmedContent);
+                const comment = await postApi.createComment(postId, trimmedContent);
+                onCreated(comment);
             }
             setContent("");
             onCancelEdit();
-            await onSaved();
         } catch (submitError) {
             setError(submitError.message || "댓글 처리에 실패했습니다.");
         } finally {

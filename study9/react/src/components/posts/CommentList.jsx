@@ -1,4 +1,4 @@
-import ErrorBoundary from "../common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import CommentItem from "./CommentItem.jsx";
 
 function CommentList({ comments, onEdit, onDelete }) {
@@ -7,7 +7,7 @@ function CommentList({ comments, onEdit, onDelete }) {
             {comments.map((comment) => (
                 <ErrorBoundary
                     key={comment.commentId}
-                    resetKey={comment.commentId}
+                    resetKeys={[comment.commentId]}
                     fallback={<div className="item-error-view">이 댓글을 표시할 수 없습니다.</div>}
                 >
                     <CommentItem

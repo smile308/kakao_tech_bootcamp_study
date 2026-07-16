@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import TextArea from "../common/TextArea.jsx";
 import { fileToDataUrl } from "../../utils/file.js";
 import PostImagePicker from "./PostImagePicker.jsx";
 
@@ -64,7 +65,7 @@ function PostEditor({ mode, initialValues, onSubmit }) {
             <label htmlFor="postContentInput" className={`${classPrefix}-label ${classPrefix}-label--content`}>
                 이야기 내용*
             </label>
-            <textarea
+            <TextArea
                 id="postContentInput"
                 className={isEdit ? "post-content-input" : "post-create-content-input"}
                 value={form.content}

@@ -2,7 +2,7 @@ function normalizeImageUrls(imageUrls) {
     return Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
 }
 
-function normalizeComment(comment) {
+export function normalizeComment(comment) {
     return {
         commentId: comment?.commentId ?? null,
         content: comment?.content ?? "",

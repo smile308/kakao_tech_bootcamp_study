@@ -1,5 +1,9 @@
 import { request } from "./api.js";
-import { normalizeDetailPost, normalizeListPost } from "./postNormalizer.js";
+import {
+    normalizeComment,
+    normalizeDetailPost,
+    normalizeListPost,
+} from "./postNormalizer.js";
 
 export const postApi = {
     async getPosts({ page = 0, size = 10 } = {}) {
@@ -51,18 +55,18 @@ export const postApi = {
         return request(`/posts/${postId}/likes`, { method: "DELETE" });
     },
 
-    createComment(postId, commentContent) {
-        return request(`/posts/${postId}/comments`, {
+    async createComment(postId, commentContent) {
+        return normalizeComment(await request(`/posts/${postId}/comments`, {
             method: "POST",
             body: JSON.stringify({ commentContent }),
-        });
+        }));
     },
 
-    updateComment(postId, commentId, commentContent) {
-        return request(`/posts/${postId}/comments`, {
+    async updateComment(postId, commentId, commentContent) {
+        return normalizeComment(await request(`/posts/${postId}/comments`, {
             method: "PATCH",
             body: JSON.stringify({ commentId, commentContent }),
-        });
+        }));
     },
 
     deleteComment(postId, commentId) {

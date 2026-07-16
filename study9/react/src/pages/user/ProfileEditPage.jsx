@@ -6,7 +6,7 @@ import { authStorage } from "../../auth/authStorage.js";
 import ConfirmModal from "../../components/common/ConfirmModal.jsx";
 import ErrorView from "../../components/common/ErrorView.jsx";
 import Toast from "../../components/common/Toast.jsx";
-import ErrorBoundary from "../../components/common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import InfoBanner from "../../components/layout/InfoBanner.jsx";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import ProfileEditForm from "../../components/user/ProfileEditForm.jsx";

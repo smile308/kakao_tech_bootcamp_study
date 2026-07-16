@@ -17,7 +17,7 @@ public class CommentController {
     //댓글 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CommentPostResponseDto commentPost(
+    public CommentResponseDto commentPost(
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CommentPostRequestDto request
@@ -38,7 +38,7 @@ public class CommentController {
 
     //댓글 수정
     @PatchMapping
-    public CommentFixResponseDto commentFix(
+    public CommentResponseDto commentFix(
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @RequestBody CommentFixRequestDto request

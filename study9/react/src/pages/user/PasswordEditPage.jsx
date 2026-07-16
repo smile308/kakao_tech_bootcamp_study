@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { userApi } from "../../api/userApi.js";
 import Toast from "../../components/common/Toast.jsx";
-import ErrorBoundary from "../../components/common/error/ErrorBoundary.jsx";
+import { ErrorBoundary } from "react-error-boundary";
 import InfoBanner from "../../components/layout/InfoBanner.jsx";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import PasswordEditForm from "../../components/user/PasswordEditForm.jsx";
@@ -33,6 +33,14 @@ function PasswordEditPage() {
         form.password === form.passwordCheck;
 
     useEffect(() => () => window.clearTimeout(toastTimerRef.current), []);
+
+    function showToast(message) {
+        window.clearTimeout(toastTimerRef.current);
+        setToast({ isVisible: true, message });
+        toastTimerRef.current = window.setTimeout(() => {
+            setToast({ isVisible: false, message: "" });
+        }, 2000);
+    }
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -66,11 +74,7 @@ function PasswordEditPage() {
             await userApi.updatePassword(form);
             setForm(EMPTY_FORM);
             setErrors(EMPTY_ERRORS);
-            setToast({ isVisible: true, message: "비밀번호가 수정되었습니다." });
-            window.clearTimeout(toastTimerRef.current);
-            toastTimerRef.current = window.setTimeout(() => {
-                setToast({ isVisible: false, message: "" });
-            }, 2000);
+            showToast("비밀번호가 수정되었습니다.");
         } catch (error) {
             if (error.message?.includes("Current_Password") || error.message?.includes("현재 비밀번호")) {
                 setErrors((previous) => ({
