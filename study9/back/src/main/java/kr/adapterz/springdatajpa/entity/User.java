@@ -10,6 +10,8 @@ import lombok.NoArgsConstructor;
 @Table(name = "users")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
+    public static final int SUSPENSION_REPORT_THRESHOLD = 10;
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
@@ -78,6 +80,10 @@ public class User {
     //신고 카운
     public void receiveReport() {
         receivedReportCount++;
+    }
+
+    public boolean isSuspended() {
+        return receivedReportCount >= SUSPENSION_REPORT_THRESHOLD;
     }
 
     public void setPassword(String password)

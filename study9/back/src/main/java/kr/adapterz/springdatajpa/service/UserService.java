@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.service;
 import kr.adapterz.springdatajpa.dto.user.*;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,10 @@ public class UserService {
                         request.getEmail()
                 );
 
+        if (previousReceivedReportCount >= User.SUSPENSION_REPORT_THRESHOLD) {
+            throw new InvalidRequestException("Suspended_Account");
+        }
+
         User user = new User(
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
@@ -65,6 +70,9 @@ public class UserService {
     public UserDeleteResponseDto deleteUser(Long loginUserId){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
         User user = getLoginUser(loginUserId);
+        if (user.isSuspended()) {
+            throw new ForbiddenException("Suspended_Account");
+        }
         user.delete();
         return userDeleteResponseDto;
     }

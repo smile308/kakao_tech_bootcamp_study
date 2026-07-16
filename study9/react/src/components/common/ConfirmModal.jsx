@@ -5,7 +5,7 @@ function ConfirmModal({
     title,
     description,
     confirmText = "확인",
-    cancelText = "취소",
+    cancelText,
     onConfirm,
     onCancel,
 }) {
@@ -24,13 +24,15 @@ function ConfirmModal({
                 <h2 className="confirm-modal__title">{title}</h2>
                 <p className="confirm-modal__description">{description}</p>
                 <div className="confirm-modal__actions">
-                    <button
-                        type="button"
-                        className="confirm-modal__button confirm-modal__button--cancel"
-                        onClick={onCancel}
-                    >
-                        {cancelText}
-                    </button>
+                    {onCancel ? (
+                        <button
+                            type="button"
+                            className="confirm-modal__button confirm-modal__button--cancel"
+                            onClick={onCancel}
+                        >
+                            {cancelText ?? "취소"}
+                        </button>
+                    ) : null}
                     <button
                         type="button"
                         className="confirm-modal__button confirm-modal__button--confirm"

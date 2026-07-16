@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -52,6 +53,24 @@ class SessionServiceTest {
         assertThatThrownBy(() -> sessionService.createSession(request))
                 .isInstanceOf(LoginFailedException.class)
                 .hasMessage("Login_Failed");
+
+        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(jwtProvider, never()).createAccessToken(anyLong());
+    }
+
+    @Test
+    @DisplayName("정지된 계정으로 로그인하면 Suspended_Account 예외가 발생한다")
+    void createSessionFailBySuspendedAccount() {
+        // given
+        SessionRequestDto request = createSessionRequest("suspended@test.com", "Password1!");
+
+        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                .thenThrow(new DisabledException("disabled"));
+
+        // when & then
+        assertThatThrownBy(() -> sessionService.createSession(request))
+                .isInstanceOf(LoginFailedException.class)
+                .hasMessage("Suspended_Account");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
         verify(jwtProvider, never()).createAccessToken(anyLong());

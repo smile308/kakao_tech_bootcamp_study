@@ -19,6 +19,8 @@ const initialForm = {
     nickname: "",
 };
 
+const SUSPENDED_ACCOUNT_MESSAGE = "Suspended_Account";
+
 function SignupPage() {
     const navigate = useNavigate();
     const [form, setForm] = useState(initialForm);
@@ -90,7 +92,12 @@ function SignupPage() {
             });
             navigate("/login", { replace: true });
         } catch (error) {
-            if (error.message.includes("Email") || error.message.includes("이메일")) {
+            if (error.message === SUSPENDED_ACCOUNT_MESSAGE) {
+                setErrors((previous) => ({
+                    ...previous,
+                    email: "*정지된 계정은 재가입할 수 없습니다.",
+                }));
+            } else if (error.message.includes("Email") || error.message.includes("이메일")) {
                 setErrors((previous) => ({ ...previous, email: "*중복된 이메일입니다." }));
             } else if (error.message.includes("Nickname") || error.message.includes("닉네임")) {
                 setErrors((previous) => ({ ...previous, nickname: "*중복된 닉네임입니다." }));

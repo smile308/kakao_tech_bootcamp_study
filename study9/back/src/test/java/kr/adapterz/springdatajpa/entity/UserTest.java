@@ -112,4 +112,24 @@ class UserTest {
         // then
         assertThat(user.getReceivedReportCount()).isEqualTo(2);
     }
+
+    @Test
+    @DisplayName("누적 신고 수가 10회 이상이면 정지 계정으로 판단된다")
+    void suspendedAccount() {
+        // given
+        User user = new User(
+                "test@test.com",
+                "Password1!",
+                "tester",
+                "profile.png",
+                9
+        );
+
+        // when & then
+        assertThat(user.isSuspended()).isFalse();
+
+        user.receiveReport();
+
+        assertThat(user.isSuspended()).isTrue();
+    }
 }

@@ -3,7 +3,8 @@ INSERT INTO users
 VALUES
     (1, 'test@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '더미작성자1', NULL, 0,false),
     (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, 0,false),
-    (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, 0,false);
+    (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, 0,false),
+    (4, 'suspended@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '정지계정', NULL, 10,false);
 
 INSERT INTO posts
 (post_id, user_id, post_title, post_content, is_fixed, like_count, report_count, reply_count, view_count, created_at, deleted)
@@ -35,11 +36,11 @@ VALUES
     (25, 1, '더미 게시글 25', '세 번째 페이지 테스트용 게시글입니다.', false, 7350, 0,0, 25200, TIMESTAMP '2026-06-26 10:24:00', false);
 
 INSERT INTO comments
-(comment_id, user_id, post_id, comment_content, origin_id, created_at)
+(comment_id, user_id, post_id, comment_content, created_at)
 VALUES
-    (1, 1, 1, '첫 번째 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:10:00'),
-    (2, 2, 1, '다른 사용자의 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:11:00'),
-    (3, 1, 2, '두 번째 게시글 댓글입니다.', NULL, TIMESTAMP '2026-06-26 10:12:00');
+    (1, 1, 1, '첫 번째 댓글입니다.', TIMESTAMP '2026-06-26 10:10:00'),
+    (2, 2, 1, '다른 사용자의 댓글입니다.', TIMESTAMP '2026-06-26 10:11:00'),
+    (3, 1, 2, '두 번째 게시글 댓글입니다.', TIMESTAMP '2026-06-26 10:12:00');
 
 ALTER TABLE users ALTER COLUMN user_id RESTART WITH 100;
 ALTER TABLE posts ALTER COLUMN post_id RESTART WITH 100;

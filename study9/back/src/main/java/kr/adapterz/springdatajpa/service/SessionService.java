@@ -8,6 +8,7 @@ import kr.adapterz.springdatajpa.dto.user.SessionResponseDto;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
@@ -37,6 +38,8 @@ public class SessionService {
 
             return new SessionResponseDto(accessToken, userDetails.getUserId());
 
+        } catch (DisabledException e) {
+            throw new LoginFailedException("Suspended_Account");
         } catch (AuthenticationException e) {
             throw new LoginFailedException("Login_Failed");
         }

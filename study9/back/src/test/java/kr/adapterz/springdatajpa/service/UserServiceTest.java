@@ -6,6 +6,7 @@ import kr.adapterz.springdatajpa.dto.user.UserRequestDto;
 import kr.adapterz.springdatajpa.dto.user.UserResponseDto;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -165,6 +166,37 @@ class UserServiceTest {
 
         assertThat(capturedUser.getPassword()).isEqualTo("encoded-password");
         assertThat(capturedUser.getPassword()).isNotEqualTo("Password1!");
+    }
+
+    @Test
+    @DisplayName("탈퇴한 계정의 누적 신고 수가 10회 이상이면 재가입할 수 없다")
+    void createUserFailBySuspendedAccount() {
+        // given
+        UserRequestDto request = createUserRequest(
+                "suspended@test.com",
+                "Password1!",
+                "Password1!",
+                "tester",
+                "profile.png"
+        );
+
+        when(userRepository.existsByEmailAndDeletedFalse("suspended@test.com"))
+                .thenReturn(false);
+
+        when(userRepository.existsByNicknameAndDeletedFalse("tester"))
+                .thenReturn(false);
+
+        when(userRepository.findMaxReceivedReportCountByEmailIncludingDeleted("suspended@test.com"))
+                .thenReturn(10);
+
+        // when & then
+        assertThatThrownBy(() -> userService.createUser(request))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Suspended_Account");
+
+        verify(userRepository).findMaxReceivedReportCountByEmailIncludingDeleted("suspended@test.com");
+        verify(userRepository, never()).save(any(User.class));
+        verify(passwordEncoder, never()).encode(anyString());
     }
 
     @Test
@@ -418,6 +450,34 @@ class UserServiceTest {
         assertThat(loginUser.isDeleted()).isTrue();
         assertThat(loginUser.getNickname()).isEqualTo("삭제된 유저");
         assertThat(loginUser.getProfileImage()).isNull();
+    }
+
+    @Test
+    @DisplayName("누적 신고 수가 10회 이상인 계정은 탈퇴할 수 없다")
+    void deleteUserFailBySuspendedAccount() {
+        // given
+        Long loginUserId = 1L;
+
+        User loginUser = new User(
+                "suspended@test.com",
+                "encoded-password",
+                "tester",
+                "profile.png",
+                10
+        );
+
+        ReflectionTestUtils.setField(loginUser, "userId", loginUserId);
+
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(loginUser));
+
+        // when & then
+        assertThatThrownBy(() -> userService.deleteUser(loginUserId))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessage("Suspended_Account");
+
+        verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
+        assertThat(loginUser.isDeleted()).isFalse();
     }
 
     @Test

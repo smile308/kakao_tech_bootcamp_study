@@ -52,6 +52,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             CustomUserDetails userDetails = customUserDetailsService.loadUserByUserId(userId);
 
+            if (!userDetails.isEnabled()) {
+                throw new DataNullException("No_User");
+            }
+
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             userDetails,
