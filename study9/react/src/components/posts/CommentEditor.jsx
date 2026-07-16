@@ -49,7 +49,9 @@ function CommentEditor({ postId, editingComment, onSaved, onCancelEdit }) {
                 onChange={(event) => setContent(event.target.value)}
             />
             <div className="comment-form-divider" />
-            {error && <p className="comment-form-error">{error}</p>}
+            <p className="comment-form-error" aria-live="polite">
+                {error}
+            </p>
             <button
                 type="submit"
                 className="comment-submit-button"

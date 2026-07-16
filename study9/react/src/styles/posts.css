@@ -553,6 +553,7 @@ button.detail-stat-card:disabled {
 }
 
 .comment-form-error {
+  min-height: 16px;
   margin: 12px 14px 0;
   color: var(--color-coral);
   font-size: 12px;

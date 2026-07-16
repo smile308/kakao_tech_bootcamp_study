@@ -5,7 +5,9 @@ function FormField({ label, htmlFor, className = "", error, children }) {
                 {label}
             </label>
             {children}
-            {error && <p className="form-field__error">{error}</p>}
+            <p className="form-field__error" aria-live="polite">
+                {error}
+            </p>
         </div>
     );
 }
