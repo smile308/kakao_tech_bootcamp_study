@@ -1,0 +1,99 @@
+plugins {
+	id 'java'
+	id 'jacoco'
+	id 'org.springframework.boot' version '4.0.6'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'kr.adapterz'
+version = '0.0.1-SNAPSHOT'
+
+java {
+
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(26)
+	}
+}
+
+configurations {
+	mockitoAgent
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	implementation 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'org.springframework.boot:spring-boot-h2console'
+	implementation 'io.jsonwebtoken:jjwt-api:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.13.0'
+	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.13.0'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	testImplementation 'org.mockito:mockito-core'
+	mockitoAgent('org.mockito:mockito-core') {
+		transitive = false
+	}
+}
+
+tasks.withType(Test).configureEach {
+	useJUnitPlatform()
+	jvmArgs(
+			"-javaagent:${configurations.mockitoAgent.asPath}",
+			"-Xshare:off"
+	)
+	testLogging {
+		events "passed", "skipped", "failed"
+		exceptionFormat "full"
+	}
+}
+
+tasks.named('test') {
+	finalizedBy jacocoTestReport
+}
+
+def coverageIncludes = [
+		'kr/adapterz/springdatajpa/entity/**',
+		'kr/adapterz/springdatajpa/auth/**',
+		'kr/adapterz/springdatajpa/config/**'
+]
+
+tasks.named('jacocoTestReport') {
+	dependsOn test
+
+	reports {
+		html.required = true
+		xml.required = true
+		csv.required = false
+	}
+
+	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+		fileTree(dir: it, include: coverageIncludes)
+	}))
+}
+
+tasks.named('jacocoTestCoverageVerification') {
+	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+		fileTree(dir: it, include: coverageIncludes)
+	}))
+
+	violationRules {
+		rule {
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 0.80
+			}
+		}
+	}
+}
+
+check.dependsOn jacocoTestCoverageVerification
