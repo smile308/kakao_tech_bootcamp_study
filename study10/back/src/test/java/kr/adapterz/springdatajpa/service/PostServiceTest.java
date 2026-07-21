@@ -57,14 +57,14 @@ class PostServiceTest {
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.empty());
+        when(postRepository.incrementViewCount(postId))
+                .thenReturn(0);
 
         assertThatThrownBy(() -> postService.getPostView(postId,loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
-        verify(postRepository).findByPostIdAndDeletedFalse(postId);
+        verify(postRepository).incrementViewCount(postId);
         verify(commentRepository, never()).findByPostWithUser(any(Post.class));
     }
 
@@ -81,8 +81,11 @@ class PostServiceTest {
         Post post = createPost(postId, writer);
 
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
+
+        when(userRepository.findByUserIdForUpdate(writerId))
+                .thenReturn(Optional.of(writer));
 
         when(userRepository.findByUserIdAndDeletedFalse(reporterId))
                 .thenReturn(Optional.of(reporter));
@@ -116,7 +119,7 @@ class PostServiceTest {
         Long postId = 1L;
         Long reporterId = 2L;
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.empty());
 
         // when & then
@@ -138,7 +141,7 @@ class PostServiceTest {
         User writer = createUser(writerId);
         Post post = createPost(postId, writer);
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(reporterId))
@@ -162,10 +165,13 @@ class PostServiceTest {
         User writer = createUser(loginUserId);
         Post post = createPost(postId, writer);
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.of(writer));
+
+        when(userRepository.findByUserIdForUpdate(loginUserId))
                 .thenReturn(Optional.of(writer));
 
         // when & then
@@ -188,8 +194,11 @@ class PostServiceTest {
         User reporter = createUser(reporterId);
         Post post = createPost(postId, writer);
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
+
+        when(userRepository.findByUserIdForUpdate(writerId))
+                .thenReturn(Optional.of(writer));
 
         when(userRepository.findByUserIdAndDeletedFalse(reporterId))
                 .thenReturn(Optional.of(reporter));
@@ -361,7 +370,7 @@ class PostServiceTest {
         Long loginUserId = 1L;
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
@@ -381,7 +390,7 @@ class PostServiceTest {
         User loginUser = createUser(loginUserId);
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
@@ -403,7 +412,7 @@ class PostServiceTest {
         User loginUser = createUser(loginUserId);
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
+        when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
@@ -435,6 +444,12 @@ class PostServiceTest {
 
         Comment otherComment =
                 createComment(11L, otherUser, post);
+
+        when(postRepository.incrementViewCount(postId))
+                .thenAnswer(invocation -> {
+                    post.view();
+                    return 1;
+                });
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
@@ -495,6 +510,12 @@ class PostServiceTest {
         User loginUser = createUser(loginUserId);
 
         Post post = createPost(postId, writer);
+
+        when(postRepository.incrementViewCount(postId))
+                .thenAnswer(invocation -> {
+                    post.view();
+                    return 1;
+                });
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));

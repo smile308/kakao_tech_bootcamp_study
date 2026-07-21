@@ -68,6 +68,11 @@ public class PostService {
     //게시물
     @Transactional
     public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
+        int updatedRowCount = postRepository.incrementViewCount(postId);
+        if (updatedRowCount == 0) {
+            throw new DataNullException("No_Post");
+        }
+
         Post post = getActivePost(postId);
         User loginUser = getLoginUser(loginUserId);
 
@@ -84,8 +89,6 @@ public class PostService {
         boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser);
         boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
         boolean isMine = post.getUser().getUserId().equals(loginUserId);
-
-        post.view();
 
         return new PostViewResponseDto(
                 post,
@@ -126,7 +129,7 @@ public class PostService {
     //게시물 좋아요
     @Transactional
     public LikeResponseDto likePost(Long postId, Long loginUserId) {
-        Post post = getActivePost(postId);
+        Post post = getActivePostForUpdate(postId);
 
         User user = getLoginUser(loginUserId);
 
@@ -143,7 +146,7 @@ public class PostService {
     //좋아요 취소
     @Transactional
     public LikeCancelResponseDto cancelLike(Long postId, Long loginUserId) {
-        Post post = getActivePost(postId);
+        Post post = getActivePostForUpdate(postId);
 
         User user = getLoginUser(loginUserId);
 
@@ -162,9 +165,9 @@ public class PostService {
             Long postId,
             Long loginUserId
     ) {
-        Post post = getActivePost(postId);
+        Post post = getActivePostForUpdate(postId);
         User reporter = getLoginUser(loginUserId);
-        User writer = post.getUser();
+        User writer = getUserForUpdate(post.getUser().getUserId());
 
         if (writer.getUserId().equals(reporter.getUserId())) {
             throw new InvalidRequestException("Cannot_Report_Own_Post");
@@ -195,6 +198,16 @@ public class PostService {
     private Post getActivePost(Long postId) {
         return postRepository.findByPostIdAndDeletedFalse(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
+    }
+
+    private Post getActivePostForUpdate(Long postId) {
+        return postRepository.findActivePostForUpdate(postId)
+                .orElseThrow(() -> new DataNullException("No_Post"));
+    }
+
+    private User getUserForUpdate(Long userId) {
+        return userRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new DataNullException("No_User"));
     }
 
     private void validatePostModificationPermission(Post post, Long loginUserId) {

@@ -8,6 +8,7 @@ import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
+import kr.adapterz.springdatajpa.repository.AuthSessionRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private AuthSessionRepository authSessionRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

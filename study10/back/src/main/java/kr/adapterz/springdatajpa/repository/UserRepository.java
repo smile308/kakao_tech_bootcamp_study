@@ -1,7 +1,9 @@
 package kr.adapterz.springdatajpa.repository;
 
 import kr.adapterz.springdatajpa.entity.User;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +20,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNicknameAndDeletedFalseAndUserIdNot(String nickname, Long userId);
 
     Optional<User> findByEmailAndDeletedFalse(String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT user
+            FROM User user
+            WHERE user.userId = :userId
+            """)
+    Optional<User> findByUserIdForUpdate(@Param("userId") Long userId);
 
     @Query(
             value = """
