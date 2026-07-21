@@ -22,8 +22,6 @@ export function normalizeListPost(post) {
         commentCount: post?.commentCount ?? 0,
         viewCount: post?.viewCount ?? 0,
         createdAt: post?.createdAt ?? "",
-        authorNickname: post?.authorNickname ?? "삭제된 사용자",
-        authorProfileImage: post?.authorProfileImage ?? null,
     };
 }
 
@@ -38,8 +36,6 @@ export function normalizeDetailPost(post) {
         commentCount: post?.commentCount ?? 0,
         viewCount: post?.viewCount ?? 0,
         createdAt: post?.createdAt ?? "",
-        authorNickname: post?.authorNickname ?? "삭제된 사용자",
-        authorProfileImage: post?.authorProfileImage ?? null,
         isMine: post?.isMine === true,
         isLiked: post?.isLiked === true,
         isReported: post?.isReported === true,

@@ -1,4 +1,4 @@
-import { request } from "./api.js";
+import { refreshAccessToken, request } from "./api.js";
 
 export const authApi = {
     login({ email, password }) {
@@ -10,6 +10,10 @@ export const authApi = {
 
     logout() {
         return request("/sessions", { method: "DELETE" });
+    },
+
+    refresh() {
+        return refreshAccessToken();
     },
 
     signup(payload) {

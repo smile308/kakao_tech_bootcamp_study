@@ -29,7 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         return method.equals("OPTIONS")
                 || method.equals("POST") && path.equals("/users")
-                || method.equals("POST") && path.equals("/sessions");
+                || method.equals("POST") && path.equals("/sessions")
+                || method.equals("POST") && path.equals("/sessions/refresh")
+                || method.equals("DELETE") && path.equals("/sessions");
     }
 
     @Override

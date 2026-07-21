@@ -5,17 +5,21 @@ import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
+import kr.adapterz.springdatajpa.repository.AuthSessionRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class UserService {
     private final UserRepository userRepository;
+    private final AuthSessionRepository authSessionRepository;
     private final PasswordEncoder passwordEncoder;
 
 
@@ -74,6 +78,7 @@ public class UserService {
             throw new ForbiddenException("Suspended_Account");
         }
         user.delete();
+        authSessionRepository.revokeAllActiveByUser(user, LocalDateTime.now());
         return userDeleteResponseDto;
     }
     //회원 정보 수정
@@ -105,6 +110,7 @@ public class UserService {
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        authSessionRepository.revokeAllActiveByUser(user, LocalDateTime.now());
         return userPasswordResponseDto;
     }
 

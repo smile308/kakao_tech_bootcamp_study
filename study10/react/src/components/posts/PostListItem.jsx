@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+import anonymousBambooAvatar from "../../assets/images/anonymous-bamboo-avatar.svg";
 import { formatCount, formatDateTime } from "../../utils/formatter.js";
 import ActivityBars from "./ActivityBars.jsx";
 
@@ -19,19 +20,15 @@ function PostListItem({ post }) {
         >
             <div className="post-card__info">
                 <div className="post-card__author">
-                    <div
-                        className={`post-card__author-image-box ${post.authorProfileImage ? "" : "is-empty"}`.trim()}
-                    >
-                        {post.authorProfileImage && (
-                            <img
-                                src={post.authorProfileImage}
-                                alt="작성자 프로필 이미지"
-                                className="post-card__author-image"
-                            />
-                        )}
+                    <div className="post-card__author-image-box">
+                        <img
+                            src={anonymousBambooAvatar}
+                            alt="익명 사용자 대나무 프로필 이미지"
+                            className="post-card__author-image"
+                        />
                     </div>
                     <div className="post-card__author-text">
-                        <p className="post-card__author-name">{post.authorNickname}</p>
+                        <p className="post-card__author-name">익명 사용자</p>
                     </div>
                 </div>
                 <div className="post-card__title-area">

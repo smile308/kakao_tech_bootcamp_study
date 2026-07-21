@@ -15,19 +15,19 @@ import java.util.Date;
 @Component
 public class JwtProvider {
     private final SecretKey secretKey;
-    private final long expirationMillis;
+    private final long accessExpirationMillis;
 
     public JwtProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration-millis}") long expirationMillis
+            @Value("${jwt.access-expiration-millis}") long accessExpirationMillis
     ) {
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.expirationMillis = expirationMillis;
+        this.accessExpirationMillis = accessExpirationMillis;
     }
 
     public String createAccessToken(Long userId) {
         Date now = new Date();
-        Date expiration = new Date(now.getTime() + expirationMillis);
+        Date expiration = new Date(now.getTime() + accessExpirationMillis);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))

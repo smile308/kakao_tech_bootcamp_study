@@ -6,23 +6,20 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class SessionResponseDto {
+public class SessionRefreshResponseDto {
+
     private String message;
     private String accessToken;
 
     @JsonIgnore
     private String refreshToken;
 
-    private Long userId;
-
-    public SessionResponseDto(
+    public SessionRefreshResponseDto(
             String accessToken,
-            String refreshToken,
-            Long userId
+            String refreshToken
     ) {
-        this.message = "login_success";
+        this.message = "refresh_success";
         this.accessToken = accessToken;
         this.refreshToken = refreshToken;
-        this.userId = userId;
     }
 }

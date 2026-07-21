@@ -89,7 +89,6 @@ public class PostService {
 
         return new PostViewResponseDto(
                 post,
-                post.getUser(),
                 commentResponseDtos,
                 isLiked,
                 isReported,

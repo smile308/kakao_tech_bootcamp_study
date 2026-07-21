@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 
+import anonymousBambooAvatar from "../../assets/images/anonymous-bamboo-avatar.svg";
 import AuthorSummary from "./AuthorSummary.jsx";
 import PostImageGallery from "./PostImageGallery.jsx";
 import PostLikeButton from "./PostLikeButton.jsx";
@@ -19,8 +20,8 @@ function PostDetailCard({ post, commentCount, onDelete, onReport, onLike }) {
         <>
             <h2 className="detail-post-title">{post.title}</h2>
             <AuthorSummary
-                profileImage={post.authorProfileImage}
-                nickname={post.authorNickname}
+                profileImage={anonymousBambooAvatar}
+                nickname="익명 사용자"
                 createdAt={post.createdAt}
             />
             {canModify && (

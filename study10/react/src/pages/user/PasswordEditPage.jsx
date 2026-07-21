@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { userApi } from "../../api/userApi.js";
-import Toast from "../../components/common/Toast.jsx";
+import { authStorage } from "../../auth/authStorage.js";
 import { ErrorBoundary } from "react-error-boundary";
 import InfoBanner from "../../components/layout/InfoBanner.jsx";
 import PageLayout from "../../components/layout/PageLayout.jsx";
@@ -22,25 +23,14 @@ const EMPTY_ERRORS = {
 };
 
 function PasswordEditPage() {
-    const toastTimerRef = useRef(null);
+    const navigate = useNavigate();
     const [form, setForm] = useState(EMPTY_FORM);
     const [errors, setErrors] = useState(EMPTY_ERRORS);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [toast, setToast] = useState({ isVisible: false, message: "" });
     const isFormValid =
         Boolean(form.currentPassword) &&
         isValidPassword(form.password) &&
         form.password === form.passwordCheck;
-
-    useEffect(() => () => window.clearTimeout(toastTimerRef.current), []);
-
-    function showToast(message) {
-        window.clearTimeout(toastTimerRef.current);
-        setToast({ isVisible: true, message });
-        toastTimerRef.current = window.setTimeout(() => {
-            setToast({ isVisible: false, message: "" });
-        }, 2000);
-    }
 
     function handleChange(event) {
         const { name, value } = event.target;
@@ -72,9 +62,8 @@ function PasswordEditPage() {
         try {
             setIsSubmitting(true);
             await userApi.updatePassword(form);
-            setForm(EMPTY_FORM);
-            setErrors(EMPTY_ERRORS);
-            showToast("비밀번호가 수정되었습니다.");
+            authStorage.removeAccessToken();
+            navigate("/login", { replace: true });
         } catch (error) {
             if (error.message?.includes("Current_Password") || error.message?.includes("현재 비밀번호")) {
                 setErrors((previous) => ({
@@ -116,7 +105,6 @@ function PasswordEditPage() {
                     onSubmit={handleSubmit}
                 />
             </ErrorBoundary>
-            <Toast isVisible={toast.isVisible} message={toast.message} />
         </PageLayout>
     );
 }

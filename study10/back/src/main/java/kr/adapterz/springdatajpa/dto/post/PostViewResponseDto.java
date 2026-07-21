@@ -3,7 +3,6 @@ package kr.adapterz.springdatajpa.dto.post;
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.PostImage;
-import kr.adapterz.springdatajpa.entity.User;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -26,9 +25,6 @@ public class PostViewResponseDto {
     private int viewCount;
     private LocalDateTime createdAt;
 
-    private String authorNickname;
-    private String authorProfileImage;
-
     private Boolean isMine;
     private Boolean isReported;
     private Boolean isLiked;
@@ -37,7 +33,6 @@ public class PostViewResponseDto {
 
     public PostViewResponseDto(
             Post post,
-            User user,
             List<CommentResponseDto> comments,
             Boolean isLiked,
             Boolean isReported,
@@ -53,9 +48,6 @@ public class PostViewResponseDto {
         this.commentCount = post.getReplyCount();
         this.viewCount = post.getViewCount();
         this.createdAt = post.getCreatedAt();
-
-        this.authorNickname = user.getNickname();
-        this.authorProfileImage = user.getProfileImage();
 
         this.isMine = isMine;
         this.isLiked = isLiked;
