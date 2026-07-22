@@ -10,17 +10,19 @@ import java.time.Duration;
 public class RefreshCookieProvider {
 
     public static final String COOKIE_NAME = "refreshToken";
-    private static final String COOKIE_PATH = "/sessions";
 
     private final Duration refreshExpiration;
     private final boolean secure;
+    private final String cookiePath;
 
     public RefreshCookieProvider(
             @Value("${jwt.refresh-expiration-millis}") long refreshExpirationMillis,
-            @Value("${jwt.refresh-cookie-secure}") boolean secure
+            @Value("${jwt.refresh-cookie-secure}") boolean secure,
+            @Value("${jwt.refresh-cookie-path}") String cookiePath
     ) {
         this.refreshExpiration = Duration.ofMillis(refreshExpirationMillis);
         this.secure = secure;
+        this.cookiePath = cookiePath;
     }
 
     public ResponseCookie createRefreshTokenCookie(String refreshToken) {
@@ -28,7 +30,7 @@ public class RefreshCookieProvider {
                 .httpOnly(true)
                 .secure(secure)
                 .sameSite("Strict")
-                .path(COOKIE_PATH)
+                .path(cookiePath)
                 .maxAge(refreshExpiration)
                 .build();
     }
@@ -38,7 +40,7 @@ public class RefreshCookieProvider {
                 .httpOnly(true)
                 .secure(secure)
                 .sameSite("Strict")
-                .path(COOKIE_PATH)
+                .path(cookiePath)
                 .maxAge(Duration.ZERO)
                 .build();
     }
