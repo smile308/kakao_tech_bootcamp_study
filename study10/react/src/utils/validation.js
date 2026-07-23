@@ -1,9 +1,36 @@
-const EMAIL_REGEX=/^[A-Za-z]+@[A-Za-z]+(\.[A-Za-z]+)+$/;
+const EMAIL_LOCAL_ATOM_PATTERN = "[A-Za-z0-9!#$%&'*+/=?^_`{|}~\\u0080-\\uFFFF-]";
+const EMAIL_DOMAIN_ATOM_PATTERN = "[A-Za-z0-9!#$%&'*+/=?^_`{|}~\\u0080-\\uFFFF]";
+const EMAIL_DOMAIN_LABEL_PATTERN = `${EMAIL_DOMAIN_ATOM_PATTERN}+(?:-+${EMAIL_DOMAIN_ATOM_PATTERN}+)*`;
+const EMAIL_REGEX = new RegExp(
+    `^${EMAIL_LOCAL_ATOM_PATTERN}+(?:\\.${EMAIL_LOCAL_ATOM_PATTERN}+)*@${EMAIL_DOMAIN_LABEL_PATTERN}(?:\\.${EMAIL_DOMAIN_LABEL_PATTERN})*$`,
+    "i",
+);
 
 const PASSWORD_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=[\]\\;'/~]/;
 
 export function isValidEmail(email){
-    return EMAIL_REGEX.test(email);
+    if (typeof email !== "string") {
+        return false;
+    }
+
+    const separatorIndex = email.lastIndexOf("@");
+
+    if (separatorIndex <= 0) {
+        return false;
+    }
+
+    const localPart = email.slice(0, separatorIndex);
+    const domainPart = email.slice(separatorIndex + 1);
+    const hasValidDomainLabelLength = domainPart
+        .split(".")
+        .every((label) => label.length <= 63);
+
+    return (
+        localPart.length <= 64 &&
+        domainPart.length <= 255 &&
+        hasValidDomainLabelLength &&
+        EMAIL_REGEX.test(email)
+    );
 }
 
 export function isValidNickname(nickname) {

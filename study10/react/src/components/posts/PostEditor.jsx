@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import TextArea from "../common/TextArea.jsx";
+import { getErrorMessage } from "../../utils/errorMessage.js";
 import { fileToDataUrl } from "../../utils/file.js";
 import PostImagePicker from "./PostImagePicker.jsx";
 
@@ -39,7 +40,7 @@ function PostEditor({ mode, initialValues, onSubmit }) {
                 imageFiles,
             });
         } catch (submitError) {
-            setError(submitError.message || "*요청 처리에 실패했습니다.");
+            setError(`*${getErrorMessage(submitError, "요청 처리에 실패했습니다.")}`);
         } finally {
             setIsSubmitting(false);
         }

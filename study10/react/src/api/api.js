@@ -49,6 +49,7 @@ function createRequestError(response, data) {
             : data?.message ?? "요청 처리에 실패했습니다.";
 
     const error = new Error(errorMessage);
+    error.code = errorMessage;
     error.status = response.status;
     error.data = data;
     return error;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { postApi } from "../../api/postApi.js";
+import { getErrorMessage } from "../../utils/errorMessage.js";
 
 function CommentEditor({
     postId,
@@ -41,7 +42,7 @@ function CommentEditor({
             setContent("");
             onCancelEdit();
         } catch (submitError) {
-            setError(submitError.message || "댓글 처리에 실패했습니다.");
+            setError(getErrorMessage(submitError, "댓글 처리에 실패했습니다."));
         } finally {
             setIsSubmitting(false);
         }

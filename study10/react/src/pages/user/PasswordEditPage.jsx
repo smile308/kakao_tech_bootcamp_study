@@ -7,6 +7,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import InfoBanner from "../../components/layout/InfoBanner.jsx";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import PasswordEditForm from "../../components/user/PasswordEditForm.jsx";
+import {
+    getErrorMessage,
+    hasErrorCode,
+} from "../../utils/errorMessage.js";
 import { isValidPassword } from "../../utils/validation.js";
 import "../../styles/user.css";
 
@@ -65,15 +69,15 @@ function PasswordEditPage() {
             authStorage.removeAccessToken();
             navigate("/login", { replace: true });
         } catch (error) {
-            if (error.message?.includes("Current_Password") || error.message?.includes("현재 비밀번호")) {
+            if (hasErrorCode(error, "Invalid_Current_Password")) {
                 setErrors((previous) => ({
                     ...previous,
-                    currentPassword: "현재 비밀번호가 올바르지 않습니다.",
+                    currentPassword: getErrorMessage(error),
                 }));
             } else {
                 setErrors((previous) => ({
                     ...previous,
-                    passwordCheck: error.message || "비밀번호 수정에 실패했습니다.",
+                    passwordCheck: getErrorMessage(error, "비밀번호 수정에 실패했습니다."),
                 }));
             }
         } finally {

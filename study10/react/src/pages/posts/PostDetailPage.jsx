@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { postApi } from "../../api/postApi.js";
@@ -8,32 +8,64 @@ import { ErrorBoundary } from "react-error-boundary";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import CommentSection from "../../components/posts/CommentSection.jsx";
 import PostDetailCard from "../../components/posts/PostDetailCard.jsx";
+import { getErrorMessage } from "../../utils/errorMessage.js";
 import "../../styles/posts.css";
 
 function PostDetailPage() {
     const { postId } = useParams();
     const navigate = useNavigate();
-    const initialRequestRef = useRef(false);
+    const postRequestRef = useRef(null);
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
+    const [loadError, setLoadError] = useState(null);
+    const [retryVersion, setRetryVersion] = useState(0);
+    const [isLikeSubmitting, setIsLikeSubmitting] = useState(false);
     const [modal, setModal] = useState(null);
-
-    const loadPost = useCallback(async () => {
-        try {
-            const result = await postApi.getPost(postId);
-            setPost(result);
-            setComments(result.comments);
-        } catch (requestError) {
-            console.error("게시글 상세 조회 실패", requestError);
-        }
-    }, [postId]);
+    const likeRequestRef = useRef(false);
 
     useEffect(() => {
-        if (!initialRequestRef.current) {
-            initialRequestRef.current = true;
-            void loadPost();
+        let active = true;
+
+        if (postRequestRef.current?.postId !== postId) {
+            setPost(null);
+            setComments([]);
+            setLoadError(null);
+            postRequestRef.current = {
+                postId,
+                promise: postApi.getPost(postId),
+            };
         }
-    }, [loadPost]);
+
+        const request = postRequestRef.current.promise;
+
+        request
+            .then((result) => {
+                if (!active) {
+                    return;
+                }
+                setPost(result);
+                setComments(result.comments);
+                setLoadError(null);
+            })
+            .catch((requestError) => {
+                if (active) {
+                    setLoadError(requestError);
+                }
+                if (postRequestRef.current?.promise === request) {
+                    postRequestRef.current = null;
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [postId, retryVersion]);
+
+    function retryLoadPost() {
+        postRequestRef.current = null;
+        setLoadError(null);
+        setRetryVersion((previous) => previous + 1);
+    }
 
     function openModal(title, description, onConfirm) {
         setModal({ title, description, onConfirm });
@@ -49,12 +81,18 @@ function PostDetailPage() {
         try {
             await action();
         } catch (actionError) {
-            window.alert(actionError.message || "요청 처리에 실패했습니다.");
+            window.alert(getErrorMessage(actionError));
         }
     }
 
     async function handleLike() {
+        if (likeRequestRef.current) {
+            return;
+        }
+
         try {
+            likeRequestRef.current = true;
+            setIsLikeSubmitting(true);
             const result = post.isLiked
                 ? await postApi.unlikePost(post.postId)
                 : await postApi.likePost(post.postId);
@@ -64,7 +102,10 @@ function PostDetailPage() {
                 likeCount: result?.likeCount ?? previous.likeCount + (previous.isLiked ? -1 : 1),
             }));
         } catch (likeError) {
-            window.alert(likeError.message || "좋아요 처리에 실패했습니다.");
+            window.alert(getErrorMessage(likeError, "좋아요 처리에 실패했습니다."));
+        } finally {
+            likeRequestRef.current = false;
+            setIsLikeSubmitting(false);
         }
     }
 
@@ -125,12 +166,19 @@ function PostDetailPage() {
             showBack
             backTo="/posts"
         >
-            {post ? (
+            {loadError ? (
+                <ErrorView
+                    title="게시글을 불러오지 못했습니다."
+                    message={getErrorMessage(loadError, "잠시 후 다시 시도해주세요.")}
+                    onRetry={retryLoadPost}
+                />
+            ) : post ? (
                 <>
                     <ErrorBoundary fallback={<ErrorView title="게시글을 표시하지 못했습니다." />}>
                         <PostDetailCard
                             post={post}
                             commentCount={comments.length}
+                            isLikeSubmitting={isLikeSubmitting}
                             onDelete={requestPostDelete}
                             onReport={requestReport}
                             onLike={handleLike}

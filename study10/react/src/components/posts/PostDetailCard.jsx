@@ -13,7 +13,14 @@ function getFullness(value, cap) {
     return Math.min(Math.max((Number(value) || 0) / cap, 0), 1);
 }
 
-function PostDetailCard({ post, commentCount, onDelete, onReport, onLike }) {
+function PostDetailCard({
+    post,
+    commentCount,
+    isLikeSubmitting,
+    onDelete,
+    onReport,
+    onLike,
+}) {
     const canModify = post.isMine && post.reportCount < REPORT_BLOCK_THRESHOLD;
 
     return (
@@ -46,6 +53,7 @@ function PostDetailCard({ post, commentCount, onDelete, onReport, onLike }) {
                     isLiked={post.isLiked}
                     likeCount={post.likeCount}
                     fullness={getFullness(post.likeCount, 1000)}
+                    isSubmitting={isLikeSubmitting}
                     onClick={onLike}
                 />
                 <PostMetricCard

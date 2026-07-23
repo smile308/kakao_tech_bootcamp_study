@@ -6,6 +6,10 @@ import { authStorage } from "../../auth/authStorage.js";
 import ConfirmModal from "../../components/common/ConfirmModal.jsx";
 import LoginForm from "../../components/auth/LoginForm.jsx";
 import AuthLayout from "../../components/layout/AuthLayout.jsx";
+import {
+    getErrorMessage,
+    hasErrorCode,
+} from "../../utils/errorMessage.js";
 import { isValidEmail, isValidPassword } from "../../utils/validation.js";
 import "../../styles/auth.css";
 
@@ -13,8 +17,6 @@ const EMAIL_EMPTY_MESSAGE = "*이메일을 입력해주세요.";
 const EMAIL_INVALID_MESSAGE = "*올바른 이메일 주소 형식을 입력해주세요.";
 const PASSWORD_EMPTY_MESSAGE = "*비밀번호를 입력해주세요.";
 const PASSWORD_INVALID_MESSAGE = "*비밀번호 형식을 확인해주세요.";
-const LOGIN_FAIL_MESSAGE = "*이메일 또는 비밀번호를 확인해주세요.";
-const SUSPENDED_ACCOUNT_MESSAGE = "Suspended_Account";
 
 function getFieldError(name, value) {
     if (name === "email") {
@@ -46,6 +48,7 @@ function LoginPage() {
     const [errors, setErrors] = useState({ email: "", password: "" });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuspendedModalOpen, setIsSuspendedModalOpen] = useState(false);
+    const [suspendedMessage, setSuspendedMessage] = useState("");
     const isValid = isValidEmail(form.email.trim()) && isValidPassword(form.password);
 
     function handleChange(event) {
@@ -78,11 +81,18 @@ function LoginPage() {
             authStorage.setAccessToken(result.accessToken);
             navigate("/posts", { replace: true });
         } catch (error) {
-            if (error.message === SUSPENDED_ACCOUNT_MESSAGE) {
+            if (hasErrorCode(error, "Suspended_Account")) {
+                setSuspendedMessage(getErrorMessage(error));
                 setIsSuspendedModalOpen(true);
                 return;
             }
-            setErrors((previous) => ({ ...previous, password: LOGIN_FAIL_MESSAGE }));
+            setErrors((previous) => ({
+                ...previous,
+                password: `*${getErrorMessage(
+                    error,
+                    "이메일 또는 비밀번호를 확인해주세요.",
+                )}`,
+            }));
         } finally {
             setIsSubmitting(false);
         }
@@ -113,9 +123,12 @@ function LoginPage() {
             <ConfirmModal
                 isOpen={isSuspendedModalOpen}
                 title="정지된 계정입니다"
-                description="신고가 누적되어 로그인이 제한되었습니다."
+                description={suspendedMessage}
                 confirmText="확인"
-                onConfirm={() => setIsSuspendedModalOpen(false)}
+                onConfirm={() => {
+                    setIsSuspendedModalOpen(false);
+                    setSuspendedMessage("");
+                }}
             />
         </AuthLayout>
     );

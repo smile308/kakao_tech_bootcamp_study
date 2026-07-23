@@ -10,6 +10,10 @@ import { ErrorBoundary } from "react-error-boundary";
 import InfoBanner from "../../components/layout/InfoBanner.jsx";
 import PageLayout from "../../components/layout/PageLayout.jsx";
 import ProfileEditForm from "../../components/user/ProfileEditForm.jsx";
+import {
+    getErrorMessage,
+    hasErrorCode,
+} from "../../utils/errorMessage.js";
 import { fileToDataUrl } from "../../utils/file.js";
 import { isValidNickname } from "../../utils/validation.js";
 import "../../styles/user.css";
@@ -23,6 +27,8 @@ function ProfileEditPage() {
     const [newProfileImage, setNewProfileImage] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
     const [nicknameError, setNicknameError] = useState("");
+    const [loadError, setLoadError] = useState(null);
+    const [retryVersion, setRetryVersion] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
     const [toast, setToast] = useState({ isVisible: false, message: "" });
@@ -31,10 +37,13 @@ function ProfileEditPage() {
         let active = true;
 
         if (!profileRequestRef.current) {
+            setLoadError(null);
             profileRequestRef.current = userApi.getMyInfo();
         }
 
-        profileRequestRef.current
+        const request = profileRequestRef.current;
+
+        request
             .then((result) => {
                 if (!active) {
                     return;
@@ -42,10 +51,14 @@ function ProfileEditPage() {
                 setUser(result);
                 setNickname(result.nickname ?? "");
                 setPreviewUrl(result.profileImage ?? null);
+                setLoadError(null);
             })
             .catch((error) => {
                 if (active) {
-                    console.error("회원정보 조회 실패", error);
+                    setLoadError(error);
+                }
+                if (profileRequestRef.current === request) {
+                    profileRequestRef.current = null;
                 }
             });
 
@@ -53,7 +66,13 @@ function ProfileEditPage() {
             active = false;
             window.clearTimeout(toastTimerRef.current);
         };
-    }, []);
+    }, [retryVersion]);
+
+    function retryLoadProfile() {
+        profileRequestRef.current = null;
+        setLoadError(null);
+        setRetryVersion((previous) => previous + 1);
+    }
 
     function showToast(message) {
         window.clearTimeout(toastTimerRef.current);
@@ -105,10 +124,10 @@ function ProfileEditPage() {
             setNewProfileImage(null);
             showToast("회원정보가 수정되었습니다.");
         } catch (error) {
-            if (error.message?.includes("Nickname") || error.message?.includes("닉네임")) {
-                setNicknameError("이미 사용 중인 닉네임입니다.");
+            if (hasErrorCode(error, "Existed_Nickname")) {
+                setNicknameError(getErrorMessage(error));
             } else {
-                setNicknameError(error.message || "회원정보 수정에 실패했습니다.");
+                setNicknameError(getErrorMessage(error, "회원정보 수정에 실패했습니다."));
             }
         } finally {
             setIsSubmitting(false);
@@ -122,7 +141,7 @@ function ProfileEditPage() {
             navigate("/login", { replace: true });
         } catch (error) {
             setIsWithdrawModalOpen(false);
-            window.alert(error.message || "회원 탈퇴에 실패했습니다.");
+            window.alert(getErrorMessage(error, "회원 탈퇴에 실패했습니다."));
         }
     }
 
@@ -142,7 +161,13 @@ function ProfileEditPage() {
                 description="글과 댓글에 함께 붙는 닉네임과 사진을 정돈해요."
             />
 
-            {user ? (
+            {loadError ? (
+                <ErrorView
+                    title="회원정보를 불러오지 못했습니다."
+                    message={getErrorMessage(loadError, "잠시 후 다시 시도해주세요.")}
+                    onRetry={retryLoadProfile}
+                />
+            ) : user ? (
                 <ErrorBoundary fallback={<ErrorView title="회원정보 수정 양식을 표시하지 못했습니다." />}>
                     <ProfileEditForm
                         email={user.email}
