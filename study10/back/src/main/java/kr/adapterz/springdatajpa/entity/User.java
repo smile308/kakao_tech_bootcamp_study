@@ -27,7 +27,7 @@ public class User {
     private String nickname;
 
     @Lob
-    @Column(name = "profile_image", columnDefinition = "TEXT")
+    @Column(name = "profile_image", columnDefinition = "LONGTEXT")
     private String profileImage;
 
     @Column(name = "received_report_count", nullable = false)

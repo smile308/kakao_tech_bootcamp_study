@@ -2,7 +2,10 @@ import { useEffect, useState } from "react";
 
 import TextArea from "../common/TextArea.jsx";
 import { getErrorMessage } from "../../utils/errorMessage.js";
-import { fileToDataUrl } from "../../utils/file.js";
+import {
+    fileToDataUrl,
+    getPostImageFilesError,
+} from "../../utils/file.js";
 import PostImagePicker from "./PostImagePicker.jsx";
 
 function PostEditor({ mode, initialValues, onSubmit }) {
@@ -18,13 +21,34 @@ function PostEditor({ mode, initialValues, onSubmit }) {
         });
     }, [initialValues]);
 
+    function handleFilesChange(event) {
+        const nextFiles = Array.from(event.target.files ?? []);
+        const imageError = getPostImageFilesError(nextFiles);
+
+        if (imageError) {
+            event.target.value = "";
+            setFiles([]);
+            setError(`*${imageError}`);
+            return;
+        }
+
+        setFiles(nextFiles);
+        setError("");
+    }
+
     async function handleSubmit(event) {
         event.preventDefault();
         const title = form.title.trim();
         const content = form.content.trim();
+        const imageError = getPostImageFilesError(files);
 
         if (!title || !content) {
             setError("*글 제목과 이야기 내용을 모두 작성해주세요.");
+            return;
+        }
+
+        if (imageError) {
+            setError(`*${imageError}`);
             return;
         }
 
@@ -81,7 +105,7 @@ function PostEditor({ mode, initialValues, onSubmit }) {
                 mode={mode}
                 existingImageCount={initialValues?.imageUrls?.length ?? 0}
                 files={files}
-                onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
+                onChange={handleFilesChange}
             />
             <button
                 type="submit"

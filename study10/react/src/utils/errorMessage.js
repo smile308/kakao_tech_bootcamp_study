@@ -20,6 +20,10 @@ const ERROR_CODE_MESSAGES = Object.freeze({
     Unauthorized: "로그인이 필요합니다.",
     Forbidden: "이 작업을 수행할 권한이 없습니다.",
     Forbidden_Origin: "허용되지 않은 요청입니다.",
+    Too_Many_Images: "게시글 이미지는 최대 3개까지 첨부할 수 있습니다.",
+    Image_Too_Large: "이미지 한 개의 크기는 최대 3MB입니다.",
+    Unsupported_Image_Type: "JPEG, PNG, WebP, GIF 이미지만 사용할 수 있습니다.",
+    Invalid_Image_Data: "올바른 이미지 파일을 선택해주세요.",
 });
 
 const STATUS_MESSAGES = Object.freeze({

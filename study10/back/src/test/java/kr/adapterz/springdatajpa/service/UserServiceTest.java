@@ -30,6 +30,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
+    private static final String VALID_PROFILE_IMAGE = "data:image/png;base64,iVBORw0KGgo=";
+
     @Mock
     private UserRepository userRepository;
 
@@ -128,14 +130,14 @@ class UserServiceTest {
                 "Password1!",
                 "Password1!",
                 "tester",
-                "profile.png"
+                VALID_PROFILE_IMAGE
         );
 
         User savedUser = new User(
                 "test@test.com",
                 "encoded-password",
                 "tester",
-                "profile.png",
+                VALID_PROFILE_IMAGE,
                 0
         );
 
@@ -166,7 +168,7 @@ class UserServiceTest {
 
         assertThat(capturedUser.getEmail()).isEqualTo("test@test.com");
         assertThat(capturedUser.getNickname()).isEqualTo("tester");
-        assertThat(capturedUser.getProfileImage()).isEqualTo("profile.png");
+        assertThat(capturedUser.getProfileImage()).isEqualTo(VALID_PROFILE_IMAGE);
 
         assertThat(capturedUser.getPassword()).isEqualTo("encoded-password");
         assertThat(capturedUser.getPassword()).isNotEqualTo("Password1!");
@@ -257,7 +259,7 @@ class UserServiceTest {
 
         UserPatchRequestDto request = createUserPatchRequest(
                 "newNickname",
-                "new-profile.png"
+                VALID_PROFILE_IMAGE
         );
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
@@ -273,7 +275,7 @@ class UserServiceTest {
         verify(userRepository).existsByNicknameAndDeletedFalseAndUserIdNot("newNickname", loginUserId);
 
         assertThat(loginUser.getNickname()).isEqualTo("newNickname");
-        assertThat(loginUser.getProfileImage()).isEqualTo("new-profile.png");
+        assertThat(loginUser.getProfileImage()).isEqualTo(VALID_PROFILE_IMAGE);
     }
 
     @Test
@@ -493,7 +495,7 @@ class UserServiceTest {
                 "Password1!",
                 "Password1!",
                 "tester",
-                "profile.png"
+                VALID_PROFILE_IMAGE
         );
 
         when(userRepository.existsByEmailAndDeletedFalse("test@test.com"))
@@ -524,7 +526,7 @@ class UserServiceTest {
         assertThat(savedUser.getEmail()).isEqualTo("test@test.com");
         assertThat(savedUser.getPassword()).isEqualTo("encoded-password");
         assertThat(savedUser.getNickname()).isEqualTo("tester");
-        assertThat(savedUser.getProfileImage()).isEqualTo("profile.png");
+        assertThat(savedUser.getProfileImage()).isEqualTo(VALID_PROFILE_IMAGE);
         assertThat(savedUser.getReceivedReportCount()).isEqualTo(5);
     }
 

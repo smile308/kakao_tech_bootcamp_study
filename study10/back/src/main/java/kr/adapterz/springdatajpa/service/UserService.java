@@ -7,6 +7,7 @@ import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.AuthSessionRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
+import kr.adapterz.springdatajpa.validation.ImageDataUrlValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,8 @@ public class UserService {
             throw new InvalidRequestException("Suspended_Account");
         }
 
+        ImageDataUrlValidator.validateProfileImage(request.getProfileImage());
+
         User user = new User(
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
@@ -89,6 +92,8 @@ public class UserService {
         if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(), user.getUserId())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
+
+        ImageDataUrlValidator.validateProfileImage(request.getProfileImage());
 
         user.update(request.getNickname(), request.getProfileImage());
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();

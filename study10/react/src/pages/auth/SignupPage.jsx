@@ -8,7 +8,10 @@ import {
     getErrorMessage,
     hasErrorCode,
 } from "../../utils/errorMessage.js";
-import { fileToDataUrl } from "../../utils/file.js";
+import {
+    fileToDataUrl,
+    getImageFileError,
+} from "../../utils/file.js";
 import {
     isValidEmail,
     isValidNickname,
@@ -69,8 +72,24 @@ function SignupPage() {
 
     async function handleImageChange(event) {
         const file = event.target.files?.[0] ?? null;
-        setProfileImage(file);
-        setPreviewUrl(file ? await fileToDataUrl(file) : null);
+        const imageError = getImageFileError(file);
+
+        if (imageError) {
+            event.target.value = "";
+            setProfileImage(null);
+            setPreviewUrl(null);
+            window.alert(imageError);
+            return;
+        }
+
+        try {
+            setProfileImage(file);
+            setPreviewUrl(file ? await fileToDataUrl(file) : null);
+        } catch {
+            setProfileImage(null);
+            setPreviewUrl(null);
+            window.alert("프로필 이미지를 읽지 못했습니다.");
+        }
     }
 
     async function handleSubmit(event) {

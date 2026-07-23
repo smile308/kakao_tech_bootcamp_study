@@ -14,7 +14,10 @@ import {
     getErrorMessage,
     hasErrorCode,
 } from "../../utils/errorMessage.js";
-import { fileToDataUrl } from "../../utils/file.js";
+import {
+    fileToDataUrl,
+    getImageFileError,
+} from "../../utils/file.js";
 import { isValidNickname } from "../../utils/validation.js";
 import "../../styles/user.css";
 
@@ -90,6 +93,13 @@ function ProfileEditPage() {
     async function handleImageChange(event) {
         const file = event.target.files?.[0];
         if (!file) {
+            return;
+        }
+
+        const imageError = getImageFileError(file);
+        if (imageError) {
+            event.target.value = "";
+            window.alert(imageError);
             return;
         }
 

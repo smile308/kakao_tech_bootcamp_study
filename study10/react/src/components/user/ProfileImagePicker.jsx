@@ -1,3 +1,5 @@
+import { IMAGE_FILE_ACCEPT } from "../../utils/file.js";
+
 function ProfileImagePicker({ previewUrl, onChange, variant = "profile" }) {
     if (variant === "signup") {
         return (
@@ -20,7 +22,7 @@ function ProfileImagePicker({ previewUrl, onChange, variant = "profile" }) {
                     type="file"
                     id="profileImage"
                     className="profile-image-input"
-                    accept="image/*"
+                    accept={IMAGE_FILE_ACCEPT}
                     onChange={onChange}
                 />
             </section>
@@ -46,7 +48,7 @@ function ProfileImagePicker({ previewUrl, onChange, variant = "profile" }) {
                 type="file"
                 id="profileImageInput"
                 className="profile-image-input"
-                accept="image/*"
+                accept={IMAGE_FILE_ACCEPT}
                 onChange={onChange}
             />
         </section>

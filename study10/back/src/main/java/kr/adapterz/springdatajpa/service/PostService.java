@@ -8,6 +8,7 @@ import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.*;
+import kr.adapterz.springdatajpa.validation.ImageDataUrlValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -52,6 +53,8 @@ public class PostService {
     // 게시물 추가
     @Transactional
     public PostResponseDto createPost(Long loginUserId, PostRequestDto request) {
+        ImageDataUrlValidator.validatePostImages(request.getImageFiles());
+
         PostResponseDto postResponseDto= new PostResponseDto();
         User user = getLoginUser(loginUserId);
         Post post = new Post(
@@ -106,6 +109,7 @@ public class PostService {
         Post post = getActivePost(postId);
 
         validatePostModificationPermission(post, loginUserId);
+        ImageDataUrlValidator.validatePostImages(request.getImageFiles());
 
         post.update(
                 request.getTitle(),

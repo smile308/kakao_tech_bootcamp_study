@@ -20,7 +20,7 @@ public class PostImage {
     private Post post;
 
     @Lob
-    @Column(name = "image_file", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "image_file", nullable = false, columnDefinition = "LONGTEXT")
     private String imageFile;
 
     @Column(name = "image_order", nullable = false)

@@ -1,3 +1,5 @@
+import { IMAGE_FILE_ACCEPT } from "../../utils/file.js";
+
 function PostImagePicker({ mode, existingImageCount = 0, files, onChange }) {
     const names = files?.length
         ? `${files.length}개 선택: ${files.map((file) => file.name).join(", ")}`
@@ -16,7 +18,7 @@ function PostImagePicker({ mode, existingImageCount = 0, files, onChange }) {
                 type="file"
                 id="postImageInput"
                 className={mode === "edit" ? "post-image-input" : "post-create-file-input"}
-                accept="image/*"
+                accept={IMAGE_FILE_ACCEPT}
                 multiple
                 onChange={onChange}
             />
