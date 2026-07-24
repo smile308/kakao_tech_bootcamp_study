@@ -39,7 +39,11 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             SET post.viewCount = post.viewCount + 1
             WHERE post.postId = :postId
               AND post.deleted = false
+              AND post.reportCount < :reportBlockThreshold
             """)
-    int incrementViewCount(@Param("postId") Long postId);
+    int incrementViewCount(
+            @Param("postId") Long postId,
+            @Param("reportBlockThreshold") int reportBlockThreshold
+    );
 
 }

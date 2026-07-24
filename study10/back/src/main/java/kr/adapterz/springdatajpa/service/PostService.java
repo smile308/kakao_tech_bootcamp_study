@@ -71,7 +71,10 @@ public class PostService {
     //게시물
     @Transactional
     public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
-        int updatedRowCount = postRepository.incrementViewCount(postId);
+        int updatedRowCount = postRepository.incrementViewCount(
+                postId,
+                Post.REPORT_BLOCK_THRESHOLD
+        );
         if (updatedRowCount == 0) {
             throw new DataNullException("No_Post");
         }

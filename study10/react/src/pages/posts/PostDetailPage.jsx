@@ -11,6 +11,8 @@ import PostDetailCard from "../../components/posts/PostDetailCard.jsx";
 import { getErrorMessage } from "../../utils/errorMessage.js";
 import "../../styles/posts.css";
 
+const REPORT_BLOCK_THRESHOLD = 5;
+
 function PostDetailPage() {
     const { postId } = useParams();
     const navigate = useNavigate();
@@ -115,10 +117,18 @@ function PostDetailPage() {
             "신고 후에는 취소할 수 없습니다.",
             async () => {
                 const result = await postApi.reportPost(post.postId);
+                const nextReportCount =
+                    result?.reportCount ?? post.reportCount + 1;
+
+                if (nextReportCount >= REPORT_BLOCK_THRESHOLD) {
+                    navigate("/posts", { replace: true });
+                    return;
+                }
+
                 setPost((previous) => ({
                     ...previous,
                     isReported: true,
-                    reportCount: result?.reportCount ?? previous.reportCount + 1,
+                    reportCount: nextReportCount,
                 }));
             },
         );

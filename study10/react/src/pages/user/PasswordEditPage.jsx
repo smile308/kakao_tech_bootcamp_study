@@ -26,6 +26,23 @@ const EMPTY_ERRORS = {
     passwordCheck: "",
 };
 
+function getFieldError(name, nextForm) {
+    if (name === "currentPassword") {
+        return nextForm.currentPassword ? "" : "현재 비밀번호를 입력해주세요.";
+    }
+    if (name === "password") {
+        return isValidPassword(nextForm.password)
+            ? ""
+            : "8~20자의 영문 대·소문자, 숫자, 특수문자를 사용해주세요.";
+    }
+    if (name === "passwordCheck") {
+        return nextForm.password === nextForm.passwordCheck
+            ? ""
+            : "새 비밀번호가 일치하지 않습니다.";
+    }
+    return "";
+}
+
 function PasswordEditPage() {
     const navigate = useNavigate();
     const [form, setForm] = useState(EMPTY_FORM);
@@ -38,21 +55,30 @@ function PasswordEditPage() {
 
     function handleChange(event) {
         const { name, value } = event.target;
-        setForm((previous) => ({ ...previous, [name]: value }));
-        setErrors((previous) => ({ ...previous, [name]: "" }));
+        const nextForm = { ...form, [name]: value };
+
+        setForm(nextForm);
+        setErrors((previous) => {
+            const nextErrors = {
+                ...previous,
+                [name]: getFieldError(name, nextForm),
+            };
+
+            if (name === "password" && nextForm.passwordCheck) {
+                nextErrors.passwordCheck = getFieldError("passwordCheck", nextForm);
+            }
+
+            return nextErrors;
+        });
     }
 
     function validate() {
-        const nextErrors = { ...EMPTY_ERRORS };
-        if (!form.currentPassword) {
-            nextErrors.currentPassword = "현재 비밀번호를 입력해주세요.";
-        }
-        if (!isValidPassword(form.password)) {
-            nextErrors.password = "8~20자의 영문 대·소문자, 숫자, 특수문자를 사용해주세요.";
-        }
-        if (form.password !== form.passwordCheck) {
-            nextErrors.passwordCheck = "새 비밀번호가 일치하지 않습니다.";
-        }
+        const nextErrors = Object.fromEntries(
+            Object.keys(EMPTY_ERRORS).map((name) => [
+                name,
+                getFieldError(name, form),
+            ]),
+        );
         setErrors(nextErrors);
         return !Object.values(nextErrors).some(Boolean);
     }

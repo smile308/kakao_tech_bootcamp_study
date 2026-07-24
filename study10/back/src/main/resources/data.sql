@@ -2,9 +2,12 @@ INSERT INTO users
 (user_id, email, password, nickname, profile_image, received_report_count, deleted)
 VALUES
     (1, 'test@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '더미작성자1', NULL, 0,false),
-    (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, 0,false),
+    (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, 4,false),
     (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, 0,false),
-    (4, 'suspended@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '정지계정', NULL, 10,false);
+    (4, 'suspended@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '정지계정', NULL, 10,false),
+    (5, 'reporter1@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터1', NULL, 0,false),
+    (6, 'reporter2@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터2', NULL, 0,false),
+    (7, 'reporter3@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터3', NULL, 0,false);
 
 INSERT INTO posts
 (post_id, user_id, post_title, post_content, is_fixed, like_count, report_count, reply_count, view_count, created_at, deleted)
@@ -33,7 +36,8 @@ VALUES
     (22, 1, '더미 게시글 22', '세 번째 페이지 테스트용 게시글입니다.', false, 6300, 0,0, 21600, TIMESTAMP '2026-06-26 10:21:00', false),
     (23, 2, '더미 게시글 23', '세 번째 페이지 테스트용 게시글입니다.', false, 6650, 0,0, 22800, TIMESTAMP '2026-06-26 10:22:00', false),
     (24, 2, '더미 게시글 24', '세 번째 페이지 테스트용 게시글입니다.', false, 7000, 0,0, 24000, TIMESTAMP '2026-06-26 10:23:00', false),
-    (25, 1, '더미 게시글 25', '세 번째 페이지 테스트용 게시글입니다.', false, 7350, 0,0, 25200, TIMESTAMP '2026-06-26 10:24:00', false);
+    (25, 1, '더미 게시글 25', '세 번째 페이지 테스트용 게시글입니다.', false, 7350, 0,0, 25200, TIMESTAMP '2026-06-26 10:24:00', false),
+    (26, 2, '신고 4회 게시글', 'test@example.com 계정으로 5번째 신고를 확인하는 예시입니다.', false, 0, 4,0, 0, TIMESTAMP '2026-06-26 10:25:00', false);
 
 INSERT INTO comments
 (comment_id, user_id, post_id, comment_content, created_at)
@@ -42,6 +46,15 @@ VALUES
     (2, 2, 1, '다른 사용자의 댓글입니다.', TIMESTAMP '2026-06-26 10:11:00'),
     (3, 1, 2, '두 번째 게시글 댓글입니다.', TIMESTAMP '2026-06-26 10:12:00');
 
+INSERT INTO post_reports
+(post_report_id, post_id, user_id, created_at)
+VALUES
+    (1, 26, 3, TIMESTAMP '2026-06-26 10:26:00'),
+    (2, 26, 5, TIMESTAMP '2026-06-26 10:27:00'),
+    (3, 26, 6, TIMESTAMP '2026-06-26 10:28:00'),
+    (4, 26, 7, TIMESTAMP '2026-06-26 10:29:00');
+
 ALTER TABLE users ALTER COLUMN user_id RESTART WITH 100;
 ALTER TABLE posts ALTER COLUMN post_id RESTART WITH 100;
 ALTER TABLE comments ALTER COLUMN comment_id RESTART WITH 100;
+ALTER TABLE post_reports ALTER COLUMN post_report_id RESTART WITH 100;

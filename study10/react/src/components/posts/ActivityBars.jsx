@@ -35,15 +35,6 @@ function ActivityBars({ postId, likeCount, commentCount, viewCount, reportCount 
         [counts.comment, postId],
     );
 
-    if (
-        counts.like === 0
-        && counts.view === 0
-        && counts.report === 0
-        && counts.comment === 0
-    ) {
-        return null;
-    }
-
     const segments = ["like", "view", "report"]
         .map((type) => {
             const ratio = Math.min(counts[type], BAMBOO_MAX_VALUE[type])

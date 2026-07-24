@@ -57,14 +57,20 @@ class PostServiceTest {
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(postRepository.incrementViewCount(postId))
+        when(postRepository.incrementViewCount(
+                postId,
+                Post.REPORT_BLOCK_THRESHOLD
+        ))
                 .thenReturn(0);
 
         assertThatThrownBy(() -> postService.getPostView(postId,loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
-        verify(postRepository).incrementViewCount(postId);
+        verify(postRepository).incrementViewCount(
+                postId,
+                Post.REPORT_BLOCK_THRESHOLD
+        );
         verify(commentRepository, never()).findByPostWithUser(any(Post.class));
     }
 
@@ -445,7 +451,10 @@ class PostServiceTest {
         Comment otherComment =
                 createComment(11L, otherUser, post);
 
-        when(postRepository.incrementViewCount(postId))
+        when(postRepository.incrementViewCount(
+                postId,
+                Post.REPORT_BLOCK_THRESHOLD
+        ))
                 .thenAnswer(invocation -> {
                     post.view();
                     return 1;
@@ -511,7 +520,10 @@ class PostServiceTest {
 
         Post post = createPost(postId, writer);
 
-        when(postRepository.incrementViewCount(postId))
+        when(postRepository.incrementViewCount(
+                postId,
+                Post.REPORT_BLOCK_THRESHOLD
+        ))
                 .thenAnswer(invocation -> {
                     post.view();
                     return 1;
