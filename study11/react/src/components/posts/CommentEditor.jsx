@@ -1,0 +1,74 @@
+import { useEffect, useState } from "react";
+
+import { postApi } from "../../api/postApi.js";
+import { getErrorMessage } from "../../utils/errorMessage.js";
+
+function CommentEditor({
+    postId,
+    editingComment,
+    onCreated,
+    onUpdated,
+    onCancelEdit,
+}) {
+    const [content, setContent] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
+
+    useEffect(() => {
+        setContent(editingComment?.content ?? "");
+    }, [editingComment]);
+
+    async function handleSubmit(event) {
+        event.preventDefault();
+        const trimmedContent = content.trim();
+        if (!trimmedContent || isSubmitting) {
+            return;
+        }
+
+        try {
+            setIsSubmitting(true);
+            setError("");
+            if (editingComment) {
+                const comment = await postApi.updateComment(
+                    postId,
+                    editingComment.commentId,
+                    trimmedContent,
+                );
+                onUpdated(comment);
+            } else {
+                const comment = await postApi.createComment(postId, trimmedContent);
+                onCreated(comment);
+            }
+            setContent("");
+            onCancelEdit();
+        } catch (submitError) {
+            setError(getErrorMessage(submitError, "댓글 처리에 실패했습니다."));
+        } finally {
+            setIsSubmitting(false);
+        }
+    }
+
+    return (
+        <form className="comment-form" noValidate onSubmit={handleSubmit}>
+            <textarea
+                className="comment-input"
+                value={content}
+                placeholder="댓글을 남겨주세요!"
+                onChange={(event) => setContent(event.target.value)}
+            />
+            <div className="comment-form-divider" />
+            <p className="comment-form-error" aria-live="polite">
+                {error}
+            </p>
+            <button
+                type="submit"
+                className="comment-submit-button"
+                disabled={!content.trim() || isSubmitting}
+            >
+                {editingComment ? "댓글 수정" : "댓글 등록"}
+            </button>
+        </form>
+    );
+}
+
+export default CommentEditor;

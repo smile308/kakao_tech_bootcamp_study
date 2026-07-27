@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: springdatajpa
+  profiles:
+    default: local
+
+jwt:
+  access-expiration-millis: ${JWT_ACCESS_EXPIRATION_MILLIS:600000}
+  refresh-expiration-millis: ${JWT_REFRESH_EXPIRATION_MILLIS:10800000}
+  refresh-session-cleanup-interval-millis: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:3600000}
