@@ -1,0 +1,43 @@
+name: week12-frontend
+
+services:
+  frontend-blue:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}:${FRONTEND_BLUE_TAG:?FRONTEND_BLUE_TAG is required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_BLUE_PORT:-3001}:80"
+    networks:
+      - frontend-network
+
+  frontend-green:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}:${FRONTEND_GREEN_TAG:?FRONTEND_GREEN_TAG is required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_GREEN_PORT:-3002}:80"
+    networks:
+      - frontend-network
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      ACTIVE_COLOR: ${FRONTEND_ACTIVE_COLOR:-blue}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM is required}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        envsubst '$$BACKEND_UPSTREAM' \
+          < "/etc/nginx/bluegreen/frontend-$${ACTIVE_COLOR}.conf.template" \
+          > /etc/nginx/conf.d/default.conf
+        exec nginx -g 'daemon off;'
+    ports:
+      - "${FRONTEND_NGINX_PORT:-80}:80"
+    volumes:
+      - ./nginx:/etc/nginx/bluegreen:ro
+    networks:
+      - frontend-network
+
+networks:
+  frontend-network:
+    driver: bridge
