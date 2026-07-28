@@ -1,0 +1,23 @@
+name: Verify Backend AWS OIDC
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  verify-aws-oidc:
+    name: Verify backend AWS authentication
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.1.1
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Show authenticated AWS identity
+        run: aws sts get-caller-identity
