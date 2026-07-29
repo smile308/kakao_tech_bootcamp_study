@@ -85,7 +85,10 @@ function PostEditPage() {
                         mode="edit"
                         initialValues={originalPost}
                         onSubmit={async (payload) => {
-                            await postApi.updatePost(postId, payload);
+                            await postApi.updatePost(postId, {
+                                ...payload,
+                                version: originalPost.version,
+                            });
                             navigate(`/posts/${postId}`, { replace: true });
                         }}
                     />

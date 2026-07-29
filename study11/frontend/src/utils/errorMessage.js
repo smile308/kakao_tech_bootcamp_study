@@ -4,6 +4,8 @@ const ERROR_CODE_MESSAGES = Object.freeze({
     Not_Liked: "이미 좋아요가 취소된 게시글입니다.",
     Already_Reported: "이미 신고한 게시글입니다.",
     Cannot_Report_Own_Post: "자신의 게시글은 신고할 수 없습니다.",
+    Post_Version_Conflict: "다른 요청으로 게시글이 변경되었습니다. 최신 내용을 다시 확인해주세요.",
+    Counter_Update_Failed: "게시글 통계 반영에 실패했습니다. 잠시 후 다시 시도해주세요.",
     Existed_Email: "이미 사용 중인 이메일입니다.",
     Existed_Nickname: "이미 사용 중인 닉네임입니다.",
     Invalid_Password: "비밀번호와 비밀번호 확인이 일치하지 않습니다.",

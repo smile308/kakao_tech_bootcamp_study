@@ -28,6 +28,7 @@ export function normalizeListPost(post) {
 export function normalizeDetailPost(post) {
     return {
         postId: post?.postId ?? null,
+        version: post?.version ?? null,
         title: post?.title ?? "",
         content: post?.content ?? "",
         imageUrls: normalizeImageUrls(post?.imageUrls),

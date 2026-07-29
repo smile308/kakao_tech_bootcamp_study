@@ -1,6 +1,8 @@
 package kr.adapterz.springdatajpa.service;
 
+import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
+import kr.adapterz.springdatajpa.dto.post.PostDeleteRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostViewResponseDto;
 import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.AuthException;
@@ -15,6 +17,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.dao.DataIntegrityViolationException;
 import kr.adapterz.springdatajpa.dto.post.PostReportResponseDto;
 import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +39,9 @@ class PostServiceTest {
     private PostRepository postRepository;
 
     @Mock
+    private PostCounterRepository postCounterRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -43,6 +49,9 @@ class PostServiceTest {
 
     @Mock
     private LikeRepository likeRepository;
+
+    @Mock
+    private EntityManager entityManager;
 
     @InjectMocks
     private PostService postService;
@@ -57,7 +66,7 @@ class PostServiceTest {
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(postRepository.incrementViewCount(
+        when(postCounterRepository.incrementViewCount(
                 postId,
                 Post.REPORT_BLOCK_THRESHOLD
         ))
@@ -67,7 +76,7 @@ class PostServiceTest {
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
-        verify(postRepository).incrementViewCount(
+        verify(postCounterRepository).incrementViewCount(
                 postId,
                 Post.REPORT_BLOCK_THRESHOLD
         );
@@ -303,7 +312,11 @@ class PostServiceTest {
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> postService.deletePost(postId, loginUserId))
+        assertThatThrownBy(() -> postService.deletePost(
+                postId,
+                loginUserId,
+                createPostDeleteRequest(null)
+        ))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
@@ -326,7 +339,8 @@ class PostServiceTest {
         assertThatThrownBy(
                 () -> postService.deletePost(
                         postId,
-                        loginUserId
+                        loginUserId,
+                        createPostDeleteRequest(post.getVersion())
                 )
         )
                 .isInstanceOf(ForbiddenException.class)
@@ -346,7 +360,11 @@ class PostServiceTest {
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
 
-        assertThatThrownBy(() -> postService.deletePost(postId, writerId))
+        assertThatThrownBy(() -> postService.deletePost(
+                postId,
+                writerId,
+                createPostDeleteRequest(post.getVersion())
+        ))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Forbidden_Access");
 
@@ -363,8 +381,14 @@ class PostServiceTest {
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
                 .thenReturn(Optional.of(post));
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
 
-        postService.deletePost(postId, writerId);
+        postService.deletePost(
+                postId,
+                writerId,
+                createPostDeleteRequest(post.getVersion())
+        );
 
         assertThat(post.isDeleted()).isTrue();
     }
@@ -376,7 +400,7 @@ class PostServiceTest {
         Long loginUserId = 1L;
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findActivePostForUpdate(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
@@ -385,7 +409,7 @@ class PostServiceTest {
                 .isInstanceOf(AuthException.class)
                 .hasMessage("No_User");
 
-        verify(likeRepository, never()).save(any(Like.class));
+        verify(likeRepository, never()).saveAndFlush(any(Like.class));
     }
 
     @Test
@@ -396,18 +420,22 @@ class PostServiceTest {
         User loginUser = createUser(loginUserId);
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findActivePostForUpdate(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
-        when(likeRepository.existsByPostAndUser(post, loginUser))
-                .thenReturn(true);
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
+        when(postRepository.findActivePostForInteractionCheck(postId))
+                .thenReturn(Optional.of(post));
+        when(likeRepository.saveAndFlush(any(Like.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate"));
 
         assertThatThrownBy(() -> postService.likePost(postId, loginUserId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Already_Liked");
 
-        verify(likeRepository, never()).save(any(Like.class));
+        verify(postCounterRepository, never()).incrementLikeCount(postId);
     }
 
     @Test
@@ -418,18 +446,20 @@ class PostServiceTest {
         User loginUser = createUser(loginUserId);
         Post post = createPost(postId, createUser(2L));
 
-        when(postRepository.findActivePostForUpdate(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.of(post));
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
-        when(likeRepository.findByPostAndUser(post, loginUser))
-                .thenReturn(Optional.empty());
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
+        when(postRepository.findActivePostForInteractionCheck(postId))
+                .thenReturn(Optional.of(post));
 
         assertThatThrownBy(() -> postService.cancelLike(postId, loginUserId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Not_Liked");
 
-        verify(likeRepository, never()).delete(any(Like.class));
+        verify(postCounterRepository, never()).decrementLikeCount(postId);
     }
 
     @Test
@@ -451,7 +481,7 @@ class PostServiceTest {
         Comment otherComment =
                 createComment(11L, otherUser, post);
 
-        when(postRepository.incrementViewCount(
+        when(postCounterRepository.incrementViewCount(
                 postId,
                 Post.REPORT_BLOCK_THRESHOLD
         ))
@@ -461,6 +491,8 @@ class PostServiceTest {
                 });
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+        when(postRepository.findActivePostForInteractionCheck(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
@@ -520,7 +552,7 @@ class PostServiceTest {
 
         Post post = createPost(postId, writer);
 
-        when(postRepository.incrementViewCount(
+        when(postCounterRepository.incrementViewCount(
                 postId,
                 Post.REPORT_BLOCK_THRESHOLD
         ))
@@ -530,6 +562,8 @@ class PostServiceTest {
                 });
 
         when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+        when(postRepository.findActivePostForInteractionCheck(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
@@ -567,8 +601,15 @@ class PostServiceTest {
 
     private PostFixRequestDto createPostFixRequest(String title, String content) {
         PostFixRequestDto request = new PostFixRequestDto();
+        ReflectionTestUtils.setField(request, "version", null);
         ReflectionTestUtils.setField(request, "title", title);
         ReflectionTestUtils.setField(request, "content", content);
+        return request;
+    }
+
+    private PostDeleteRequestDto createPostDeleteRequest(Long version) {
+        PostDeleteRequestDto request = new PostDeleteRequestDto();
+        ReflectionTestUtils.setField(request, "version", version);
         return request;
     }
 

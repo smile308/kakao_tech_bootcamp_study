@@ -1,6 +1,7 @@
 package kr.adapterz.springdatajpa.dto.post;
 
 import kr.adapterz.springdatajpa.entity.Post;
+import kr.adapterz.springdatajpa.entity.PostCounter;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -17,13 +18,13 @@ public class PostListResponseDto {
     private int viewCount;
     private LocalDateTime createdAt;
 
-    public PostListResponseDto(Post post) {
+    public PostListResponseDto(Post post, PostCounter counter) {
         this.postId = post.getPostId();
         this.title = post.getPostTitle();
-        this.likeCount = post.getLikeCount();
-        this.reportCount = post.getReportCount();
-        this.commentCount = post.getReplyCount();
-        this.viewCount = post.getViewCount();
+        this.likeCount = counter.getLikeCount();
+        this.reportCount = counter.getReportCount();
+        this.commentCount = counter.getReplyCount();
+        this.viewCount = counter.getViewCount();
         this.createdAt = post.getCreatedAt();
     }
 }

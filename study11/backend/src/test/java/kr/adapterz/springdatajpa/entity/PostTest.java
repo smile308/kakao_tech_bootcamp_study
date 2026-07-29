@@ -29,6 +29,8 @@ class PostTest {
                 () -> assertThat(post.getImageFile()).isNull(),
                 () -> assertThat(post.getPostImages()).isEmpty(),
                 () -> assertThat(post.isFixed()).isFalse(),
+                () -> assertThat(post.getPostCounter()).isNotNull(),
+                () -> assertThat(post.getPostCounter().getPost()).isEqualTo(post),
                 () -> assertThat(post.getLikeCount()).isZero(),
                 () -> assertThat(post.getReplyCount()).isZero(),
                 () -> assertThat(post.getViewCount()).isZero(),

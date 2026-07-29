@@ -139,7 +139,7 @@ function PostDetailPage() {
             "글을 삭제하겠습니까?",
             "삭제한 내용은 복구할 수 없습니다.",
             async () => {
-                await postApi.deletePost(post.postId);
+                await postApi.deletePost(post.postId, post.version);
                 navigate("/posts", { replace: true });
             },
         );

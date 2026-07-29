@@ -10,6 +10,7 @@ import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
+import kr.adapterz.springdatajpa.repository.PostCounterRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -39,6 +40,9 @@ class CommentServiceTest {
     private PostRepository postRepository;
 
     @Mock
+    private PostCounterRepository postCounterRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @InjectMocks
@@ -58,7 +62,7 @@ class CommentServiceTest {
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Account");
 
-        verify(postRepository, never()).findById(postId);
+        verify(postRepository, never()).findActivePostForInteraction(postId);
         verify(commentRepository, never()).save(any(Comment.class));
     }
 
@@ -72,7 +76,7 @@ class CommentServiceTest {
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
-        when(postRepository.findById(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.commentPost(postId, loginUserId, request))
@@ -90,6 +94,8 @@ class CommentServiceTest {
         Long commentId = 10L;
         CommentFixRequestDto request = createCommentFixRequest(commentId, "fixed");
 
+        when(postRepository.findActivePostForInteractionCheck(postId))
+                .thenReturn(Optional.of(createPost(postId, createUser(loginUserId))));
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.empty());
 
@@ -111,6 +117,8 @@ class CommentServiceTest {
         Comment comment = createComment(commentId, writer, createPost(commentPostId, writer));
         CommentFixRequestDto request = createCommentFixRequest(commentId, "fixed");
 
+        when(postRepository.findActivePostForInteractionCheck(requestPostId))
+                .thenReturn(Optional.of(createPost(requestPostId, writer)));
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.of(comment));
 
@@ -139,6 +147,8 @@ class CommentServiceTest {
                         "fixed"
                 );
 
+        when(postRepository.findActivePostForInteractionCheck(postId))
+                .thenReturn(Optional.of(post));
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.of(comment));
 
@@ -163,7 +173,7 @@ class CommentServiceTest {
         Long loginUserId = 1L;
         CommentDeleteRequestDto request = createCommentDeleteRequest(10L);
 
-        when(postRepository.findById(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> commentService.commentDelete(postId, loginUserId, request))
@@ -181,7 +191,7 @@ class CommentServiceTest {
         User writer = createUser(loginUserId);
         CommentDeleteRequestDto request = createCommentDeleteRequest(10L);
 
-        when(postRepository.findById(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.of(createPost(postId, writer)));
         when(commentRepository.findById(request.getCommentId()))
                 .thenReturn(Optional.empty());
@@ -202,7 +212,7 @@ class CommentServiceTest {
         Comment comment = createComment(commentId, writer, createPost(commentPostId, writer));
         CommentDeleteRequestDto request = createCommentDeleteRequest(commentId);
 
-        when(postRepository.findById(requestPostId))
+        when(postRepository.findActivePostForInteraction(requestPostId))
                 .thenReturn(Optional.of(createPost(requestPostId, writer)));
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.of(comment));
@@ -224,7 +234,7 @@ class CommentServiceTest {
         Comment comment = createComment(commentId, writer, post);
         CommentDeleteRequestDto request = createCommentDeleteRequest(commentId);
 
-        when(postRepository.findById(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.of(post));
         when(commentRepository.findById(commentId))
                 .thenReturn(Optional.of(comment));

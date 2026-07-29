@@ -2,6 +2,7 @@ package kr.adapterz.springdatajpa.dto.post;
 
 import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.entity.Post;
+import kr.adapterz.springdatajpa.entity.PostCounter;
 import kr.adapterz.springdatajpa.entity.PostImage;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,6 +16,7 @@ import java.util.List;
 public class PostViewResponseDto {
 
     private Long postId;
+    private Long version;
     private boolean isFixed;
     private String title;
     private String content;
@@ -33,20 +35,22 @@ public class PostViewResponseDto {
 
     public PostViewResponseDto(
             Post post,
+            PostCounter counter,
             List<CommentResponseDto> comments,
             Boolean isLiked,
             Boolean isReported,
             Boolean isMine
     ) {
         this.postId = post.getPostId();
+        this.version = post.getVersion();
         this.isFixed = post.isFixed();
         this.title = post.getPostTitle();
         this.content = post.getPostContent();
         this.imageUrls = getImageUrls(post);
-        this.likeCount = post.getLikeCount();
-        this.reportCount = post.getReportCount();
-        this.commentCount = post.getReplyCount();
-        this.viewCount = post.getViewCount();
+        this.likeCount = counter.getLikeCount();
+        this.reportCount = counter.getReportCount();
+        this.commentCount = counter.getReplyCount();
+        this.viewCount = counter.getViewCount();
         this.createdAt = post.getCreatedAt();
 
         this.isMine = isMine;

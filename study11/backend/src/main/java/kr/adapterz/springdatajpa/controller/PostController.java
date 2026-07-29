@@ -57,9 +57,10 @@ public class PostController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public PostDeleteResponseDto deletePost(
             @PathVariable("postId") Long postId,
-            @AuthenticationPrincipal CustomUserDetails userDetails
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @Valid @RequestBody PostDeleteRequestDto request
     ){
-        return postService.deletePost(postId, userDetails.getUserId());
+        return postService.deletePost(postId, userDetails.getUserId(), request);
     }
     //좋아요
     @PostMapping("/{postId}/likes")

@@ -2,9 +2,11 @@ package kr.adapterz.springdatajpa.service;
 
 import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.entity.Post;
+import kr.adapterz.springdatajpa.entity.PostCounter;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.LikeRepository;
+import kr.adapterz.springdatajpa.repository.PostCounterRepository;
 import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
@@ -36,6 +38,9 @@ class PostConcurrencyIntegrationTest {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private PostCounterRepository postCounterRepository;
 
     @Autowired
     private LikeRepository likeRepository;
@@ -84,9 +89,9 @@ class PostConcurrencyIntegrationTest {
         );
 
         // then
-        Post savedPost = postRepository.findById(postId).orElseThrow();
+        PostCounter savedCounter = postCounterRepository.findById(postId).orElseThrow();
 
-        assertThat(savedPost.getViewCount()).isEqualTo(requestCount);
+        assertThat(savedCounter.getViewCount()).isEqualTo(requestCount);
     }
 
     @Test
@@ -111,9 +116,9 @@ class PostConcurrencyIntegrationTest {
         );
 
         // then
-        Post savedPost = postRepository.findById(postId).orElseThrow();
+        PostCounter savedCounter = postCounterRepository.findById(postId).orElseThrow();
 
-        assertThat(savedPost.getLikeCount()).isEqualTo(requestCount);
+        assertThat(savedCounter.getLikeCount()).isEqualTo(requestCount);
         assertThat(likeRepository.count()).isEqualTo(requestCount);
     }
 
@@ -141,15 +146,15 @@ class PostConcurrencyIntegrationTest {
 
         // then
         User savedWriter = userRepository.findById(writerId).orElseThrow();
-        List<Post> savedPosts = postRepository.findAllById(
+        List<PostCounter> savedCounters = postCounterRepository.findAllById(
                 posts.stream()
                         .map(Post::getPostId)
                         .toList()
         );
 
         assertThat(savedWriter.getReceivedReportCount()).isEqualTo(requestCount);
-        assertThat(savedPosts)
-                .extracting(Post::getReportCount)
+        assertThat(savedCounters)
+                .extracting(PostCounter::getReportCount)
                 .containsOnly(1);
         assertThat(postReportRepository.count()).isEqualTo(requestCount);
     }

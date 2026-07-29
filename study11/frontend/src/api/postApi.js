@@ -39,8 +39,11 @@ export const postApi = {
         });
     },
 
-    deletePost(postId) {
-        return request(`/posts/${postId}`, { method: "DELETE" });
+    deletePost(postId, version) {
+        return request(`/posts/${postId}`, {
+            method: "DELETE",
+            body: JSON.stringify({ version }),
+        });
     },
 
     reportPost(postId) {

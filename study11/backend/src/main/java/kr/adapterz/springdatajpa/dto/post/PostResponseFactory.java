@@ -10,7 +10,7 @@ public final class PostResponseFactory {
     }
 
     public static PostListResponseDto createListResponse(Post post) {
-        return new PostListResponseDto(post);
+        return new PostListResponseDto(post, post.getPostCounter());
     }
 
     public static PostPageResponseDto createPageResponse(

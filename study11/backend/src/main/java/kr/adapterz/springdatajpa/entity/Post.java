@@ -23,6 +23,10 @@ public class Post {
     @Column(name="post_id")
     private Long postId;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
@@ -40,17 +44,14 @@ public class Post {
     @Column(name = "is_fixed", nullable = false)
     private boolean isFixed;
 
-    @Column(name ="like_count", nullable = false)
-    private int likeCount;
-
-    @Column(name = "report_count", nullable = false)
-    private int reportCount;
-
-    @Column(name ="reply_count", nullable = false)
-    private int replyCount;
-
-    @Column(name ="view_count", nullable = false)
-    private int viewCount;
+    @OneToOne(
+            mappedBy = "post",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            optional = false
+    )
+    private PostCounter postCounter;
 
     @Column(name ="created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -73,10 +74,7 @@ public class Post {
         this.postContent=postContent;
 
         isFixed=false;
-        likeCount=0;
-        reportCount=0;
-        replyCount=0;
-        viewCount=0;
+        postCounter = new PostCounter(this);
         createdAt = LocalDateTime.now();
         deleted=false;
     }
@@ -145,26 +143,26 @@ public class Post {
 
     //댓글 추가
     public void addReply(){
-        replyCount++;
+        postCounter.addReply();
     }
     //댓글 삭제
     public void deleteReply(){
-        replyCount--;
+        postCounter.deleteReply();
     }
 
     //좋아요
     public void like(){
-        likeCount++;
+        postCounter.like();
     }
 
     //좋아요 취소
     public void likeCancle(){
-        likeCount--;
+        postCounter.cancelLike();
     }
 
     //조회수 기능
     public void view(){
-        viewCount++;
+        postCounter.view();
     }
 
     //삭제
@@ -172,10 +170,26 @@ public class Post {
 
     //신고
     public void report() {
-        reportCount++;
+        postCounter.report();
     }
 
     public boolean isBlockedByReports() {
-        return reportCount >= REPORT_BLOCK_THRESHOLD;
+        return postCounter.getReportCount() >= REPORT_BLOCK_THRESHOLD;
+    }
+
+    public int getLikeCount() {
+        return postCounter.getLikeCount();
+    }
+
+    public int getReportCount() {
+        return postCounter.getReportCount();
+    }
+
+    public int getReplyCount() {
+        return postCounter.getReplyCount();
+    }
+
+    public int getViewCount() {
+        return postCounter.getViewCount();
     }
 }
