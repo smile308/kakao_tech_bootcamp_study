@@ -93,6 +93,7 @@ case "${active_color}" in
 esac
 
 target_service="backend-${target_color}"
+previous_service="backend-${active_color}"
 previous_target_tag="$(get_env_value "${target_tag_key}" initial)"
 nginx_port="$(get_env_value BACKEND_NGINX_PORT 80)"
 
@@ -138,6 +139,12 @@ fi
 
 if ! wait_for_health "http://127.0.0.1:${nginx_port}/health"; then
   compose logs --tail=100 nginx || true
+  rollback_proxy
+  exit 1
+fi
+
+if ! compose stop "${previous_service}"; then
+  echo "Failed to stop previous backend: ${previous_service}" >&2
   rollback_proxy
   exit 1
 fi
