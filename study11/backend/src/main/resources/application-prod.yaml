@@ -22,6 +22,13 @@ spring:
     init:
       mode: never
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "0"
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
 jwt:
   secret: ${JWT_SECRET}
   # HTTPS 운영 배포 환경에서는 JWT_REFRESH_COOKIE_SECURE=true로 설정해야 한다.

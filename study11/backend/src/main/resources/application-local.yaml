@@ -23,6 +23,9 @@ spring:
     init:
       mode: always
 
+  flyway:
+    enabled: false
+
 jwt:
   secret: ${JWT_SECRET:default-development-jwt-secret-key-must-be-at-least-32-chars-change-me}
   refresh-cookie-secure: false
