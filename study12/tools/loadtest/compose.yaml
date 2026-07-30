@@ -1,0 +1,57 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: "no"
+    environment:
+      MYSQL_DATABASE: bamboo_loadtest
+      MYSQL_USER: bamboo
+      MYSQL_PASSWORD: bamboo-loadtest-password
+      MYSQL_ROOT_PASSWORD: bamboo-loadtest-root-password
+      TZ: Asia/Seoul
+    command:
+      - --performance-schema=ON
+    ports:
+      - "127.0.0.1:${MYSQL_PORT}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost -ubamboo -pbamboo-loadtest-password
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
+
+  backend:
+    build:
+      context: ${BACKEND_CONTEXT}
+      dockerfile: Dockerfile
+    restart: "no"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://mysql:3306/bamboo_loadtest?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      DB_USERNAME: bamboo
+      DB_PASSWORD: bamboo-loadtest-password
+
+      # Baseline 코드를 수정하지 않고 깨끗한 MySQL 테스트 스키마를 만든다.
+      SPRING_FLYWAY_ENABLED: "false"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create
+      SPRING_SQL_INIT_MODE: never
+
+      JWT_SECRET: loadtest-only-jwt-secret-key-at-least-32-characters
+      JWT_ACCESS_EXPIRATION_MILLIS: 3600000
+      JWT_REFRESH_EXPIRATION_MILLIS: 10800000
+      JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: 3600000
+      JWT_REFRESH_COOKIE_SECURE: "false"
+      JWT_REFRESH_COOKIE_PATH: /sessions
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+      TZ: Asia/Seoul
+    ports:
+      - "127.0.0.1:${BACKEND_PORT}:8080"
+
+volumes:
+  mysql-data:
