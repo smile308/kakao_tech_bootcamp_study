@@ -1,0 +1,12 @@
+.gradle
+build
+out
+.idea
+*.iml
+.DS_Store
+.git
+.github
+deploy
+.env
+.env.*
+README*
