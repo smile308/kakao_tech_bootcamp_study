@@ -23,6 +23,31 @@ services:
       retries: 30
       start_period: 15s
 
+  redis:
+    image: redis:7.4-alpine
+    profiles:
+      - redis
+    restart: "no"
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-16379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - PING
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+
   backend:
     build:
       context: ${BACKEND_CONTEXT}
@@ -31,13 +56,17 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+        required: false
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:mysql://mysql:3306/bamboo_loadtest?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
       DB_USERNAME: bamboo
       DB_PASSWORD: bamboo-loadtest-password
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
 
-      # Baseline 코드를 수정하지 않고 깨끗한 MySQL 테스트 스키마를 만든다.
       SPRING_FLYWAY_ENABLED: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: create
       SPRING_SQL_INIT_MODE: never
@@ -69,3 +98,4 @@ services:
 
 volumes:
   mysql-data:
+  redis-data:

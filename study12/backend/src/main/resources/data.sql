@@ -69,6 +69,13 @@ VALUES
     (25, 7350, 0, 0, 25200),
     (26, 0, 4, 0, 0);
 
+INSERT INTO post_view_counts
+(post_id, view_count)
+SELECT
+    post_id,
+    view_count
+FROM post_counters;
+
 INSERT INTO comments
 (comment_id, user_id, post_id, comment_content, created_at)
 VALUES

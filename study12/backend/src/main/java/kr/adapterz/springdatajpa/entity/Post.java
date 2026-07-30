@@ -53,6 +53,15 @@ public class Post {
     )
     private PostCounter postCounter;
 
+    @OneToOne(
+            mappedBy = "post",
+            fetch = FetchType.LAZY,
+            cascade = CascadeType.ALL,
+            orphanRemoval = true,
+            optional = false
+    )
+    private PostViewCount postViewCount;
+
     @Column(name ="created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -75,6 +84,7 @@ public class Post {
 
         isFixed=false;
         postCounter = new PostCounter(this);
+        postViewCount = new PostViewCount(this);
         createdAt = LocalDateTime.now();
         deleted=false;
     }
