@@ -53,5 +53,19 @@ services:
     ports:
       - "127.0.0.1:${BACKEND_PORT}:8080"
 
+  k6:
+    image: grafana/k6:2.0.0
+    profiles:
+      - loadtest
+    depends_on:
+      backend:
+        condition: service_started
+    environment:
+      BASE_URL: http://backend:8080
+      TARGET_VERSION: ${TARGET_VERSION}
+    volumes:
+      - ./:/scripts:ro
+      - ./results:/results
+
 volumes:
   mysql-data:
