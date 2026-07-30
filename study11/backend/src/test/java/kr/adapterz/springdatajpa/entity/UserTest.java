@@ -76,8 +76,8 @@ class UserTest {
     }
 
     @Test
-    @DisplayName("비밀번호를 변경하면 새로운 비밀번호로 바뀐다")
-    void setPassword() {
+    @DisplayName("비밀번호를 변경하면 새로운 비밀번호로 바뀌고 인증 버전이 증가한다")
+    void changePassword() {
         // given
         User user = new User(
                 "test@test.com",
@@ -87,10 +87,11 @@ class UserTest {
         );
 
         // when
-        user.setPassword("NewPassword1!");
+        user.changePassword("NewPassword1!");
 
         // then
         assertThat(user.getPassword()).isEqualTo("NewPassword1!");
+        assertThat(user.getAuthVersion()).isEqualTo(1L);
     }
 
     @Test

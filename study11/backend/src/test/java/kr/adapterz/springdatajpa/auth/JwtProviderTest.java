@@ -14,15 +14,17 @@ class JwtProviderTest {
     private static final long ONE_HOUR_MILLIS = 3_600_000L;
 
     @Test
-    @DisplayName("발급한 액세스 토큰에서 사용자 ID를 다시 꺼낼 수 있다")
+    @DisplayName("발급한 액세스 토큰에서 사용자 ID와 인증 버전을 다시 꺼낼 수 있다")
     void createAndParseAccessToken() {
         JwtProvider jwtProvider = new JwtProvider(SECRET, ONE_HOUR_MILLIS);
 
-        String accessToken = jwtProvider.createAccessToken(42L);
-        Long userId = jwtProvider.getUserId(accessToken);
+        String accessToken = jwtProvider.createAccessToken(42L, 3L);
+        AccessTokenClaims tokenClaims =
+                jwtProvider.getAccessTokenClaims(accessToken);
 
         assertThat(accessToken).isNotBlank();
-        assertThat(userId).isEqualTo(42L);
+        assertThat(tokenClaims.userId()).isEqualTo(42L);
+        assertThat(tokenClaims.authVersion()).isEqualTo(3L);
     }
 
     @Test
@@ -33,9 +35,9 @@ class JwtProviderTest {
                 ONE_HOUR_MILLIS
         );
         JwtProvider tokenVerifier = new JwtProvider(SECRET, ONE_HOUR_MILLIS);
-        String forgedToken = tokenIssuer.createAccessToken(42L);
+        String forgedToken = tokenIssuer.createAccessToken(42L, 0L);
 
-        assertThatThrownBy(() -> tokenVerifier.getUserId(forgedToken))
+        assertThatThrownBy(() -> tokenVerifier.getAccessTokenClaims(forgedToken))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Token");
     }
@@ -44,9 +46,9 @@ class JwtProviderTest {
     @DisplayName("만료된 토큰은 Invalid_Token 예외가 발생한다")
     void expiredTokenIsRejected() {
         JwtProvider jwtProvider = new JwtProvider(SECRET, -1_000L);
-        String expiredToken = jwtProvider.createAccessToken(42L);
+        String expiredToken = jwtProvider.createAccessToken(42L, 0L);
 
-        assertThatThrownBy(() -> jwtProvider.getUserId(expiredToken))
+        assertThatThrownBy(() -> jwtProvider.getAccessTokenClaims(expiredToken))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Token");
     }

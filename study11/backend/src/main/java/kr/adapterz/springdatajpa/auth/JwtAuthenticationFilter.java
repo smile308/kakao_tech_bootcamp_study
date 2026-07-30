@@ -50,11 +50,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String token = authorizationHeader.substring(7);
-            Long userId = jwtProvider.getUserId(token);
+            AccessTokenClaims tokenClaims = jwtProvider.getAccessTokenClaims(token);
 
-            CustomUserDetails userDetails = customUserDetailsService.loadUserByUserId(userId);
+            CustomUserDetails userDetails =
+                    customUserDetailsService.loadUserByUserId(tokenClaims.userId());
 
-            if (!userDetails.isEnabled()) {
+            if (!userDetails.isEnabled()
+                    || userDetails.getAuthVersion() != tokenClaims.authVersion()) {
                 throw new DataNullException("No_User");
             }
 

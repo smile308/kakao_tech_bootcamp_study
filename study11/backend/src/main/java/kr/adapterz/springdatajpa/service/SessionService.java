@@ -42,7 +42,10 @@ public class SessionService {
 
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-            String accessToken = jwtProvider.createAccessToken(userDetails.getUserId());
+            String accessToken = jwtProvider.createAccessToken(
+                    userDetails.getUserId(),
+                    userDetails.getAuthVersion()
+            );
             String refreshToken = refreshTokenProvider.createRefreshToken();
             String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken);
 
@@ -105,7 +108,8 @@ public class SessionService {
         );
 
         String accessToken = jwtProvider.createAccessToken(
-                authSession.getUser().getUserId()
+                authSession.getUser().getUserId(),
+                authSession.getUser().getAuthVersion()
         );
 
         return new SessionRefreshResponseDto(

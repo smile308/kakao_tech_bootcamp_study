@@ -56,7 +56,8 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
-        when(jwtProvider.getUserId(accessToken)).thenReturn(42L);
+        when(jwtProvider.getAccessTokenClaims(accessToken))
+                .thenReturn(new AccessTokenClaims(42L, 0L));
         when(customUserDetailsService.loadUserByUserId(42L)).thenReturn(userDetails);
 
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
@@ -66,8 +67,39 @@ class JwtAuthenticationFilterTest {
                 .isNotNull();
         assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal())
                 .isEqualTo(userDetails);
-        verify(jwtProvider).getUserId(accessToken);
+        verify(jwtProvider).getAccessTokenClaims(accessToken);
         verify(customUserDetailsService).loadUserByUserId(42L);
+    }
+
+    @Test
+    @DisplayName("JWT 인증 버전이 현재 사용자와 다르면 401 Invalid_Token을 반환한다")
+    void staleAuthVersionReturnsUnauthorized() throws Exception {
+        String accessToken = "stale-access-token";
+        User user = new User(
+                "test@test.com",
+                "encoded-password",
+                "tester",
+                "profile.png",
+                0
+        );
+        ReflectionTestUtils.setField(user, "userId", 42L);
+        user.changePassword("new-encoded-password");
+        CustomUserDetails userDetails = new CustomUserDetails(user);
+
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/posts");
+        request.addHeader("Authorization", "Bearer " + accessToken);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain filterChain = new MockFilterChain();
+
+        when(jwtProvider.getAccessTokenClaims(accessToken))
+                .thenReturn(new AccessTokenClaims(42L, 0L));
+        when(customUserDetailsService.loadUserByUserId(42L)).thenReturn(userDetails);
+
+        jwtAuthenticationFilter.doFilter(request, response, filterChain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("Invalid_Token");
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test
@@ -79,7 +111,7 @@ class JwtAuthenticationFilterTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
         MockFilterChain filterChain = new MockFilterChain();
 
-        when(jwtProvider.getUserId(accessToken))
+        when(jwtProvider.getAccessTokenClaims(accessToken))
                 .thenThrow(new AuthException("Invalid_Token"));
 
         jwtAuthenticationFilter.doFilter(request, response, filterChain);

@@ -1,13 +1,13 @@
 INSERT INTO users
-(user_id, email, password, nickname, profile_image, received_report_count, deleted)
+(user_id, email, password, nickname, profile_image, received_report_count, deleted, auth_version)
 VALUES
-    (1, 'test@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '더미작성자1', NULL, 0,false),
-    (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, 4,false),
-    (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, 0,false),
-    (4, 'suspended@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '정지계정', NULL, 10,false),
-    (5, 'reporter1@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터1', NULL, 0,false),
-    (6, 'reporter2@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터2', NULL, 0,false),
-    (7, 'reporter3@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터3', NULL, 0,false);
+    (1, 'test@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '더미작성자1', NULL, 0, false, 0),
+    (2, 'second@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '두번째작성자', NULL, 4, false, 0),
+    (3, 'admin@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '관리자', NULL, 0, false, 0),
+    (4, 'suspended@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '정지계정', NULL, 10, false, 0),
+    (5, 'reporter1@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터1', NULL, 0, false, 0),
+    (6, 'reporter2@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터2', NULL, 0, false, 0),
+    (7, 'reporter3@example.com', '$2a$10$44njE6/sAzptDjUjNFaG5.60QwzzVBijbgYr6v9IeFxoav7cWbRj6', '신고테스터3', NULL, 0, false, 0);
 
 INSERT INTO posts
 (post_id, user_id, post_title, post_content, is_fixed, created_at, deleted, version)

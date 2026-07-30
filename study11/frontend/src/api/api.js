@@ -2,9 +2,19 @@ import { authStorage } from "../auth/authStorage.js";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
 const PUBLIC_PATHS = ["/login", "/signup"];
-const NO_REFRESH_ENDPOINTS = new Set(["/sessions", "/sessions/refresh", "/users"]);
+const NO_REFRESH_REQUESTS = new Set([
+    "POST /sessions",
+    "POST /sessions/refresh",
+    "DELETE /sessions",
+    "POST /users",
+]);
 
 let refreshPromise = null;
+
+function isRefreshExcludedRequest(endpoint, options = {}) {
+    const method = (options.method ?? "GET").toUpperCase();
+    return NO_REFRESH_REQUESTS.has(`${method} ${endpoint}`);
+}
 
 async function sendRequest(endpoint, options = {}, includeAccessToken = true) {
     const accessToken = authStorage.getAccessToken();
@@ -95,7 +105,10 @@ export function refreshAccessToken() {
 export async function request(endpoint, options = {}) {
     let result = await sendRequest(endpoint, options);
 
-    if (result.response.status === 401 && !NO_REFRESH_ENDPOINTS.has(endpoint)) {
+    if (
+        result.response.status === 401 &&
+        !isRefreshExcludedRequest(endpoint, options)
+    ) {
         try {
             await refreshAccessToken();
             result = await sendRequest(endpoint, options);

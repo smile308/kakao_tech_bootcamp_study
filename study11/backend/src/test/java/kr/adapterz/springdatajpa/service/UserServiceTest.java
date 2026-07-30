@@ -348,6 +348,7 @@ class UserServiceTest {
         verify(passwordEncoder).matches("WrongPassword1!", "old-encoded-password");
         verify(passwordEncoder, never()).encode(anyString());
         assertThat(loginUser.getPassword()).isEqualTo("old-encoded-password");
+        assertThat(loginUser.getAuthVersion()).isZero();
     }
 
     @Test
@@ -391,6 +392,7 @@ class UserServiceTest {
 
         assertThat(loginUser.getPassword()).isEqualTo("new-encoded-password");
         assertThat(loginUser.getPassword()).isNotEqualTo("NewPassword1!");
+        assertThat(loginUser.getAuthVersion()).isEqualTo(1L);
     }
 
     @Test

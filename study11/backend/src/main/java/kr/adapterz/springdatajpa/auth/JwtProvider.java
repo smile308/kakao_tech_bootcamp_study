@@ -14,6 +14,8 @@ import java.util.Date;
 
 @Component
 public class JwtProvider {
+    private static final String AUTH_VERSION_CLAIM = "authVersion";
+
     private final SecretKey secretKey;
     private final long accessExpirationMillis;
 
@@ -25,19 +27,20 @@ public class JwtProvider {
         this.accessExpirationMillis = accessExpirationMillis;
     }
 
-    public String createAccessToken(Long userId) {
+    public String createAccessToken(Long userId, long authVersion) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessExpirationMillis);
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
+                .claim(AUTH_VERSION_CLAIM, authVersion)
                 .issuedAt(now)
                 .expiration(expiration)
                 .signWith(secretKey)
                 .compact();
     }
 
-    public Long getUserId(String token) {
+    public AccessTokenClaims getAccessTokenClaims(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
@@ -45,7 +48,15 @@ public class JwtProvider {
                     .parseSignedClaims(token)
                     .getPayload();
 
-            return Long.valueOf(claims.getSubject());
+            Object authVersionClaim = claims.get(AUTH_VERSION_CLAIM);
+            if (!(authVersionClaim instanceof Number authVersion)) {
+                throw new AuthException("Invalid_Token");
+            }
+
+            return new AccessTokenClaims(
+                    Long.valueOf(claims.getSubject()),
+                    authVersion.longValue()
+            );
         } catch (JwtException | IllegalArgumentException e) {
             throw new AuthException("Invalid_Token");
         }

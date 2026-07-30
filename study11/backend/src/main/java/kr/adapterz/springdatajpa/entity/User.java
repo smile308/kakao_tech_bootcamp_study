@@ -36,6 +36,9 @@ public class User {
     @Column(name ="deleted", nullable = false)
     private boolean deleted;
 
+    @Column(name = "auth_version", nullable = false)
+    private long authVersion;
+
     public User(
             String email,
             String password,
@@ -49,6 +52,7 @@ public class User {
         this.profileImage = profileImage;
         this.receivedReportCount = receivedReportCount;
         this.deleted = false;
+        this.authVersion = 0L;
     }
 
     public User(
@@ -63,6 +67,7 @@ public class User {
         this.profileImage = null;
         this.receivedReportCount = receivedReportCount;
         this.deleted = false;
+        this.authVersion = 0L;
     }
 
     public void update(String nickname, String profileImage) {
@@ -86,8 +91,8 @@ public class User {
         return receivedReportCount >= SUSPENSION_REPORT_THRESHOLD;
     }
 
-    public void setPassword(String password)
-    {
+    public void changePassword(String password) {
         this.password = password;
+        this.authVersion++;
     }
 }

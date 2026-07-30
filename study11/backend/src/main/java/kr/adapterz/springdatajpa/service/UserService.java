@@ -114,7 +114,7 @@ public class UserService {
 
         UserPasswordResponseDto userPasswordResponseDto = new UserPasswordResponseDto();
 
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.changePassword(passwordEncoder.encode(request.getPassword()));
         authSessionRepository.revokeAllActiveByUser(user, LocalDateTime.now());
         return userPasswordResponseDto;
     }

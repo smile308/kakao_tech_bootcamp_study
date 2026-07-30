@@ -69,7 +69,7 @@ class SessionServiceTest {
                 .hasMessage("Login_Failed");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -87,7 +87,7 @@ class SessionServiceTest {
                 .hasMessage("Suspended_Account");
 
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -105,7 +105,7 @@ class SessionServiceTest {
         when(authentication.getPrincipal())
                 .thenReturn(userDetails);
 
-        when(jwtProvider.createAccessToken(1L))
+        when(jwtProvider.createAccessToken(1L, 0L))
                 .thenReturn("access-token");
 
         when(refreshTokenProvider.createRefreshToken())
@@ -139,7 +139,7 @@ class SessionServiceTest {
         ArgumentCaptor<AuthSession> authSessionCaptor =
                 ArgumentCaptor.forClass(AuthSession.class);
 
-        verify(jwtProvider).createAccessToken(1L);
+        verify(jwtProvider).createAccessToken(1L, 0L);
         verify(authSessionRepository).save(authSessionCaptor.capture());
 
         AuthSession savedAuthSession = authSessionCaptor.getValue();
@@ -177,7 +177,7 @@ class SessionServiceTest {
         when(refreshTokenProvider.createExpirationTime())
                 .thenReturn(LocalDateTime.of(2026, 7, 21, 6, 0));
 
-        when(jwtProvider.createAccessToken(1L))
+        when(jwtProvider.createAccessToken(1L, 0L))
                 .thenReturn("new-access-token");
 
         // when
@@ -193,7 +193,7 @@ class SessionServiceTest {
         assertThat(authSession.getRefreshExpiresAt())
                 .isEqualTo(LocalDateTime.of(2026, 7, 21, 6, 0));
 
-        verify(jwtProvider).createAccessToken(1L);
+        verify(jwtProvider).createAccessToken(1L, 0L);
     }
 
     @Test
@@ -204,7 +204,7 @@ class SessionServiceTest {
                 .hasMessage("Invalid_Refresh_Token");
 
         verifyNoInteractions(authSessionRepository);
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -222,7 +222,7 @@ class SessionServiceTest {
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
 
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -247,7 +247,7 @@ class SessionServiceTest {
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
 
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -271,7 +271,7 @@ class SessionServiceTest {
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
 
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test
@@ -297,7 +297,7 @@ class SessionServiceTest {
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
 
-        verify(jwtProvider, never()).createAccessToken(anyLong());
+        verify(jwtProvider, never()).createAccessToken(anyLong(), anyLong());
     }
 
     @Test

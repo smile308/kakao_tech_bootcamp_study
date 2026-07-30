@@ -26,6 +26,10 @@ public class CustomUserDetails implements UserDetails {
         return user.getNickname();
     }
 
+    public long getAuthVersion() {
+        return user.getAuthVersion();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_USER"));
