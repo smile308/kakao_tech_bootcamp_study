@@ -100,29 +100,52 @@ class RedisAofRestartIntegrationTest {
                 .withTimeout(10)
                 .exec();
 
-        waitForRedisRecovery();
+        waitForAofDataRecovery();
 
-        assertThat(redisTemplate.opsForValue().get(COUNT_KEY))
+        assertThat(REDIS.execInContainer(
+                "redis-cli",
+                "--raw",
+                "GET",
+                COUNT_KEY
+        ).getStdout().trim())
                 .isEqualTo("101");
-        assertThat(redisTemplate.opsForSet().isMember(
+        assertThat(REDIS.execInContainer(
+                "redis-cli",
+                "--raw",
+                "SISMEMBER",
                 DIRTY_SET_KEY,
                 "42"
-        )).isTrue();
+        ).getStdout().trim()).isEqualTo("1");
     }
 
-    private void waitForRedisRecovery() throws InterruptedException {
+    private void waitForAofDataRecovery() throws InterruptedException {
         long deadline = System.nanoTime()
-                + Duration.ofSeconds(10).toNanos();
-        RuntimeException lastFailure = null;
+                + Duration.ofSeconds(30).toNanos();
+        Exception lastFailure = null;
 
         while (System.nanoTime() < deadline) {
             try {
-                if ("101".equals(
-                        redisTemplate.opsForValue().get(COUNT_KEY)
-                )) {
+                String count = REDIS.execInContainer(
+                        "redis-cli",
+                        "--raw",
+                        "GET",
+                        COUNT_KEY
+                ).getStdout().trim();
+                String dirty = REDIS.execInContainer(
+                        "redis-cli",
+                        "--raw",
+                        "SISMEMBER",
+                        DIRTY_SET_KEY,
+                        "42"
+                ).getStdout().trim();
+
+                if ("101".equals(count) && "1".equals(dirty)) {
                     return;
                 }
-            } catch (RuntimeException exception) {
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw exception;
+            } catch (Exception exception) {
                 lastFailure = exception;
             }
 
@@ -130,7 +153,7 @@ class RedisAofRestartIntegrationTest {
         }
 
         throw new AssertionError(
-                "Redis did not recover within 10 seconds",
+                "Redis AOF data did not recover within 30 seconds",
                 lastFailure
         );
     }
