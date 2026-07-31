@@ -24,7 +24,7 @@ public class PostViewResponseDto {
     private int likeCount;
     private int reportCount;
     private int commentCount;
-    private int viewCount;
+    private long viewCount;
     private LocalDateTime createdAt;
 
     private Boolean isMine;
@@ -36,6 +36,7 @@ public class PostViewResponseDto {
     public PostViewResponseDto(
             Post post,
             PostCounter counter,
+            long viewCount,
             List<CommentResponseDto> comments,
             Boolean isLiked,
             Boolean isReported,
@@ -50,7 +51,7 @@ public class PostViewResponseDto {
         this.likeCount = counter.getLikeCount();
         this.reportCount = counter.getReportCount();
         this.commentCount = counter.getReplyCount();
-        this.viewCount = counter.getViewCount();
+        this.viewCount = viewCount;
         this.createdAt = post.getCreatedAt();
 
         this.isMine = isMine;

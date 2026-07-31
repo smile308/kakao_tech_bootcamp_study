@@ -42,6 +42,9 @@ class PostServiceTest {
     private PostCounterRepository postCounterRepository;
 
     @Mock
+    private ViewCountUpdater viewCountUpdater;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -66,21 +69,64 @@ class PostServiceTest {
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(postCounterRepository.incrementViewCount(
-                postId,
-                Post.REPORT_BLOCK_THRESHOLD
-        ))
-                .thenReturn(0);
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.getPostView(postId,loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
-        verify(postCounterRepository).incrementViewCount(
-                postId,
-                Post.REPORT_BLOCK_THRESHOLD
-        );
+        verify(viewCountUpdater, never()).increment(postId, 0L);
         verify(commentRepository, never()).findByPostWithUser(any(Post.class));
+    }
+
+    @Test
+    @DisplayName("신고로 차단된 게시글은 조회수를 증가시키지 않는다")
+    void getPostViewDoesNotIncrementBlockedPost() {
+        Long postId = 1L;
+        Long loginUserId = 2L;
+        Post post = createPost(postId, createUser(1L));
+
+        for (int count = 0;
+             count < Post.REPORT_BLOCK_THRESHOLD;
+             count++) {
+            post.report();
+        }
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        assertThatThrownBy(
+                () -> postService.getPostView(postId, loginUserId)
+        )
+                .isInstanceOf(DataNullException.class)
+                .hasMessage("No_Post");
+
+        verify(viewCountUpdater, never()).increment(postId, 0L);
+        verify(userRepository, never())
+                .findByUserIdAndDeletedFalse(loginUserId);
+    }
+
+    @Test
+    @DisplayName("로그인 사용자가 없으면 조회수를 증가시키지 않는다")
+    void getPostViewDoesNotIncrementForMissingUser() {
+        Long postId = 1L;
+        Long loginUserId = 2L;
+        Post post = createPost(postId, createUser(1L));
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(
+                () -> postService.getPostView(postId, loginUserId)
+        )
+                .isInstanceOf(AuthException.class)
+                .hasMessage("No_User");
+
+        verify(viewCountUpdater, never()).increment(postId, 0L);
+        verify(commentRepository, never()).findByPostWithUser(post);
     }
 
     @Test
@@ -481,18 +527,7 @@ class PostServiceTest {
         Comment otherComment =
                 createComment(11L, otherUser, post);
 
-        when(postCounterRepository.incrementViewCount(
-                postId,
-                Post.REPORT_BLOCK_THRESHOLD
-        ))
-                .thenAnswer(invocation -> {
-                    post.view();
-                    return 1;
-                });
-
         when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
-        when(postRepository.findActivePostForInteractionCheck(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
@@ -506,6 +541,8 @@ class PostServiceTest {
 
         when(postReportRepository.existsByPostAndUser(post, loginUser))
                 .thenReturn(false);
+        when(viewCountUpdater.increment(postId, 0L))
+                .thenReturn(1L);
 
         // when
         PostViewResponseDto response =
@@ -528,6 +565,7 @@ class PostServiceTest {
         ).isFalse();
 
         assertThat(response.getViewCount()).isEqualTo(1);
+        verify(viewCountUpdater).increment(postId, 0L);
 
         verify(postRepository)
                 .findByPostIdAndDeletedFalse(postId);
@@ -552,18 +590,7 @@ class PostServiceTest {
 
         Post post = createPost(postId, writer);
 
-        when(postCounterRepository.incrementViewCount(
-                postId,
-                Post.REPORT_BLOCK_THRESHOLD
-        ))
-                .thenAnswer(invocation -> {
-                    post.view();
-                    return 1;
-                });
-
         when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
-        when(postRepository.findActivePostForInteractionCheck(postId))
                 .thenReturn(Optional.of(post));
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
@@ -577,6 +604,8 @@ class PostServiceTest {
 
         when(postReportRepository.existsByPostAndUser(post, loginUser))
                 .thenReturn(false);
+        when(viewCountUpdater.increment(postId, 0L))
+                .thenReturn(1L);
 
         // when
         PostViewResponseDto response =
@@ -585,6 +614,7 @@ class PostServiceTest {
         // then
         assertThat(response.getIsMine()).isFalse();
         assertThat(response.getComments()).isEmpty();
+        assertThat(response.getViewCount()).isEqualTo(1L);
     }
 
     private User createUser(Long userId) {

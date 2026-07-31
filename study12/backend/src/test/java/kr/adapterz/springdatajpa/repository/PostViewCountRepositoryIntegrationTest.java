@@ -54,4 +54,74 @@ class PostViewCountRepositoryIntegrationTest {
         assertThat(savedViewCount.getPostId()).isEqualTo(post.getPostId());
         assertThat(savedViewCount.getViewCount()).isZero();
     }
+
+    @Test
+    @DisplayName("분리된 조회수는 현재값과 기준값 중 큰 값에서 증가한다")
+    void incrementUsesGreaterCurrentOrBaselineViewCount() {
+        User writer = userRepository.save(
+                new User(
+                        "view-count-increment@test.com",
+                        "encoded-password",
+                        "조회수증가",
+                        "profile.png",
+                        0
+                )
+        );
+        Post post = postRepository.save(
+                new Post(writer, "조회수 증가 게시글", "본문")
+        );
+        entityManager.flush();
+
+        int firstUpdatedRows =
+                postViewCountRepository.incrementViewCount(
+                        post.getPostId(),
+                        100L
+                );
+        int secondUpdatedRows =
+                postViewCountRepository.incrementViewCount(
+                        post.getPostId(),
+                        50L
+                );
+
+        PostViewCount savedViewCount = postViewCountRepository
+                .findById(post.getPostId())
+                .orElseThrow();
+
+        assertThat(firstUpdatedRows).isEqualTo(1);
+        assertThat(secondUpdatedRows).isEqualTo(1);
+        assertThat(savedViewCount.getViewCount()).isEqualTo(102L);
+    }
+
+    @Test
+    @DisplayName("Redis 스냅샷은 기존 조회수를 감소시키지 않고 반영된다")
+    void persistMaxDoesNotDecreaseViewCount() {
+        User writer = userRepository.save(
+                new User(
+                        "view-count-persist@test.com",
+                        "encoded-password",
+                        "조회수반영",
+                        "profile.png",
+                        0
+                )
+        );
+        Post post = postRepository.save(
+                new Post(writer, "조회수 반영 게시글", "본문")
+        );
+        entityManager.flush();
+
+        postViewCountRepository.persistMaxViewCount(
+                post.getPostId(),
+                150L
+        );
+        postViewCountRepository.persistMaxViewCount(
+                post.getPostId(),
+                120L
+        );
+
+        PostViewCount savedViewCount = postViewCountRepository
+                .findById(post.getPostId())
+                .orElseThrow();
+
+        assertThat(savedViewCount.getViewCount()).isEqualTo(150L);
+    }
 }

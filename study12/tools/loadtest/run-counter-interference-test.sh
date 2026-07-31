@@ -102,6 +102,10 @@ fi
 
 target_version="$(sed -n 's/^TARGET_VERSION=//p' "$env_file")"
 backend_port="$(sed -n 's/^BACKEND_PORT=//p' "$env_file")"
+view_count_storage="$(sed -n 's/^VIEW_COUNT_STORAGE=//p' "$env_file")"
+redis_view_count_enabled="$(
+  sed -n 's/^REDIS_VIEW_COUNT_ENABLED=//p' "$env_file"
+)"
 
 if [[ -z "$target_version" ]]; then
   echo "TARGET_VERSION is missing in $env_file" >&2
@@ -113,7 +117,31 @@ if [[ -z "$backend_port" ]]; then
   exit 1
 fi
 
+if [[ "$view_count_storage" != "post_counters" \
+  && "$view_count_storage" != "post_view_counts" ]]; then
+  echo "unsupported VIEW_COUNT_STORAGE: $view_count_storage" >&2
+  exit 1
+fi
+
+if [[ "$redis_view_count_enabled" != "true" \
+  && "$redis_view_count_enabled" != "false" ]]; then
+  echo "unsupported REDIS_VIEW_COUNT_ENABLED: $redis_view_count_enabled" >&2
+  exit 1
+fi
+
 read_post_state() {
+  local view_join=""
+  local view_column="counter.view_count"
+  local view_group="counter.view_count"
+
+  if [[ "$view_count_storage" == "post_view_counts" ]]; then
+    view_join="
+      JOIN bamboo_loadtest.post_view_counts AS view_counter
+        ON view_counter.post_id = counter.post_id"
+    view_column="view_counter.view_count"
+    view_group="view_counter.view_count"
+  fi
+
   docker compose \
     --env-file "$env_file" \
     -f compose.yaml \
@@ -129,13 +157,39 @@ read_post_state() {
       SELECT
         counter.reply_count,
         COUNT(comment.comment_id),
-        counter.view_count
+        ${view_column}
       FROM bamboo_loadtest.post_counters AS counter
+      ${view_join}
       LEFT JOIN bamboo_loadtest.comments AS comment
         ON comment.post_id = counter.post_id
       WHERE counter.post_id = ${POST_ID}
-      GROUP BY counter.post_id, counter.reply_count, counter.view_count;
+      GROUP BY counter.post_id, counter.reply_count, ${view_group};
     "
+}
+
+read_redis_view_count() {
+  if [[ "$redis_view_count_enabled" != "true" ]]; then
+    printf '%s\n' "not-applicable"
+    return
+  fi
+
+  local value
+  value="$(
+    docker compose \
+      --env-file "$env_file" \
+      -f compose.yaml \
+      exec -T \
+      redis \
+      redis-cli \
+      --raw \
+      GET "bamboo:{post-view}:count:${POST_ID}"
+  )"
+
+  if [[ -z "$value" ]]; then
+    printf '%s\n' "not-present"
+  else
+    printf '%s\n' "$value"
+  fi
 }
 
 preflight_status="$(
@@ -155,7 +209,13 @@ fi
 initial_post_state="$(read_post_state)"
 initial_comment_counter="$(printf '%s\n' "$initial_post_state" | awk '{print $1}')"
 initial_comment_rows="$(printf '%s\n' "$initial_post_state" | awk '{print $2}')"
-initial_view_count="$(printf '%s\n' "$initial_post_state" | awk '{print $3}')"
+initial_mysql_view_count="$(printf '%s\n' "$initial_post_state" | awk '{print $3}')"
+initial_redis_view_count="$(read_redis_view_count)"
+
+initial_effective_view_count="$initial_mysql_view_count"
+if [[ "$initial_redis_view_count" =~ ^[0-9]+$ ]]; then
+  initial_effective_view_count="$initial_redis_view_count"
+fi
 
 if [[ "$initial_comment_counter" != "$initial_comment_rows" ]]; then
   echo "initial comment counter and row count do not match" >&2
@@ -197,7 +257,11 @@ mkdir -p "$result_directory"
   echo "required_token_seconds=$required_token_seconds"
   echo "initial_comment_counter=$initial_comment_counter"
   echo "initial_comment_rows=$initial_comment_rows"
-  echo "initial_view_count=$initial_view_count"
+  echo "view_count_storage=$view_count_storage"
+  echo "redis_view_count_enabled=$redis_view_count_enabled"
+  echo "initial_mysql_view_count=$initial_mysql_view_count"
+  echo "initial_redis_view_count=$initial_redis_view_count"
+  echo "initial_effective_view_count=$initial_effective_view_count"
   echo "k6_console_file=$k6_console_file"
   echo "k6_summary_file=${result_directory}/${k6_summary_file}"
   echo "mysql_locks_file=${result_directory}/${result_prefix}__mysql-locks.txt"
@@ -239,7 +303,13 @@ observer_pid=""
 final_post_state="$(read_post_state)"
 final_comment_counter="$(printf '%s\n' "$final_post_state" | awk '{print $1}')"
 final_comment_rows="$(printf '%s\n' "$final_post_state" | awk '{print $2}')"
-final_view_count="$(printf '%s\n' "$final_post_state" | awk '{print $3}')"
+final_mysql_view_count="$(printf '%s\n' "$final_post_state" | awk '{print $3}')"
+final_redis_view_count="$(read_redis_view_count)"
+
+final_effective_view_count="$final_mysql_view_count"
+if [[ "$final_redis_view_count" =~ ^[0-9]+$ ]]; then
+  final_effective_view_count="$final_redis_view_count"
+fi
 
 echo
 echo "MySQL observer output"
@@ -253,8 +323,10 @@ echo
   echo "observer_status=$observer_status"
   echo "final_comment_counter=$final_comment_counter"
   echo "final_comment_rows=$final_comment_rows"
-  echo "final_view_count=$final_view_count"
-  echo "view_count_delta=$(( final_view_count - initial_view_count ))"
+  echo "final_mysql_view_count=$final_mysql_view_count"
+  echo "final_redis_view_count=$final_redis_view_count"
+  echo "final_effective_view_count=$final_effective_view_count"
+  echo "view_count_delta=$(( final_effective_view_count - initial_effective_view_count ))"
   echo "k6_console_file=$k6_console_file"
   echo "k6_summary_file=${result_directory}/${k6_summary_file}"
   echo "mysql_locks_file=${result_directory}/${result_prefix}__mysql-locks.txt"

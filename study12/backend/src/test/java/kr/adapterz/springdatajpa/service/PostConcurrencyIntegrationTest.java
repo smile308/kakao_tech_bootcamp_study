@@ -9,6 +9,7 @@ import kr.adapterz.springdatajpa.repository.LikeRepository;
 import kr.adapterz.springdatajpa.repository.PostCounterRepository;
 import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
+import kr.adapterz.springdatajpa.repository.PostViewCountRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,9 @@ class PostConcurrencyIntegrationTest {
 
     @Autowired
     private PostCounterRepository postCounterRepository;
+
+    @Autowired
+    private PostViewCountRepository postViewCountRepository;
 
     @Autowired
     private LikeRepository likeRepository;
@@ -89,9 +93,15 @@ class PostConcurrencyIntegrationTest {
         );
 
         // then
-        PostCounter savedCounter = postCounterRepository.findById(postId).orElseThrow();
+        long separatedViewCount = postViewCountRepository.findById(postId)
+                .orElseThrow()
+                .getViewCount();
+        int legacyViewCount = postCounterRepository.findById(postId)
+                .orElseThrow()
+                .getViewCount();
 
-        assertThat(savedCounter.getViewCount()).isEqualTo(requestCount);
+        assertThat(separatedViewCount).isEqualTo(requestCount);
+        assertThat(legacyViewCount).isZero();
     }
 
     @Test

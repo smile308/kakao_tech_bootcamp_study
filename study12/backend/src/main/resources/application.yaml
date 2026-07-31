@@ -3,6 +3,23 @@ spring:
     name: springdatajpa
   profiles:
     default: local
+    group:
+      test:
+        - local
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
+
+app:
+  view-count:
+    enabled: ${VIEW_COUNT_REDIS_ENABLED:true}
+    count-key-prefix: "bamboo:{post-view}:count:"
+    dirty-set-key: "bamboo:{post-view}:dirty"
+    flush-lock-key: "bamboo:{post-view}:flush-lock"
+    flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s}
 
 jwt:
   access-expiration-millis: ${JWT_ACCESS_EXPIRATION_MILLIS:600000}

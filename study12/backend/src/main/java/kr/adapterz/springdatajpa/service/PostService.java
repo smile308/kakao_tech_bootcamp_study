@@ -37,6 +37,7 @@ public class PostService {
     private final LikeRepository likeRepository;
     private final PostReportRepository postReportRepository;
     private final PostCounterRepository postCounterRepository;
+    private final ViewCountUpdater viewCountUpdater;
     private final EntityManager entityManager;
 
     //게시물 목록 조회
@@ -79,16 +80,7 @@ public class PostService {
     //게시물
     @Transactional
     public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
-        int updatedRowCount = postCounterRepository.incrementViewCount(
-                postId,
-                Post.REPORT_BLOCK_THRESHOLD
-        );
-        if (updatedRowCount == 0) {
-            throw new DataNullException("No_Post");
-        }
-
-        validateActivePostAfterCounterUpdate(postId);
-        Post post = getActivePost(postId);
+        Post post = getViewablePost(postId);
         User loginUser = getLoginUser(loginUserId);
 
         List<Comment> comments = commentRepository.findByPostWithUser(post);
@@ -105,9 +97,19 @@ public class PostService {
         boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
         boolean isMine = post.getUser().getUserId().equals(loginUserId);
 
+        long baselineViewCount = Math.max(
+                post.getPostCounter().getViewCount(),
+                post.getPostViewCount().getViewCount()
+        );
+        long updatedViewCount = viewCountUpdater.increment(
+                postId,
+                baselineViewCount
+        );
+
         return new PostViewResponseDto(
                 post,
                 post.getPostCounter(),
+                updatedViewCount,
                 commentResponseDtos,
                 isLiked,
                 isReported,
@@ -237,6 +239,16 @@ public class PostService {
     private Post getActivePost(Long postId) {
         return postRepository.findByPostIdAndDeletedFalse(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
+    }
+
+    private Post getViewablePost(Long postId) {
+        Post post = getActivePost(postId);
+
+        if (post.isBlockedByReports()) {
+            throw new DataNullException("No_Post");
+        }
+
+        return post;
     }
 
     private Post getActivePostForUpdate(Long postId) {

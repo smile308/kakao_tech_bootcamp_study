@@ -14,7 +14,14 @@ import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
-    @EntityGraph(attributePaths = {"user", "postImages", "postCounter"})
+    @EntityGraph(
+            attributePaths = {
+                    "user",
+                    "postImages",
+                    "postCounter",
+                    "postViewCount"
+            }
+    )
     @Query("""
             SELECT post
             FROM Post post
@@ -27,7 +34,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             Pageable pageable
     );
 
-    @EntityGraph(attributePaths = {"user", "postImages", "postCounter"})
+    @EntityGraph(
+            attributePaths = {
+                    "user",
+                    "postImages",
+                    "postCounter",
+                    "postViewCount"
+            }
+    )
     @Query("""
             SELECT post
             FROM Post post
