@@ -42,18 +42,18 @@
 
 ### k6 요청 성공 여부와 요청 수
 
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-160138__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163040__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163314__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-160416__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-162708__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-163548__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-01__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-02__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-03__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-01__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-02__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-03__k6-summary.json`
 
 ### 실행 전후 DB 값
 
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163040__run-metadata.txt`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163314__run-metadata.txt`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-162708__run-metadata.txt`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-163548__run-metadata.txt`
+- `study11_before__post-counter-interference-comments100__comment-only__run-02__run-metadata.txt`
+- `study11_before__post-counter-interference-comments100__comment-only__run-03__run-metadata.txt`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-02__run-metadata.txt`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-03__run-metadata.txt`
 
 1차 실행 때는 메타데이터 자동 저장 기능이 없어서 실행 터미널 출력으로 100/100과 조회수 일치를 확인했다. 이 보존상의 한계를 발견한 뒤 실행기를 보완했으며, 2·3차부터는 위 `run-metadata.txt`에 자동 저장했다.

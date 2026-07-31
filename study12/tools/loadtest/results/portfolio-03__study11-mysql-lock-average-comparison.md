@@ -52,14 +52,14 @@
 
 ### 댓글 전용
 
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-160138__mysql-locks.txt`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163040__mysql-locks.txt`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163314__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__comment-only__run-01__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__comment-only__run-02__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__comment-only__run-03__mysql-locks.txt`
 
 ### 조회·댓글 혼합
 
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-160416__mysql-locks.txt`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-162708__mysql-locks.txt`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-163548__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-01__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-02__mysql-locks.txt`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-03__mysql-locks.txt`
 
 계산 방법은 각 원본에서 첫 번째와 마지막 `Innodb_row_lock_waits`의 차이, 첫 번째와 마지막 `Innodb_row_lock_time`의 차이를 구한 뒤 조건별로 3회 산술평균을 낸 것이다.

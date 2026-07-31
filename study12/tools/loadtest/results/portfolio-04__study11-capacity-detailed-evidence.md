@@ -254,10 +254,10 @@ MySQL의 전역 행 락 지표는 이전 실행 값이 누적될 수 있으므�
 
 ## 14. 원본 증거 파일
 
-- `study11_baseline__hot-post-view-comments100__capacity__20260730-152353__k6-console.txt`
-- `study11_baseline__hot-post-view-comments100__capacity__20260730-152353__k6-summary.json`
-- `study11_baseline__hot-post-view-comments100__capacity__20260730-152353__mysql-locks.txt`
+- `study11_before__hot-post-view-comments100__capacity__run-01__k6-console.txt`
+- `study11_before__hot-post-view-comments100__capacity__run-01__k6-summary.json`
+- `study11_before__hot-post-view-comments100__capacity__run-01__mysql-locks.txt`
 - 정상 부하 비교 원본:
-  - `study11_baseline__hot-post-view-comments100__baseline__20260730-135225__k6-console.txt`
-  - `study11_baseline__hot-post-view-comments100__baseline__20260730-135225__k6-summary.json`
-  - `study11_baseline__hot-post-view-comments100__baseline__20260730-135225__mysql-locks.txt`
+  - `study11_before__hot-post-view-comments100__baseline__run-01__k6-console.txt`
+  - `study11_before__hot-post-view-comments100__baseline__run-01__k6-summary.json`
+  - `study11_before__hot-post-view-comments100__baseline__run-01__mysql-locks.txt`

@@ -186,15 +186,15 @@ SHA-256은 첨부한 원본이 분석에 사용한 파일과 같은지 나중에
 
 ### 댓글 전용
 
-- 1차: `study11_baseline__post-counter-interference-comments100__comment-only__20260730-160138__*`
-- 2차: `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163040__*`
-- 3차: `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163314__*`
+- 1차: `study11_before__post-counter-interference-comments100__comment-only__run-01__*`
+- 2차: `study11_before__post-counter-interference-comments100__comment-only__run-02__*`
+- 3차: `study11_before__post-counter-interference-comments100__comment-only__run-03__*`
 
 ### 조회+댓글 혼합
 
-- 1차: `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-160416__*`
-- 2차: `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-162708__*`
-- 3차: `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-163548__*`
+- 1차: `study11_before__post-counter-interference-comments100__mixed-normal__run-01__*`
+- 2차: `study11_before__post-counter-interference-comments100__mixed-normal__run-02__*`
+- 3차: `study11_before__post-counter-interference-comments100__mixed-normal__run-03__*`
 
 ### 제외 실행
 

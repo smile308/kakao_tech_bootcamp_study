@@ -36,12 +36,12 @@
 
 ## 이 표를 만든 원본
 
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-160138__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163040__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__comment-only__20260730-163314__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-160416__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-162708__k6-summary.json`
-- `study11_baseline__post-counter-interference-comments100__mixed-normal__20260730-163548__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-01__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-02__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__comment-only__run-03__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-01__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-02__k6-summary.json`
+- `study11_before__post-counter-interference-comments100__mixed-normal__run-03__k6-summary.json`
 
 사용 지표:
 

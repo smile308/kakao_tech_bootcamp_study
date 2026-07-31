@@ -1,0 +1,29 @@
+Counter interference test started
+started_at=2026-07-30T16:30:40+0900
+target_version=study11_baseline
+test_profile=comment-only
+data_variant=comments100
+post_id=1
+authentication_preflight=HTTP_200
+token_exp_epoch=1785400011
+token_remaining_seconds_at_start=3371
+required_token_seconds=105
+initial_comment_counter=100
+initial_comment_rows=100
+initial_view_count=80146
+k6_console_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__k6-console.txt
+k6_summary_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__k6-summary.json
+mysql_locks_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__mysql-locks.txt
+run_metadata_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__run-metadata.txt
+Counter interference test finished
+finished_at=2026-07-30T16:31:55+0900
+k6_status=0
+observer_status=0
+final_comment_counter=100
+final_comment_rows=100
+final_view_count=80146
+view_count_delta=0
+k6_console_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__k6-console.txt
+k6_summary_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__k6-summary.json
+mysql_locks_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__mysql-locks.txt
+run_metadata_file=results/study11_before__post-counter-interference-comments100__comment-only__run-02__run-metadata.txt
