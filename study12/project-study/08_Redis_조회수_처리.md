@@ -82,6 +82,45 @@ bamboo:{post-view}:flush-lock
 
 `{post-view}`는 Redis Cluster에서 관련 키를 같은 hash slot에 배치하기 위한 hash tag다. 여러 키를 함께 사용하는 Lua 스크립트에서 중요하다.
 
+설정을 실제 key 문자열로 바꾸고 잘못된 설정을 시작 시 거부하는 `ViewCountProperties` 원문:
+
+```java
+@ConfigurationProperties(prefix = "app.view-count")
+public record ViewCountProperties(
+        boolean enabled,
+        String countKeyPrefix,
+        String dirtySetKey,
+        String flushLockKey,
+        Duration flushInterval
+) {
+
+    public ViewCountProperties {
+        requireText(countKeyPrefix, "countKeyPrefix");
+        requireText(dirtySetKey, "dirtySetKey");
+        requireText(flushLockKey, "flushLockKey");
+
+        if (flushInterval == null || flushInterval.isZero() || flushInterval.isNegative()) {
+            throw new IllegalArgumentException("flushInterval must be positive");
+        }
+    }
+
+    public String countKey(Long postId) {
+        if (postId == null || postId <= 0) {
+            throw new IllegalArgumentException("postId must be positive");
+        }
+        return countKeyPrefix + postId;
+    }
+
+    private static void requireText(String value, String propertyName) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(propertyName + " must not be blank");
+        }
+    }
+}
+```
+
+record의 compact constructor인 `public ViewCountProperties { ... }`는 parameter 목록을 다시 적지 않고 생성 시 검증을 수행한다. 설정 binding 중 prefix·lock key가 비었거나 flush interval이 0 이하이면 application 시작이 실패한다. `countKey(42L)`는 `countKeyPrefix + 42`를 반환하며 post ID도 양수인지 검사한다.
+
 
 ### DB 대체 구현 조건과 Redis key 설정 라인별 주석본
 
@@ -108,15 +147,11 @@ local count_type = redis.call('TYPE', KEYS[1]).ok
 local dirty_type = redis.call('TYPE', KEYS[2]).ok
 
 if count_type ~= 'none' and count_type ~= 'string' then
-    return redis.error_reply(
-        'view count key must be a string'
-    )
+    return redis.error_reply('view count key must be a string')
 end
 
 if dirty_type ~= 'none' and dirty_type ~= 'set' then
-    return redis.error_reply(
-        'dirty key must be a set'
-    )
+    return redis.error_reply('dirty key must be a set')
 end
 
 local current = redis.call('GET', KEYS[1])
@@ -145,18 +180,50 @@ return updated
 
 Lua 스크립트 전체는 Redis 서버 안에서 하나의 원자적 작업으로 실행된다. 다른 요청이 중간 단계에 끼어들지 못하므로 동시에 조회수가 증가해도 값을 잃지 않는다.
 
+여기서 원자적이라는 말은 “다른 Redis command가 script 중간에 끼어들지 않는다”는 뜻이다. Redis Lua는 DB Transaction처럼 script 실행 중 이미 수행된 write를 오류 발생 시 자동 rollback하지 않는다. 현재 증가 script는 write 전에 두 key type을 먼저 검사하여 예상 가능한 type 오류가 중간 write 뒤 발생할 가능성을 줄인다.
+
 ## 8.5 실제 코드 발췌: Java에서 Lua 실행
 
 ```java
-Long updatedViewCount = redisTemplate.execute(
-        INCREMENT_AND_MARK_DIRTY_SCRIPT,
-        List.of(
-                properties.countKey(postId),
-                properties.dirtySetKey()
-        ),
-        Long.toString(baselineViewCount),
-        Long.toString(postId)
-);
+@Override
+public long increment(Long postId, long baselineViewCount) {
+    if (baselineViewCount < 0) {
+        throw new IllegalArgumentException(
+                "baselineViewCount must not be negative"
+        );
+    }
+
+    try {
+        Long updatedViewCount = redisTemplate.execute(
+                INCREMENT_AND_MARK_DIRTY_SCRIPT,
+                List.of(
+                        properties.countKey(postId),
+                        properties.dirtySetKey()
+                ),
+                Long.toString(baselineViewCount),
+                Long.toString(postId)
+        );
+
+        if (updatedViewCount == null) {
+            log.warn(
+                    "Redis returned no view count. "
+                            + "Serving the last persisted count. postId={}",
+                    postId
+            );
+            return baselineViewCount;
+        }
+
+        return updatedViewCount;
+    } catch (DataAccessException exception) {
+        log.warn(
+                "Redis view count update failed. "
+                        + "Serving the last persisted count. postId={}, cause={}",
+                postId,
+                exception.getClass().getSimpleName()
+        );
+        return baselineViewCount;
+    }
+}
 ```
 
 ```text
@@ -166,7 +233,9 @@ ARGV[1] → DB 기준 조회수
 ARGV[2] → 게시글 ID
 ```
 
-Redis가 값을 반환하지 않거나 `DataAccessException`이 발생하면 DB 기준값을 응답한다. 조회 요청 전체를 실패시키지 않는 가용성 우선 fallback이다.
+Redis가 값을 반환하지 않거나 Redis 접근 계층의 `DataAccessException`이 발생하면 DB 기준값을 응답한다. 조회 요청 전체를 실패시키지 않는 가용성 우선 fallback이다. 그러나 음수 baseline은 `try` 전에 `IllegalArgumentException`을 던지고, Redis와 무관한 모든 RuntimeException까지 fallback하는 것은 아니다.
+
+fallback으로 DB 기준값만 응답하는 요청은 조회수를 RDS에서 직접 증가시키지 않는다. 따라서 Redis 장애 동안 들어온 조회 횟수는 영구 저장되지 않고 사용자에게도 마지막 영구값이 반복되어 보일 수 있다. “가용성 우선”은 요청 성공을 우선한다는 뜻이지 증가분까지 보존한다는 뜻은 아니다.
 
 ## 8.6 DB 기준값이 필요한 이유
 
@@ -185,21 +254,47 @@ DB 기준값 100으로 SET 후 INCR
 
 `PostService`는 기존 `PostCounter`와 새 `PostViewCount` 중 큰 값을 기준으로 전달한다. 마이그레이션 중 두 저장 위치의 값이 다를 수 있기 때문이다.
 
+설정으로 Redis 기능 자체를 끈 경우에는 “Redis 오류 fallback”과 달리 `DatabaseViewCountUpdater`가 RDS를 직접 증가시킨다. 실제 원문:
+
+```java
+@Override
+@Transactional
+public long increment(Long postId, long baselineViewCount) {
+    int updatedRowCount =
+            postViewCountRepository.incrementViewCount(
+                    postId,
+                    baselineViewCount
+            );
+
+    if (updatedRowCount != 1) {
+        throw new CounterUpdateException();
+    }
+
+    return postViewCountRepository.findById(postId)
+            .map(PostViewCount::getViewCount)
+            .orElseThrow(CounterUpdateException::new);
+}
+```
+
+```text
+VIEW_COUNT_REDIS_ENABLED=false
+→ DatabaseViewCountUpdater Bean 선택
+→ 매 조회마다 RDS max 기준 + 1
+
+RedisViewCountStore가 선택된 상태에서 Redis 통신만 실패
+→ 구현체를 즉시 DB 구현으로 교체하는 것이 아님
+→ 마지막 DB baseline을 응답하고 증가분은 기록하지 못함
+```
+
 ## 8.7 실제 코드 발췌: Flush Scheduler
 
 ```java
 @Scheduled(
-        initialDelayString =
-                "${app.view-count.flush-interval}",
-        fixedDelayString =
-                "${app.view-count.flush-interval}"
+        initialDelayString = "${app.view-count.flush-interval}",
+        fixedDelayString = "${app.view-count.flush-interval}"
 )
 public void flushDirtyViewCounts() {
-    RLock lock =
-            redissonClient.getLock(
-                    properties.flushLockKey()
-            );
-
+    RLock lock = redissonClient.getLock(properties.flushLockKey());
     boolean acquired = false;
 
     try {
@@ -212,7 +307,8 @@ public void flushDirtyViewCounts() {
         flushWhileHoldingLock();
     } catch (RedisException exception) {
         log.warn(
-                "Redis view count flush lock failed."
+                "Redis view count flush lock failed. cause={}",
+                exception.getClass().getSimpleName()
         );
     } finally {
         releaseIfOwned(lock, acquired);
@@ -226,6 +322,69 @@ public void flushDirtyViewCounts() {
 blue backend lock 성공 → flush 실행
 green backend lock 실패 → 이번 주기 건너뜀
 ```
+
+락을 얻은 뒤 dirty ID를 처리하고 락을 해제하는 실제 원문:
+
+```java
+private void flushWhileHoldingLock() {
+    try {
+        for (Long postId : redisViewCountStore.findDirtyPostIds()) {
+            flushOne(postId);
+        }
+    } catch (DataAccessException exception) {
+        log.warn(
+                "Redis view count flush was skipped. cause={}",
+                exception.getClass().getSimpleName()
+        );
+    }
+}
+
+private void flushOne(Long postId) {
+    try {
+        OptionalLong snapshot =
+                redisViewCountStore.findViewCountSnapshot(postId);
+
+        if (snapshot.isEmpty()) {
+            return;
+        }
+
+        long snapshotViewCount = snapshot.getAsLong();
+
+        persistenceService.persist(postId, snapshotViewCount);
+
+        redisViewCountStore.acknowledgeIfUnchanged(
+                postId,
+                snapshotViewCount
+        );
+    } catch (RuntimeException exception) {
+        log.warn(
+                "Failed to persist Redis view count. "
+                        + "It will be retried. postId={}, cause={}",
+                postId,
+                exception.getClass().getSimpleName()
+        );
+    }
+}
+
+private void releaseIfOwned(RLock lock, boolean acquired) {
+    if (!acquired) {
+        return;
+    }
+
+    try {
+        if (lock.isHeldByCurrentThread()) {
+            lock.unlock();
+        }
+    } catch (RedisException exception) {
+        log.warn(
+                "Redis view count flush lock release failed. cause={}",
+                exception.getClass().getSimpleName()
+        );
+    }
+}
+```
+
+각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 전체 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 dirty member를 제거하지 않고 그대로 반환하므로 그 ID는 이후 주기에도 남아 재확인된다.
 
 ## 8.8 Snapshot 저장과 dirty 확인
 
@@ -294,6 +453,29 @@ public void persist(
 
 DB 쿼리는 기존 조회수와 snapshot 중 더 큰 값을 저장한다. 늦게 도착한 작은 snapshot이 DB 값을 감소시키지 못하게 한다.
 
+`persistMaxViewCount()`의 실제 native SQL:
+
+```java
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query(
+        value = """
+                UPDATE post_view_counts
+                SET view_count = GREATEST(
+                        view_count,
+                        :snapshotViewCount
+                    )
+                WHERE post_id = :postId
+                """,
+        nativeQuery = true
+)
+int persistMaxViewCount(
+        @Param("postId") Long postId,
+        @Param("snapshotViewCount") long snapshotViewCount
+);
+```
+
+이것은 Entity 이름을 사용하는 JPQL이 아니라 실제 table·column 이름을 사용하는 native SQL이다. MySQL의 `GREATEST(a, b)`가 두 값 중 큰 값을 반환한다. WHERE에 맞는 row가 없으면 반환 row 수가 0이므로 Service가 `CounterUpdateException`을 던진다.
+
 Transaction이 commit된 후에만 dirty 해제가 실행되어야 한다. 테스트에서는 저장 호출과 acknowledge 호출의 순서를 검증한다.
 
 ## 8.10 Redis AOF와 Docker volume
@@ -303,6 +485,7 @@ Compose 실제 설정:
 ```yaml
 redis:
   image: redis:7.4-alpine
+  restart: unless-stopped
   command:
     - redis-server
     - --appendonly
@@ -311,6 +494,17 @@ redis:
     - everysec
   volumes:
     - redis-data:/data
+  healthcheck:
+    test:
+      - CMD
+      - redis-cli
+      - ping
+    interval: 5s
+    timeout: 3s
+    retries: 10
+    start_period: 5s
+  networks:
+    - backend-network
 ```
 
 ```text
@@ -322,20 +516,26 @@ appendfsync everysec
 
 Docker volume
 → 컨테이너를 다시 만들어도 /data 보존
+
+healthcheck
+→ 컨테이너 안에서 redis-cli ping을 주기적으로 실행해 Redis 응답 상태 판정
 ```
 
 Redis가 작업 저장소라고 해서 항상 재시작 시 모든 값이 사라지도록 구성된 것은 아니다.
+
+`restart: unless-stopped`는 process가 비정상 종료되거나 Docker daemon이 재시작될 때 container 재시작을 시도하되 사용자가 명시적으로 중지한 상태는 유지하는 정책이다. AOF `everysec`는 보통 성능과 내구성의 절충이며, 장애 시 최근 약 1초 범위의 write가 유실될 가능성까지 없애는 설정은 아니다.
 
 ## 8.11 장애별 동작
 
 | 장애 | 현재 동작 |
 |---|---|
-| Redis 증가 실패 | DB의 마지막 영구 조회수를 응답 |
-| Redis가 null 반환 | DB 기준값 응답 |
+| Redis 증가 `DataAccessException` | DB의 마지막 영구 조회수를 응답하지만 해당 증가분은 기록하지 못함 |
+| Redis가 null 반환 | DB 기준값을 응답하지만 해당 증가분은 기록하지 못함 |
 | 분산 락 획득 실패 | 이번 flush 건너뜀 |
 | RDS 저장 실패 | dirty 유지, 다음 주기 재시도 |
 | 저장 중 조회수 증가 | snapshot 불일치로 dirty 유지 |
-| Redis 재시작 | AOF와 volume으로 복구 시도 |
+| snapshot count key 없음 | 해당 dirty ID를 제거하지 않고 다음 주기에도 재확인 |
+| Redis 재시작 | AOF와 volume으로 복구 시도. `everysec` 특성상 최근 write 유실 가능성은 남음 |
 
 ## 8.12 핵심 축약본
 
@@ -371,6 +571,43 @@ public class RedisViewCountStore implements ViewCountUpdater { // Redis 기반 �
 }
 ```
 
+### `ViewCountProperties`
+
+```java
+@ConfigurationProperties(prefix = "app.view-count") // YAML의 app.view-count 하위 값을 record component에 binding한다.
+public record ViewCountProperties( // 조회수 관련 설정을 immutable data 묶음으로 선언한다.
+        boolean enabled, // Redis 조회수 기능 활성 여부다.
+        String countKeyPrefix, // 게시글 ID 앞에 붙일 count key prefix다.
+        String dirtySetKey, // dirty ID set의 완성 key다.
+        String flushLockKey, // Redisson 분산 lock key다.
+        Duration flushInterval // Scheduler 주기다.
+) {
+
+    public ViewCountProperties { // record component 값을 암묵적으로 받는 compact constructor다.
+        requireText(countKeyPrefix, "countKeyPrefix"); // count prefix가 비지 않았는지 검사한다.
+        requireText(dirtySetKey, "dirtySetKey"); // dirty key가 비지 않았는지 검사한다.
+        requireText(flushLockKey, "flushLockKey"); // lock key가 비지 않았는지 검사한다.
+
+        if (flushInterval == null || flushInterval.isZero() || flushInterval.isNegative()) { // interval이 없거나 0 이하인지 검사한다.
+            throw new IllegalArgumentException("flushInterval must be positive"); // 잘못된 설정이면 application 시작을 실패시킨다.
+        }
+    }
+
+    public String countKey(Long postId) { // 특정 게시글의 완성된 Redis count key를 만든다.
+        if (postId == null || postId <= 0) { // ID가 없거나 양수가 아닌지 검사한다.
+            throw new IllegalArgumentException("postId must be positive"); // 잘못된 key 생성을 거부한다.
+        }
+        return countKeyPrefix + postId; // prefix 뒤에 숫자 ID를 붙여 반환한다.
+    }
+
+    private static void requireText(String value, String propertyName) { // 문자열 설정 공통 검증 method다.
+        if (value == null || value.isBlank()) { // null이거나 공백뿐인지 검사한다.
+            throw new IllegalArgumentException(propertyName + " must not be blank"); // 어떤 property가 잘못됐는지 포함해 실패시킨다.
+        }
+    }
+}
+```
+
 ### 증가 Lua
 
 ```lua
@@ -401,15 +638,67 @@ return updated -- Java와 사용자 응답에 사용할 증가된 조회수를 �
 ### Java의 Lua 실행
 
 ```java
-Long updatedViewCount = redisTemplate.execute( // Redis 서버에 미리 만든 Lua script 실행을 요청한다.
-        INCREMENT_AND_MARK_DIRTY_SCRIPT, // 증가와 dirty 표시가 함께 있는 script 객체다.
-        List.of( // Lua의 KEYS 배열로 전달할 Redis key 목록이다.
-                properties.countKey(postId), // KEYS[1]인 게시글별 조회수 key다.
-                properties.dirtySetKey() // KEYS[2]인 공통 dirty set key다.
-        ),
-        Long.toString(baselineViewCount), // ARGV[1]로 전달할 DB 기준 조회수다.
-        Long.toString(postId) // ARGV[2]로 dirty set에 넣을 게시글 ID다.
-);
+@Override // ViewCountUpdater의 증가 계약을 구현한다.
+public long increment(Long postId, long baselineViewCount) { // 게시글 ID와 DB 기준값으로 Redis 조회수를 증가시킨다.
+    if (baselineViewCount < 0) { // 조회수 기준값이 음수인지 검사한다.
+        throw new IllegalArgumentException( // caller 계약 위반이므로 Redis fallback 전에 예외를 던진다.
+                "baselineViewCount must not be negative"
+        );
+    }
+
+    try { // Redis 접근 오류에 한해 DB 기준값을 반환할 범위다.
+        Long updatedViewCount = redisTemplate.execute( // Redis server에 미리 만든 Lua script 실행을 요청한다.
+                INCREMENT_AND_MARK_DIRTY_SCRIPT, // 증가와 dirty 표시가 함께 있는 script 객체다.
+                List.of( // Lua의 KEYS 배열로 전달할 Redis key 목록이다.
+                        properties.countKey(postId), // KEYS[1]인 게시글별 조회수 key다.
+                        properties.dirtySetKey() // KEYS[2]인 공통 dirty set key다.
+                ),
+                Long.toString(baselineViewCount), // ARGV[1]로 전달할 DB 기준 조회수다.
+                Long.toString(postId) // ARGV[2]로 dirty set에 넣을 게시글 ID다.
+        );
+
+        if (updatedViewCount == null) { // Redis template이 결과를 돌려주지 않았는지 확인한다.
+            log.warn( // server log에 fallback 사실과 게시글 ID를 남긴다.
+                    "Redis returned no view count. "
+                            + "Serving the last persisted count. postId={}",
+                    postId
+            );
+            return baselineViewCount; // 증가시키지 못한 마지막 DB 영구값을 응답한다.
+        }
+
+        return updatedViewCount; // Lua가 반환한 증가 후 값을 응답한다.
+    } catch (DataAccessException exception) { // Spring Redis 접근 계층 예외를 잡는다.
+        log.warn( // 요청을 실패시키지 않고 장애 class를 log로 남긴다.
+                "Redis view count update failed. "
+                        + "Serving the last persisted count. postId={}, cause={}",
+                postId,
+                exception.getClass().getSimpleName()
+        );
+        return baselineViewCount; // Redis 장애 시 증가분을 기록하지 못하고 마지막 DB 값을 반환한다.
+    }
+}
+```
+
+### Redis 비활성 시 DB 구현
+
+```java
+@Override // 같은 ViewCountUpdater 계약을 DB 방식으로 구현한다.
+@Transactional // DB update와 이어지는 조회를 한 Transaction으로 묶는다.
+public long increment(Long postId, long baselineViewCount) { // RDS에서 기준값 보정과 증가를 수행한다.
+    int updatedRowCount = // native update가 바꾼 row 수를 받는다.
+            postViewCountRepository.incrementViewCount( // GREATEST(DB 값, baseline) + 1 query를 실행한다.
+                    postId, // 수정할 게시글 ID다.
+                    baselineViewCount // migration 중 더 큰 값을 보존할 기준이다.
+            );
+
+    if (updatedRowCount != 1) { // 정확히 한 row가 바뀌었는지 확인한다.
+        throw new CounterUpdateException(); // row가 없거나 비정상 결과면 Transaction을 실패시킨다.
+    }
+
+    return postViewCountRepository.findById(postId) // 증가된 row를 다시 조회한다.
+            .map(PostViewCount::getViewCount) // Entity가 있으면 long 조회수로 변환한다.
+            .orElseThrow(CounterUpdateException::new); // 사라졌다면 counter 갱신 실패 예외를 만든다.
+}
 ```
 
 ### Flush Scheduler
@@ -433,6 +722,65 @@ public void flushDirtyViewCounts() { // dirty 조회수를 RDS에 반영하는 �
         log.warn("Redis view count flush lock failed."); // 전체 Scheduler를 죽이지 않고 장애를 기록한다.
     } finally { // 성공·실패와 관계없이 락 정리를 시도한다.
         releaseIfOwned(lock, acquired); // 실제 획득했고 현재 Thread 소유일 때만 안전하게 해제한다.
+    }
+}
+```
+
+```java
+private void flushWhileHoldingLock() { // 분산 락 소유 중 dirty set 전체를 처리한다.
+    try { // dirty set 조회 자체의 Redis 접근 실패를 처리한다.
+        for (Long postId : redisViewCountStore.findDirtyPostIds()) { // dirty 게시글 ID를 하나씩 순회한다.
+            flushOne(postId); // 게시글 하나의 snapshot 저장을 시도한다.
+        }
+    } catch (DataAccessException exception) { // dirty set을 읽지 못한 Redis 접근 오류를 잡는다.
+        log.warn( // 이번 전체 주기를 건너뛴 이유를 기록한다.
+                "Redis view count flush was skipped. cause={}",
+                exception.getClass().getSimpleName()
+        );
+    }
+}
+
+private void flushOne(Long postId) { // dirty 게시글 하나를 RDS에 반영한다.
+    try { // 한 게시글 실패가 다음 게시글 순회를 막지 않도록 개별 처리한다.
+        OptionalLong snapshot = // Redis count key가 없을 가능성을 담는다.
+                redisViewCountStore.findViewCountSnapshot(postId); // 현재 조회수를 snapshot으로 읽는다.
+
+        if (snapshot.isEmpty()) { // dirty ID는 있지만 count key가 없는지 확인한다.
+            return; // 제거하지 않고 반환하여 다음 주기에도 다시 확인하게 한다.
+        }
+
+        long snapshotViewCount = snapshot.getAsLong(); // 존재하는 primitive long 값을 꺼낸다.
+
+        persistenceService.persist(postId, snapshotViewCount); // 별도 Service proxy의 DB Transaction으로 max 값을 저장한다.
+
+        redisViewCountStore.acknowledgeIfUnchanged( // DB commit 후 현재 Redis 값이 snapshot과 같을 때만 dirty를 지운다.
+                postId, // 확인할 게시글 ID다.
+                snapshotViewCount // 방금 영구 저장한 비교값이다.
+        );
+    } catch (RuntimeException exception) { // Redis parsing·DB 저장·acknowledge 등 한 ID의 RuntimeException을 잡는다.
+        log.warn( // dirty를 남긴 채 다음 주기 재시도 사실을 기록한다.
+                "Failed to persist Redis view count. "
+                        + "It will be retried. postId={}, cause={}",
+                postId,
+                exception.getClass().getSimpleName()
+        );
+    }
+}
+
+private void releaseIfOwned(RLock lock, boolean acquired) { // 현재 실행이 소유한 lock만 해제한다.
+    if (!acquired) { // 처음부터 lock을 얻지 못했는지 확인한다.
+        return; // 다른 실행의 lock을 건드리지 않는다.
+    }
+
+    try { // lock 상태 확인과 unlock의 Redis 오류를 처리한다.
+        if (lock.isHeldByCurrentThread()) { // 현재 Thread가 아직 이 lock 소유자인지 확인한다.
+            lock.unlock(); // 소유권이 있을 때만 분산 lock을 해제한다.
+        }
+    } catch (RedisException exception) { // lock 해제 통신 실패를 잡는다.
+        log.warn( // Scheduler를 죽이지 않고 해제 실패를 기록한다.
+                "Redis view count flush lock release failed. cause={}",
+                exception.getClass().getSimpleName()
+        );
     }
 }
 ```
@@ -474,11 +822,31 @@ public void persist(Long postId, long snapshotViewCount) { // 특정 게시글 s
 }
 ```
 
+```java
+@Modifying(clearAutomatically = true, flushAutomatically = true) // native update 전 pending 변경을 flush하고 뒤에 persistence context를 비운다.
+@Query( // 실제 table과 column 이름을 사용할 query를 선언한다.
+        value = """
+                UPDATE post_view_counts
+                SET view_count = GREATEST(
+                        view_count,
+                        :snapshotViewCount
+                    )
+                WHERE post_id = :postId
+                """, // 현재 DB 값과 snapshot 중 큰 값을 저장하는 MySQL SQL이다.
+        nativeQuery = true // JPQL이 아니라 native SQL임을 지정한다.
+)
+int persistMaxViewCount( // 변경된 row 수를 반환한다.
+        @Param("postId") Long postId, // :postId parameter에 게시글 ID를 연결한다.
+        @Param("snapshotViewCount") long snapshotViewCount // :snapshotViewCount에 Redis snapshot을 연결한다.
+);
+```
+
 ### Redis Compose 영속성
 
 ```yaml
 redis:                         # Redis 서비스 정의를 시작한다.
   image: redis:7.4-alpine      # 가벼운 Redis 7.4 Alpine 이미지를 사용한다.
+  restart: unless-stopped      # 명시적으로 중지하지 않았다면 종료·daemon 재시작 뒤 container를 다시 시작한다.
   command:                     # 기본 Redis 실행 명령에 AOF 옵션을 추가한다.
     - redis-server             # Redis 서버 프로세스를 시작한다.
     - --appendonly             # AOF 기록 기능의 옵션 이름이다.
@@ -487,6 +855,17 @@ redis:                         # Redis 서비스 정의를 시작한다.
     - everysec                 # 최대 대략 1초 단위로 fsync한다.
   volumes:                     # 컨테이너 밖에 보존할 저장 경로를 연결한다.
     - redis-data:/data         # Redis /data를 이름 있는 Docker volume에 저장한다.
+  healthcheck:                 # Redis가 실제 command에 응답하는지 container 상태 검사를 정의한다.
+    test:                      # 실행할 검사 command를 배열 형식으로 적는다.
+      - CMD                    # shell 해석 없이 뒤 인자들을 직접 실행하는 형식이다.
+      - redis-cli              # Redis command line client를 실행한다.
+      - ping                   # server 응답이 정상이면 PONG과 성공 exit code를 반환한다.
+    interval: 5s               # 정상 상태에서 5초마다 검사한다.
+    timeout: 3s                # 한 검사 응답을 최대 3초 기다린다.
+    retries: 10                # 연속 10번 실패하면 unhealthy로 판단한다.
+    start_period: 5s           # 시작 직후 5초 동안의 실패에는 초기 유예를 적용한다.
+  networks:                    # Redis가 참여할 Compose network 목록이다.
+    - backend-network          # backend container가 service 이름 redis로 접근할 공유 network다.
 ```
 
 ## 8.13 스킵할 코드
@@ -494,7 +873,7 @@ redis:                         # Redis 서비스 정의를 시작한다.
 - 로그 메시지 문구
 - `OptionalLong`의 Java 문법 세부
 - 락 해제 중 예외 로그의 반복 구조
-- DB fallback 구현의 단순 조회 부분
+- `findDirtyPostIds()`의 stream 변환과 단순 Redis GET wrapper 내부
 
 다만 두 Lua 스크립트, 분산 락, snapshot 이후 조건부 dirty 해제는 스킵하지 않는다.
 
@@ -589,6 +968,30 @@ primitive `long` 값이 있을 수도 없을 수도 있음을 표현한다. 값�
 
 문법이 아니라 동시성 개념이다. 계속 변할 수 있는 Redis 값을 특정 순간에 읽어 고정한 비교 기준을 뜻한다. 저장 뒤 현재값과 snapshot을 비교하여 중간 변경 여부를 판단한다.
 
+### record compact constructor
+
+```java
+public ViewCountProperties {
+    검증 코드
+}
+```
+
+record의 canonical constructor를 component parameter 목록 없이 작성하는 문법이다. component 값이 field에 최종 대입되기 전에 검증하거나 정규화할 수 있다. 일반 class의 parameter 없는 constructor와 다른 문법이다.
+
+### `GREATEST`와 native query
+
+```sql
+SET view_count = GREATEST(view_count, :snapshotViewCount)
+```
+
+MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = true`이므로 `post_view_counts`, `view_count`는 Entity·field 이름이 아니라 실제 DB table·column 이름이다.
+
+### Redis 장애 fallback과 DB 구현의 차이
+
+- 설정이 `false`여서 `DatabaseViewCountUpdater`가 선택되면 매 요청이 RDS 조회수를 실제로 증가시킨다.
+- Redis 구현이 선택된 상태에서 `DataAccessException`이 발생하면 구현체를 교체하지 않는다. 그 요청은 baseline만 반환하므로 조회 증가분이 보존되지 않는다.
+- `@ConditionalOnProperty`는 application 시작 시 Bean 구성을 결정하며 요청 중 장애를 감지해 동적으로 다른 Bean으로 전환하는 기능이 아니다.
+
 ## 8.14 이해 확인
 
 1. `ViewCountUpdater` 인터페이스를 둔 이유는 무엇인가?
@@ -601,6 +1004,10 @@ primitive `long` 값이 있을 수도 없을 수도 있음을 표현한다. 값�
 8. `acknowledgeIfUnchanged`는 어떤 경우에만 dirty를 제거하는가?
 9. RDS에는 왜 기존 값과 snapshot 중 큰 값을 저장하는가?
 10. AOF와 Docker volume은 각각 무엇을 보존하는가?
+11. Redis 구현이 활성화된 상태의 통신 장애와 `VIEW_COUNT_REDIS_ENABLED=false`는 DB 처리 방식이 어떻게 다른가?
+12. Redis Lua의 원자성이 script 오류 시 이전 write까지 rollback한다는 뜻인가?
+13. snapshot count key가 사라졌지만 dirty ID가 남아 있으면 현재 Scheduler는 어떻게 처리하는가?
+14. AOF `everysec`와 volume을 사용하면 최근 조회수 유실 가능성이 완전히 사라지는가?
 
 ## 8.15 오답노트
 

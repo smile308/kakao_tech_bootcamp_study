@@ -161,30 +161,80 @@ location = /health
 # 프론트 컨테이너가 응답 가능한지 배포 스크립트가 확인한다.
 ```
 
-## 11.5 실제 Compose 구조: 백엔드
+## 11.5 실제 Compose 원문: 백엔드
 
 ```yaml
+name: week12-backend
+
 services:
   redis:
     image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
     volumes:
       - redis-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     networks:
       - backend-network
 
   backend-blue:
-    image: ${BACKEND_IMAGE}:${BACKEND_BLUE_TAG}
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}:${BACKEND_BLUE_TAG:?BACKEND_BLUE_TAG is required}
+    restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: prod
-      DB_URL: ${DB_URL}
-      REDIS_HOST: redis
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: ${DB_URL:?DB_URL is required}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_EXPIRATION_MILLIS: ${JWT_ACCESS_EXPIRATION_MILLIS:-600000}
+      JWT_REFRESH_EXPIRATION_MILLIS: ${JWT_REFRESH_EXPIRATION_MILLIS:-10800000}
+      JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:-3600000}
+      JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s}
+      REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s}
+      VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true}
+      VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s}
     ports:
       - "127.0.0.1:${BACKEND_BLUE_PORT:-8081}:8080"
     networks:
       - backend-network
 
   backend-green:
-    image: ${BACKEND_IMAGE}:${BACKEND_GREEN_TAG}
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}:${BACKEND_GREEN_TAG:?BACKEND_GREEN_TAG is required}
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: ${DB_URL:?DB_URL is required}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_EXPIRATION_MILLIS: ${JWT_ACCESS_EXPIRATION_MILLIS:-600000}
+      JWT_REFRESH_EXPIRATION_MILLIS: ${JWT_REFRESH_EXPIRATION_MILLIS:-10800000}
+      JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:-3600000}
+      JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s}
+      REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s}
+      VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true}
+      VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s}
     ports:
       - "127.0.0.1:${BACKEND_GREEN_PORT:-8082}:8080"
     networks:
@@ -192,13 +242,31 @@ services:
 
   nginx:
     image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      ACTIVE_COLOR: ${BACKEND_ACTIVE_COLOR:-blue}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cp "/etc/nginx/bluegreen/backend-$${ACTIVE_COLOR}.conf" /etc/nginx/conf.d/default.conf
+        exec nginx -g 'daemon off;'
     ports:
       - "${BACKEND_NGINX_PORT:-80}:80"
+    volumes:
+      - ./nginx:/etc/nginx/bluegreen:ro
     networks:
       - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
+
+volumes:
+  redis-data:
 ```
 
-위 코드는 실제 Compose에서 반복 환경변수와 health check를 제외한 축약본이다.
+위 블록은 `deploy/compose.yaml`의 실제 원문 전체다.
 
 개념:
 
@@ -212,6 +280,16 @@ service 이름 redis
 Nginx :80
 → 외부 요청을 받는 단일 입구
 ```
+
+현재 보안 설정에서 특히 주의할 줄은 다음이다.
+
+```yaml
+JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
+```
+
+`application-prod.yaml` 안의 placeholder 기본값은 `true`지만, Compose가 환경변수에 기본 `false`를 항상 전달하면 Spring은 환경변수 값 `false`를 사용한다. `deploy/.env.example`도 현재 `JWT_REFRESH_COOKIE_SECURE=false`다. 따라서 HTTPS 운영 배포에서도 `.env`를 명시적으로 `true`로 바꾸지 않으면 Refresh Cookie에 Secure flag가 붙지 않는다. YAML 파일 하나의 기본값만 보고 운영에서 자동으로 true라고 판단하면 안 된다.
+
+현재 repository의 Nginx 설정은 모두 `listen 80`이며 certificate와 `listen 443 ssl` 설정은 없다. 즉 TLS 종료가 load balancer 같은 외부 구성에서 이루어진다는 코드도 이 repository 안에서는 확인할 수 없다. 실제 HTTPS가 외부에서 제공되는지 확인한 뒤 Cookie Secure 값과 `X-Forwarded-Proto` 신뢰 설정을 함께 맞춰야 한다.
 
 ## 11.6 실제 Nginx blue 설정
 
@@ -245,19 +323,98 @@ server {
 
 green 설정은 `backend-blue`가 `backend-green`으로 바뀌는 점만 다르므로 한쪽을 이해한 뒤 중복 설명하지 않는다.
 
-## 11.7 프론트 배포 Nginx의 API 분기
+## 11.7 실제 Compose 원문: 프론트
+
+```yaml
+name: week12-frontend
+
+services:
+  frontend-blue:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}:${FRONTEND_BLUE_TAG:?FRONTEND_BLUE_TAG is required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_BLUE_PORT:-3001}:80"
+    networks:
+      - frontend-network
+
+  frontend-green:
+    image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE is required}:${FRONTEND_GREEN_TAG:?FRONTEND_GREEN_TAG is required}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_GREEN_PORT:-3002}:80"
+    networks:
+      - frontend-network
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      ACTIVE_COLOR: ${FRONTEND_ACTIVE_COLOR:-blue}
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM is required}
+    command:
+      - /bin/sh
+      - -c
+      - |
+        envsubst '$$BACKEND_UPSTREAM' \
+          < "/etc/nginx/bluegreen/frontend-$${ACTIVE_COLOR}.conf.template" \
+          > /etc/nginx/conf.d/default.conf
+        exec nginx -g 'daemon off;'
+    ports:
+      - "${FRONTEND_NGINX_PORT:-80}:80"
+    volumes:
+      - ./nginx:/etc/nginx/bluegreen:ro
+    networks:
+      - frontend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+```
+
+`$${ACTIVE_COLOR}`처럼 dollar sign을 두 번 쓴 값은 Compose가 한 번 처리한 뒤 container shell에 `${ACTIVE_COLOR}` 형태로 전달하려는 escape다. `envsubst '$$BACKEND_UPSTREAM'`도 Compose 단계에서 dollar sign 하나를 보존하고, container 안의 `envsubst`가 Nginx template의 `${BACKEND_UPSTREAM}`만 실제 값으로 바꾼다.
+
+## 11.7.1 프론트 배포 Nginx의 API 분기
+
+blue template의 실제 원문 전체:
 
 ```nginx
-location = /api {
-    return 308 /api/;
+upstream active_frontend {
+    server frontend-blue:80;
 }
 
-location /api/ {
-    proxy_pass http://${BACKEND_UPSTREAM}/;
-}
+server {
+    listen 80;
+    server_name _;
 
-location / {
-    proxy_pass http://active_frontend;
+    location = /health {
+        proxy_pass http://active_frontend/health;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /api {
+        return 308 /api/;
+    }
+
+    location /api/ {
+        proxy_pass http://${BACKEND_UPSTREAM}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location / {
+        proxy_pass http://active_frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 }
 ```
 
@@ -270,6 +427,10 @@ location / {
 /api/posts
 → BACKEND_UPSTREAM의 /posts
 ```
+
+현재 설정에는 image 요청과 관련된 중요한 한계가 있다. `client_max_body_size 20m`은 frontend image 내부 Nginx의 `nginx/default.conf`에만 있다. 그러나 `/api/` 요청은 바깥 blue/green 배포 Nginx가 직접 `BACKEND_UPSTREAM`으로 보내므로 내부 frontend Nginx를 거치지 않는다. 바깥 frontend template과 backend Nginx에는 `client_max_body_size`가 없다.
+
+Nginx 기본 request body 제한은 별도 설정이 없으면 일반적으로 1 MiB이므로, Base64 image가 포함된 큰 게시글·profile 요청은 Java validation에 도달하기 전에 proxy에서 413으로 거부될 수 있다. 현재 backend validator가 image 하나에 decoded 3 MiB를 허용하고 게시글 image를 최대 3개 받는다는 정책과 proxy 제한이 맞지 않는다. 실제 배포에서 해당 크기를 허용하려면 요청이 통과하는 바깥 frontend Nginx와 backend Nginx 양쪽의 body size 정책을 의도에 맞게 설정해야 한다.
 
 ## 11.8 환경변수, 포트, 네트워크, 볼륨
 
@@ -291,6 +452,22 @@ restart: unless-stopped
 ```
 
 Compose의 `${VAR:?message}`는 값이 없으면 실행을 실패시키고, `${VAR:-default}`는 값이 없으면 기본값을 사용한다.
+
+### `.env`가 Compose 변수를 채우는 과정
+
+repository의 `deploy/.env.example`은 필요한 key와 예시를 보여주는 template일 뿐 자동으로 사용되는 운영 파일이 아니다. EC2의 실제 deploy directory에 `.env`를 별도로 준비하고 그 directory에서 Compose command를 실행해야 한다.
+
+```text
+host shell 환경변수 또는 deploy/.env
+→ Docker Compose가 compose.yaml의 ${...}를 먼저 치환
+→ 완성된 environment mapping
+→ container process의 환경변수
+→ Spring ${DB_URL}·${REDIS_HOST} 같은 placeholder가 읽음
+```
+
+일반적으로 shell에서 명시한 환경변수가 `.env` 값보다 우선한다. `IMAGE_TAG=... ./deploy-backend.sh`처럼 command 앞에 붙인 값도 해당 process와 그 자식 Compose command에 전달된다. 실제 `.env`는 secret을 포함할 수 있어 두 repository의 `.gitignore`가 `.env`와 `.env.*`를 제외하고 `.env.example`만 예외적으로 추적한다.
+
+`.env`가 없더라도 모든 변수가 없어지는 것은 아니다. `:-`가 있는 값은 Compose 기본값을 사용하지만, `:?`가 있는 DB credential·JWT secret·image 이름 등은 Compose가 container를 만들기 전에 오류로 중단한다.
 
 ## 11.9 핵심 축약본
 
@@ -390,16 +567,55 @@ server { # 하나의 HTTP 가상 서버 설정을 시작한다.
 ### Compose 핵심
 
 ```yaml
-backend-blue:                         # blue 색상 Spring container 서비스다.
-  image: ${BACKEND_IMAGE}:${BACKEND_BLUE_TAG} # Registry image 이름과 blue tag를 .env에서 조합한다.
-  environment:                       # Spring 프로세스에 전달할 환경변수다.
-    SPRING_PROFILES_ACTIVE: prod      # 운영 profile을 활성화한다.
-    DB_URL: ${DB_URL}                 # RDS 연결 주소를 전달한다.
-    REDIS_HOST: redis                 # 같은 network의 redis 서비스 이름을 host로 사용한다.
-  ports:
-    - "127.0.0.1:${BACKEND_BLUE_PORT:-8081}:8080" # 변수가 있으면 그 host 포트를, 없으면 8081을 container 8080에 연결한다.
-  networks:
-    - backend-network                # Redis와 Nginx가 함께 속한 network에 참여한다.
+backend-blue: # blue 색상 Spring container 서비스다.
+  image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}:${BACKEND_BLUE_TAG:?BACKEND_BLUE_TAG is required} # 필수 image 이름과 필수 blue tag를 조합한다.
+  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
+  environment: # Spring process에 전달할 환경변수 mapping이다.
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod} # 값이 없거나 비면 prod profile을 사용한다.
+    DB_URL: ${DB_URL:?DB_URL is required} # 필수 RDS JDBC URL이다.
+    DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required} # 필수 DB 계정 이름이다.
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required} # 필수 DB password다.
+    JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required} # JWT 서명에 쓸 필수 secret이다.
+    JWT_ACCESS_EXPIRATION_MILLIS: ${JWT_ACCESS_EXPIRATION_MILLIS:-600000} # Access Token 수명 기본값은 600000ms다.
+    JWT_REFRESH_EXPIRATION_MILLIS: ${JWT_REFRESH_EXPIRATION_MILLIS:-10800000} # Refresh Token 수명 기본값은 10800000ms다.
+    JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:-3600000} # 만료 session 정리 주기 기본값이다.
+    JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false} # Cookie Secure flag 기본값이 false인 현재 배포 변수다.
+    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required} # browser 요청을 허용할 필수 Origin 목록이다.
+    REDIS_HOST: ${REDIS_HOST:-redis} # 기본 host는 같은 network의 Redis service 이름이다.
+    REDIS_PORT: ${REDIS_PORT:-6379} # Redis port 기본값이다.
+    REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s} # 연결 수립 timeout 기본값이다.
+    REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s} # Redis command timeout 기본값이다.
+    VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true} # Redis 조회수 구현 활성 기본값이다.
+    VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s} # RDS flush 주기 기본값이다.
+  ports: # host에 publish할 port mapping이다.
+    - "127.0.0.1:${BACKEND_BLUE_PORT:-8081}:8080" # loopback host port를 container 8080에 연결한다.
+  networks: # 참여할 내부 network 목록이다.
+    - backend-network # Redis와 Nginx가 함께 속한 network다.
+```
+
+### 프론트 Compose의 배포 Nginx
+
+```yaml
+nginx: # 외부 요청을 활성 frontend 또는 backend로 나누는 proxy service다.
+  image: nginx:1.28-alpine # Nginx Alpine image를 사용한다.
+  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
+  environment: # container shell과 envsubst에 전달할 값이다.
+    ACTIVE_COLOR: ${FRONTEND_ACTIVE_COLOR:-blue} # 활성 frontend 색상 기본값은 blue다.
+    BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM is required} # API를 보낼 backend 주소는 필수다.
+  command: # image 기본 command 대신 실행할 shell command를 배열로 지정한다.
+    - /bin/sh # POSIX shell을 실행한다.
+    - -c # 다음 문자열을 shell script로 해석한다.
+    - | # 여러 줄 shell script를 YAML block scalar로 시작한다.
+      envsubst '$$BACKEND_UPSTREAM' \ # template에서 backend 변수만 치환하며 Compose 단계에서 dollar를 escape한다.
+        < "/etc/nginx/bluegreen/frontend-$${ACTIVE_COLOR}.conf.template" \ # 활성 색상의 template을 standard input으로 읽는다.
+        > /etc/nginx/conf.d/default.conf # 치환 결과를 Nginx 실제 default 설정 파일로 쓴다.
+      exec nginx -g 'daemon off;' # shell을 foreground Nginx process로 교체한다.
+  ports: # host port를 publish한다.
+    - "${FRONTEND_NGINX_PORT:-80}:80" # host 기본 80을 proxy container 80에 연결한다.
+  volumes: # host의 template directory를 container에 mount한다.
+    - ./nginx:/etc/nginx/bluegreen:ro # 읽기 전용 ro mount로 template 변경 권한을 막는다.
+  networks: # 참여할 Compose network다.
+    - frontend-network # frontend-blue·green을 이름으로 찾을 network다.
 ```
 
 ### 프론트 배포 Nginx 분기
@@ -420,6 +636,8 @@ location / { # API가 아닌 화면 요청을 처리한다.
 
 
 ### Compose의 나머지 서비스 라인별 주석본
+
+아래는 이미 위에서 실제 전체 원문을 확인한 뒤 중복 구조만 비교하기 위한 학습용 축약본이다. 실제 파일 원문으로 사용하지 않는다. green의 환경변수는 blue와 완전히 같은 mapping이라 개념 설명을 반복하지 않는다.
 
 ```yaml
 services:                              # Compose가 함께 관리할 container 목록이다.
@@ -618,6 +836,46 @@ Nginx를 거치면 backend가 직접 본 연결 상대는 Nginx다. `X-Real-IP`,
 
 환경변수 표시가 있는 template을 읽어 실제 값으로 치환한 Nginx 설정을 만든다. Nginx 자체가 모든 shell 환경변수를 설정 파일에서 자동 해석하는 것은 아니다.
 
+### Compose의 `$$` escape와 YAML `|`
+
+```yaml
+command:
+  - /bin/sh
+  - -c
+  - |
+    echo "$${ACTIVE_COLOR}"
+```
+
+- `$$`는 Compose interpolation 단계에서 literal dollar sign 하나를 남긴다. 이후 container shell이 `${ACTIVE_COLOR}`를 평가한다.
+- `|`는 다음 들여쓰기 block의 줄바꿈을 보존한 하나의 YAML 문자열을 만든다.
+- `/bin/sh -c`는 그 여러 줄 문자열을 shell command로 실행한다.
+
+### shell `exec`
+
+```sh
+exec nginx -g 'daemon off;'
+```
+
+shell process가 자식 Nginx를 하나 더 만들고 기다리는 대신 자신을 Nginx process로 교체한다. Nginx가 container의 PID 1이 되어 종료 signal을 직접 받게 한다.
+
+### read-only volume `:ro`
+
+```yaml
+- ./nginx:/etc/nginx/bluegreen:ro
+```
+
+host directory를 container path에 bind mount하되 container 안에서 원본 template을 수정하지 못하게 read-only로 연결한다. Nginx가 생성하는 실제 `default.conf`는 이 read-only directory 밖인 `/etc/nginx/conf.d`에 쓴다.
+
+### `client_max_body_size`
+
+Nginx가 request body를 읽을 수 있는 최대 크기다. 초과하면 upstream Spring까지 보내지 않고 413을 반환할 수 있다. 여러 proxy를 연속으로 거치면 경로상의 모든 proxy 제한을 통과해야 하므로 한 내부 Nginx에만 큰 값을 설정해서는 충분하지 않다.
+
+### build `ARG`와 image `ENV`
+
+- `ARG`: Docker image를 만드는 동안 사용할 build argument다.
+- `ENV`: 이후 build step과 만들어진 image의 container 환경에 남는 environment variable이다.
+- Vite의 `VITE_*` 값은 `npm run build`가 실행될 때 bundle에 치환된다. runtime Nginx container에서 값을 바꿔도 이미 생성된 JavaScript는 다시 build되지 않는다.
+
 ## 11.11 이해 확인
 
 1. Image와 Container는 무엇이 다른가?
@@ -630,6 +888,11 @@ Nginx를 거치면 backend가 직접 본 연결 상대는 Nginx다. `X-Real-IP`,
 8. `/api/posts`가 백엔드 `/posts`로 바뀌는 Nginx 설정은 무엇인가?
 9. Docker volume은 Redis 데이터에 어떤 영향을 주는가?
 10. blue와 green Nginx 파일을 모두 반복해서 깊게 읽지 않아도 되는 이유는 무엇인가?
+11. `deploy/.env.example`과 실제 `deploy/.env`는 역할이 어떻게 다른가?
+12. prod YAML의 Cookie Secure 기본값이 true인데도 현재 Compose에서 false가 될 수 있는 이유는 무엇인가?
+13. frontend 내부 Nginx에만 `client_max_body_size 20m`을 둔 것이 `/api` image upload에 충분하지 않은 이유는 무엇인가?
+14. `$${ACTIVE_COLOR}`에서 dollar sign을 두 번 쓰는 이유는 무엇인가?
+15. 현재 repository의 Nginx 설정만으로 HTTPS 종료가 구성됐다고 말할 수 있는가?
 
 ## 11.12 오답노트
 
