@@ -19,7 +19,6 @@ public class SessionController {
     private final SessionService sessionService;
     private final RefreshCookieProvider refreshCookieProvider;
 
-    //로그인
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public SessionResponseDto createSession(
@@ -38,7 +37,6 @@ public class SessionController {
         return sessionResponse;
     }
 
-    //액세스 토큰 재발급
     @PostMapping("/refresh")
     public SessionRefreshResponseDto refreshSession(
             @CookieValue(
@@ -61,7 +59,6 @@ public class SessionController {
         return refreshResponse;
     }
 
-    //로그아웃
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteSession(

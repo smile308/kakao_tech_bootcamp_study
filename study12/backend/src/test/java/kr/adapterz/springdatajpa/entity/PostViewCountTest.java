@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.entity;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,8 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class PostViewCountTest {
 
     @Test
-    @DisplayName("조회수 카운터는 게시글과 함께 생성되고 0으로 초기화된다")
-    void createPostViewCountDefaultValue() {
+    void 조회수_카운터는_게시글과_함께_생성되고_0으로_초기화된다() {
         User user = new User(
                 "view-counter@test.com",
                 "Password1!",

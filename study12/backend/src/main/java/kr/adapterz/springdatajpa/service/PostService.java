@@ -40,7 +40,6 @@ public class PostService {
     private final ViewCountUpdater viewCountUpdater;
     private final EntityManager entityManager;
 
-    //게시물 목록 조회
     public PostPageResponseDto getPostList(int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);
@@ -59,7 +58,6 @@ public class PostService {
         return PostResponseFactory.createPageResponse(result, posts.hasNext());
     }
 
-    // 게시물 추가
     @Transactional
     public PostResponseDto createPost(Long loginUserId, PostRequestDto request) {
         ImageDataUrlValidator.validatePostImages(request.getImageFiles());
@@ -77,7 +75,6 @@ public class PostService {
         return postResponseDto;
     }
 
-    //게시물
     @Transactional
     public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
         Post post = getViewablePost(postId);
@@ -117,7 +114,6 @@ public class PostService {
         );
     }
 
-    //게시물 수정
     @Transactional
     public PostFixResponseDto fixPost(Long postId, Long loginUserId, PostFixRequestDto request) {
         PostFixResponseDto postFixResponseDto = new PostFixResponseDto();
@@ -137,7 +133,6 @@ public class PostService {
         );
         return postFixResponseDto;
     }
-    //게시글 삭제
     @Transactional
     public PostDeleteResponseDto deletePost(
             Long postId,
@@ -155,7 +150,6 @@ public class PostService {
         return postDeleteResponseDto;
     }
 
-    //게시물 좋아요
     @Transactional
     public LikeResponseDto likePost(Long postId, Long loginUserId) {
         Post post = getActivePostForInteraction(postId);
@@ -177,7 +171,6 @@ public class PostService {
         return new LikeResponseDto(getPostCounter(postId).getLikeCount());
     }
 
-    //좋아요 취소
     @Transactional
     public LikeCancelResponseDto cancelLike(Long postId, Long loginUserId) {
         getActivePostForInteraction(postId);
@@ -200,7 +193,6 @@ public class PostService {
         return new LikeCancelResponseDto(getPostCounter(postId).getLikeCount());
     }
 
-    //게시물 신고
     @Transactional
     public PostReportResponseDto reportPost(
             Long postId,

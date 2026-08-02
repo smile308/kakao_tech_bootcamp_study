@@ -10,7 +10,6 @@ import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.AuthSessionRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -45,9 +44,7 @@ class UserServiceTest {
     private UserService userService;
 
     @Test
-    @DisplayName("회원가입 시 비밀번호와 비밀번호 확인이 다르면 Invalid_Password 예외가 발생한다")
-    void createUserFailByPasswordMismatch() {
-        // given
+    void 회원가입_시_비밀번호와_비밀번호_확인이_다르면_Invalid_Password_예외가_발생한다() {
         UserRequestDto request = createUserRequest(
                 "test@test.com",
                 "Password1!",
@@ -56,7 +53,6 @@ class UserServiceTest {
                 "profile.png"
         );
 
-        // when & then
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Invalid_Password");
@@ -68,9 +64,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입 시 이미 존재하는 이메일이면 Existed_Email 예외가 발생한다")
-    void createUserFailByDuplicatedEmail() {
-        // given
+    void 회원가입_시_이미_존재하는_이메일이면_Existed_Email_예외가_발생한다() {
         UserRequestDto request = createUserRequest(
                 "test@test.com",
                 "Password1!",
@@ -82,7 +76,6 @@ class UserServiceTest {
         when(userRepository.existsByEmailAndDeletedFalse("test@test.com"))
                 .thenReturn(true);
 
-        // when & then
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Existed_Email");
@@ -94,9 +87,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입 시 이미 존재하는 닉네임이면 Existed_Nickname 예외가 발생한다")
-    void createUserFailByDuplicatedNickname() {
-        // given
+    void 회원가입_시_이미_존재하는_닉네임이면_Existed_Nickname_예외가_발생한다() {
         UserRequestDto request = createUserRequest(
                 "test@test.com",
                 "Password1!",
@@ -110,7 +101,6 @@ class UserServiceTest {
         when(userRepository.existsByNicknameAndDeletedFalse("tester"))
                 .thenReturn(true);
 
-        // when & then
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Existed_Nickname");
@@ -122,9 +112,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원가입 시 이메일과 닉네임이 중복되지 않으면 입력값과 암호화된 비밀번호로 유저가 저장된다")
-    void createUserSuccess() {
-        // given
+    void 회원가입_시_이메일과_닉네임이_중복되지_않으면_입력값과_암호화된_비밀번호로_유저가_저장된다() {
         UserRequestDto request = createUserRequest(
                 "test@test.com",
                 "Password1!",
@@ -153,10 +141,8 @@ class UserServiceTest {
         when(userRepository.save(any(User.class)))
                 .thenReturn(savedUser);
 
-        // when
         userService.createUser(request);
 
-        // then
         verify(userRepository).existsByEmailAndDeletedFalse("test@test.com");
         verify(userRepository).existsByNicknameAndDeletedFalse("tester");
         verify(passwordEncoder).encode("Password1!");
@@ -175,9 +161,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴한 계정의 누적 신고 수가 10회 이상이면 재가입할 수 없다")
-    void createUserFailBySuspendedAccount() {
-        // given
+    void 탈퇴한_계정의_누적_신고_수가_10회_이상이면_재가입할_수_없다() {
         UserRequestDto request = createUserRequest(
                 "suspended@test.com",
                 "Password1!",
@@ -195,7 +179,6 @@ class UserServiceTest {
         when(userRepository.findMaxReceivedReportCountByEmailIncludingDeleted("suspended@test.com"))
                 .thenReturn(10);
 
-        // when & then
         assertThatThrownBy(() -> userService.createUser(request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Suspended_Account");
@@ -206,9 +189,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원정보 수정 시 다른 사용자가 이미 쓰는 닉네임이면 Existed_Nickname 예외가 발생한다")
-    void patchUserFailByDuplicatedNickname() {
-        // given
+    void 회원정보_수정_시_다른_사용자가_이미_쓰는_닉네임이면_Existed_Nickname_예외가_발생한다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -231,7 +212,6 @@ class UserServiceTest {
         when(userRepository.existsByNicknameAndDeletedFalseAndUserIdNot("duplicatedNickname", loginUserId))
                 .thenReturn(true);
 
-        // when & then
         assertThatThrownBy(() -> userService.patchUser(loginUserId, request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Existed_Nickname");
@@ -242,9 +222,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원정보 수정 시 내 userId를 제외하고 닉네임 중복이 없으면 수정된다")
-    void patchUserSuccess() {
-        // given
+    void 회원정보_수정_시_내_userId를_제외하고_닉네임_중복이_없으면_수정된다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -267,10 +245,8 @@ class UserServiceTest {
         when(userRepository.existsByNicknameAndDeletedFalseAndUserIdNot("newNickname", loginUserId))
                 .thenReturn(false);
 
-        // when
         userService.patchUser(loginUserId, request);
 
-        // then
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
         verify(userRepository).existsByNicknameAndDeletedFalseAndUserIdNot("newNickname", loginUserId);
 
@@ -279,15 +255,12 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("내 정보 조회 시 로그인 유저가 없으면 No_User 예외가 발생한다")
-    void getMyInfoFailByNoUser() {
-        // given
+    void 내_정보_조회_시_로그인_유저가_없으면_No_User_예외가_발생한다() {
         Long loginUserId = 1L;
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> userService.getMyInfo(loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_User");
@@ -296,9 +269,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호 수정 시 비밀번호 확인이 다르면 Invalid_Password 예외가 발생한다")
-    void setPasswordFailByPasswordMismatch() {
-        // given
+    void 비밀번호_수정_시_비밀번호_확인이_다르면_Invalid_Password_예외가_발생한다() {
         Long loginUserId = 1L;
         UserPasswordRequestDto request = createUserPasswordRequest(
                 "CurrentPassword1!",
@@ -306,7 +277,6 @@ class UserServiceTest {
                 "WrongPassword1!"
         );
 
-        // when & then
         assertThatThrownBy(() -> userService.setPassword(loginUserId, request))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Invalid_Password");
@@ -316,8 +286,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호 수정 시 현재 비밀번호가 다르면 변경하지 않는다")
-    void setPasswordFailByInvalidCurrentPassword() {
+    void 비밀번호_수정_시_현재_비밀번호가_다르면_변경하지_않는다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -352,9 +321,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("비밀번호 수정 시 비밀번호가 일치하면 암호화된 비밀번호로 변경된다")
-    void setPasswordSuccess() {
-        // given
+    void 비밀번호_수정_시_비밀번호가_일치하면_암호화된_비밀번호로_변경된다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -382,10 +349,8 @@ class UserServiceTest {
         when(passwordEncoder.encode("NewPassword1!"))
                 .thenReturn("new-encoded-password");
 
-        // when
         userService.setPassword(loginUserId, request);
 
-        // then
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
         verify(passwordEncoder).matches("CurrentPassword1!", "old-encoded-password");
         verify(passwordEncoder).encode("NewPassword1!");
@@ -396,15 +361,12 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원 탈퇴 시 로그인 유저가 없으면 No_User 예외가 발생한다")
-    void deleteUserFailByNoUser() {
-        // given
+    void 회원_탈퇴_시_로그인_유저가_없으면_No_User_예외가_발생한다() {
         Long loginUserId = 1L;
 
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> userService.deleteUser(loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_User");
@@ -431,9 +393,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("회원 탈퇴 시 유저가 삭제 처리되고 닉네임과 프로필 이미지가 마스킹된다")
-    void deleteUserSuccess() {
-        // given
+    void 회원_탈퇴_시_유저가_삭제_처리되고_닉네임과_프로필_이미지가_마스킹된다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -449,10 +409,8 @@ class UserServiceTest {
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
 
-        // when
         userService.deleteUser(loginUserId);
 
-        // then
         verify(userRepository).findByUserIdAndDeletedFalse(loginUserId);
 
         assertThat(loginUser.isDeleted()).isTrue();
@@ -461,9 +419,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("누적 신고 수가 10회 이상인 계정은 탈퇴할 수 없다")
-    void deleteUserFailBySuspendedAccount() {
-        // given
+    void 누적_신고_수가_10회_이상인_계정은_탈퇴할_수_없다() {
         Long loginUserId = 1L;
 
         User loginUser = new User(
@@ -479,7 +435,6 @@ class UserServiceTest {
         when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
                 .thenReturn(Optional.of(loginUser));
 
-        // when & then
         assertThatThrownBy(() -> userService.deleteUser(loginUserId))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessage("Suspended_Account");
@@ -489,9 +444,7 @@ class UserServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴 후 같은 이메일로 재가입하면 이전 누적 신고 수를 계승한다")
-    void createUserWithPreviousReceivedReportCount() {
-        // given
+    void 탈퇴_후_같은_이메일로_재가입하면_이전_누적_신고_수를_계승한다() {
         UserRequestDto request = createUserRequest(
                 "test@test.com",
                 "Password1!",
@@ -515,10 +468,8 @@ class UserServiceTest {
         when(userRepository.save(any(User.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        // when
         UserResponseDto response = userService.createUser(request);
 
-        // then
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
 
         verify(userRepository).save(userCaptor.capture());

@@ -13,7 +13,6 @@ import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostCounterRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -49,8 +48,7 @@ class CommentServiceTest {
     private CommentService commentService;
 
     @Test
-    @DisplayName("댓글 등록 시 로그인 유저가 없으면 No_Account 예외가 발생한다")
-    void commentPostFailByNoAccount() {
+    void 댓글_등록_시_로그인_유저가_없으면_No_Account_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         CommentPostRequestDto request = createCommentPostRequest("comment");
@@ -67,8 +65,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 등록 시 게시글이 없으면 No_Post 예외가 발생한다")
-    void commentPostFailByNoPost() {
+    void 댓글_등록_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         User loginUser = createUser(loginUserId);
@@ -87,8 +84,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 수정 시 댓글이 없으면 No_Comment 예외가 발생한다")
-    void commentFixFailByNoComment() {
+    void 댓글_수정_시_댓글이_없으면_No_Comment_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         Long commentId = 10L;
@@ -107,8 +103,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 수정 시 요청 게시글과 댓글의 게시글이 다르면 No_Comment 예외가 발생한다")
-    void commentFixFailByPostMismatch() {
+    void 댓글_수정_시_요청_게시글과_댓글의_게시글이_다르면_No_Comment_예외가_발생한다() {
         Long requestPostId = 1L;
         Long commentPostId = 2L;
         Long loginUserId = 1L;
@@ -128,8 +123,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 수정 시 작성자가 아니면 권한 예외가 발생한다")
-    void commentFixFailByForbidden() {
+    void 댓글_수정_시_작성자가_아니면_권한_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
@@ -167,8 +161,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 삭제 시 게시글이 없으면 No_Post 예외가 발생한다")
-    void commentDeleteFailByNoPost() {
+    void 댓글_삭제_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         CommentDeleteRequestDto request = createCommentDeleteRequest(10L);
@@ -184,8 +177,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 삭제 시 댓글이 없으면 No_Comment 예외가 발생한다")
-    void commentDeleteFailByNoComment() {
+    void 댓글_삭제_시_댓글이_없으면_No_Comment_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         User writer = createUser(loginUserId);
@@ -202,8 +194,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 삭제 시 요청 게시글과 댓글의 게시글이 다르면 No_Comment 예외가 발생한다")
-    void commentDeleteFailByPostMismatch() {
+    void 댓글_삭제_시_요청_게시글과_댓글의_게시글이_다르면_No_Comment_예외가_발생한다() {
         Long requestPostId = 1L;
         Long commentPostId = 2L;
         Long loginUserId = 1L;
@@ -223,8 +214,7 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("댓글 삭제 시 작성자가 아니면 권한 예외가 발생한다")
-    void commentDeleteFailByNoAuth() {
+    void 댓글_삭제_시_작성자가_아니면_권한_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;

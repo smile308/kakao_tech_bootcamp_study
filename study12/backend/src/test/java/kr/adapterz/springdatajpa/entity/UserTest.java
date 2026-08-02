@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.entity;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,17 +8,13 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class UserTest {
 
     @Test
-    @DisplayName("프로필 이미지 없이 유저를 생성하면 기본값이 정상적으로 설정된다")
-    void createUserWithoutProfileImage() {
-        // given
+    void 프로필_이미지_없이_유저를_생성하면_기본값이_정상적으로_설정된다() {
         String email = "test@test.com";
         String password = "Password1!";
         String nickname = "tester";
 
-        // when
         User user = new User(email, password, nickname, 0);
 
-        // then
         assertAll(
                 () -> assertThat(user.getEmail()).isEqualTo(email),
                 () -> assertThat(user.getPassword()).isEqualTo(password),
@@ -31,9 +26,7 @@ class UserTest {
     }
 
     @Test
-    @DisplayName("유저 정보를 수정하면 닉네임과 프로필 이미지가 변경된다")
-    void updateUser() {
-        // given
+    void 유저_정보를_수정하면_닉네임과_프로필_이미지가_변경된다() {
         User user = new User(
                 "test@test.com",
                 "Password1!",
@@ -42,10 +35,8 @@ class UserTest {
                 5
         );
 
-        // when
         user.update("newTester", "new-profile.png");
 
-        // then
         assertAll(
                 () -> assertThat(user.getNickname()).isEqualTo("newTester"),
                 () -> assertThat(user.getProfileImage()).isEqualTo("new-profile.png")
@@ -53,9 +44,7 @@ class UserTest {
     }
 
     @Test
-    @DisplayName("유저를 삭제하면 deleted가 true가 되고 닉네임과 프로필 이미지가 삭제 상태로 변경된다")
-    void deleteUser() {
-        // given
+    void 유저를_삭제하면_deleted가_true가_되고_닉네임과_프로필_이미지가_삭제_상태로_변경된다() {
         User user = new User(
                 "test@test.com",
                 "Password1!",
@@ -64,10 +53,8 @@ class UserTest {
                 0
         );
 
-        // when
         user.delete();
 
-        // then
         assertAll(
                 () -> assertThat(user.isDeleted()).isTrue(),
                 () -> assertThat(user.getNickname()).isEqualTo("삭제된 유저"),
@@ -76,9 +63,7 @@ class UserTest {
     }
 
     @Test
-    @DisplayName("비밀번호를 변경하면 새로운 비밀번호로 바뀌고 인증 버전이 증가한다")
-    void changePassword() {
-        // given
+    void 비밀번호를_변경하면_새로운_비밀번호로_바뀌고_인증_버전이_증가한다() {
         User user = new User(
                 "test@test.com",
                 "OldPassword1!",
@@ -86,18 +71,14 @@ class UserTest {
                 5
         );
 
-        // when
         user.changePassword("NewPassword1!");
 
-        // then
         assertThat(user.getPassword()).isEqualTo("NewPassword1!");
         assertThat(user.getAuthVersion()).isEqualTo(1L);
     }
 
     @Test
-    @DisplayName("작성한 게시글이 신고되면 누적 신고 수가 증가한다")
-    void receiveReport() {
-        // given
+    void 작성한_게시글이_신고되면_누적_신고_수가_증가한다() {
         User user = new User(
                 "test@test.com",
                 "Password1!",
@@ -106,18 +87,14 @@ class UserTest {
                 0
         );
 
-        // when
         user.receiveReport();
         user.receiveReport();
 
-        // then
         assertThat(user.getReceivedReportCount()).isEqualTo(2);
     }
 
     @Test
-    @DisplayName("누적 신고 수가 10회 이상이면 정지 계정으로 판단된다")
-    void suspendedAccount() {
-        // given
+    void 누적_신고_수가_10회_이상이면_정지_계정으로_판단된다() {
         User user = new User(
                 "test@test.com",
                 "Password1!",
@@ -126,7 +103,6 @@ class UserTest {
                 9
         );
 
-        // when & then
         assertThat(user.isSuspended()).isFalse();
 
         user.receiveReport();

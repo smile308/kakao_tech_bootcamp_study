@@ -1,0 +1,247 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+
+     execution: local
+        script: /scripts/post-counter-interference.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 100 max VUs, 1m30s max duration (incl. graceful stop):
+              * comment_lifecycle: 5.00 iterations/s for 1m0s (maxVUs: 20-100, exec: commentLifecycle, gracefulStop: 30s)
+
+
+running (0m01.0s), 000/020 VUs, 5 complete and 0 interrupted iterations
+comment_lifecycle   [   2% ] 000/020 VUs  0m01.0s/1m0s  5.00 iters/s
+
+running (0m02.0s), 000/020 VUs, 10 complete and 0 interrupted iterations
+comment_lifecycle   [   3% ] 000/020 VUs  0m02.0s/1m0s  5.00 iters/s
+
+running (0m03.0s), 000/020 VUs, 15 complete and 0 interrupted iterations
+comment_lifecycle   [   5% ] 000/020 VUs  0m03.0s/1m0s  5.00 iters/s
+
+running (0m04.0s), 000/020 VUs, 20 complete and 0 interrupted iterations
+comment_lifecycle   [   7% ] 000/020 VUs  0m04.0s/1m0s  5.00 iters/s
+
+running (0m05.0s), 000/020 VUs, 25 complete and 0 interrupted iterations
+comment_lifecycle   [   8% ] 000/020 VUs  0m05.0s/1m0s  5.00 iters/s
+
+running (0m06.0s), 000/020 VUs, 30 complete and 0 interrupted iterations
+comment_lifecycle   [  10% ] 000/020 VUs  0m06.0s/1m0s  5.00 iters/s
+
+running (0m07.0s), 000/020 VUs, 35 complete and 0 interrupted iterations
+comment_lifecycle   [  12% ] 000/020 VUs  0m07.0s/1m0s  5.00 iters/s
+
+running (0m08.0s), 000/020 VUs, 40 complete and 0 interrupted iterations
+comment_lifecycle   [  13% ] 000/020 VUs  0m08.0s/1m0s  5.00 iters/s
+
+running (0m09.0s), 000/020 VUs, 45 complete and 0 interrupted iterations
+comment_lifecycle   [  15% ] 000/020 VUs  0m09.0s/1m0s  5.00 iters/s
+
+running (0m10.0s), 001/020 VUs, 50 complete and 0 interrupted iterations
+comment_lifecycle   [  17% ] 001/020 VUs  0m10.0s/1m0s  5.00 iters/s
+
+running (0m11.0s), 000/020 VUs, 55 complete and 0 interrupted iterations
+comment_lifecycle   [  18% ] 001/020 VUs  0m11.0s/1m0s  5.00 iters/s
+
+running (0m12.0s), 000/020 VUs, 60 complete and 0 interrupted iterations
+comment_lifecycle   [  20% ] 000/020 VUs  0m12.0s/1m0s  5.00 iters/s
+
+running (0m13.0s), 000/020 VUs, 65 complete and 0 interrupted iterations
+comment_lifecycle   [  22% ] 000/020 VUs  0m13.0s/1m0s  5.00 iters/s
+
+running (0m14.0s), 000/020 VUs, 70 complete and 0 interrupted iterations
+comment_lifecycle   [  23% ] 000/020 VUs  0m14.0s/1m0s  5.00 iters/s
+
+running (0m15.0s), 000/020 VUs, 75 complete and 0 interrupted iterations
+comment_lifecycle   [  25% ] 000/020 VUs  0m15.0s/1m0s  5.00 iters/s
+
+running (0m16.0s), 000/020 VUs, 80 complete and 0 interrupted iterations
+comment_lifecycle   [  27% ] 000/020 VUs  0m16.0s/1m0s  5.00 iters/s
+
+running (0m17.0s), 000/020 VUs, 85 complete and 0 interrupted iterations
+comment_lifecycle   [  28% ] 000/020 VUs  0m17.0s/1m0s  5.00 iters/s
+
+running (0m18.0s), 000/020 VUs, 90 complete and 0 interrupted iterations
+comment_lifecycle   [  30% ] 000/020 VUs  0m18.0s/1m0s  5.00 iters/s
+
+running (0m19.0s), 000/020 VUs, 95 complete and 0 interrupted iterations
+comment_lifecycle   [  32% ] 000/020 VUs  0m19.0s/1m0s  5.00 iters/s
+
+running (0m20.0s), 000/020 VUs, 100 complete and 0 interrupted iterations
+comment_lifecycle   [  33% ] 000/020 VUs  0m20.0s/1m0s  5.00 iters/s
+
+running (0m21.0s), 000/020 VUs, 105 complete and 0 interrupted iterations
+comment_lifecycle   [  35% ] 000/020 VUs  0m21.0s/1m0s  5.00 iters/s
+
+running (0m22.0s), 000/020 VUs, 110 complete and 0 interrupted iterations
+comment_lifecycle   [  37% ] 000/020 VUs  0m22.0s/1m0s  5.00 iters/s
+
+running (0m23.0s), 000/020 VUs, 115 complete and 0 interrupted iterations
+comment_lifecycle   [  38% ] 000/020 VUs  0m23.0s/1m0s  5.00 iters/s
+
+running (0m24.0s), 000/020 VUs, 120 complete and 0 interrupted iterations
+comment_lifecycle   [  40% ] 000/020 VUs  0m24.0s/1m0s  5.00 iters/s
+
+running (0m25.0s), 000/020 VUs, 125 complete and 0 interrupted iterations
+comment_lifecycle   [  42% ] 000/020 VUs  0m25.0s/1m0s  5.00 iters/s
+
+running (0m26.0s), 000/020 VUs, 130 complete and 0 interrupted iterations
+comment_lifecycle   [  43% ] 000/020 VUs  0m26.0s/1m0s  5.00 iters/s
+
+running (0m27.0s), 000/020 VUs, 135 complete and 0 interrupted iterations
+comment_lifecycle   [  45% ] 000/020 VUs  0m27.0s/1m0s  5.00 iters/s
+
+running (0m28.0s), 000/020 VUs, 140 complete and 0 interrupted iterations
+comment_lifecycle   [  47% ] 000/020 VUs  0m28.0s/1m0s  5.00 iters/s
+
+running (0m29.0s), 000/020 VUs, 145 complete and 0 interrupted iterations
+comment_lifecycle   [  48% ] 000/020 VUs  0m29.0s/1m0s  5.00 iters/s
+
+running (0m30.0s), 000/020 VUs, 150 complete and 0 interrupted iterations
+comment_lifecycle   [  50% ] 000/020 VUs  0m30.0s/1m0s  5.00 iters/s
+
+running (0m31.0s), 000/020 VUs, 155 complete and 0 interrupted iterations
+comment_lifecycle   [  52% ] 000/020 VUs  0m31.0s/1m0s  5.00 iters/s
+
+running (0m32.0s), 000/020 VUs, 160 complete and 0 interrupted iterations
+comment_lifecycle   [  53% ] 000/020 VUs  0m32.0s/1m0s  5.00 iters/s
+
+running (0m33.0s), 000/020 VUs, 165 complete and 0 interrupted iterations
+comment_lifecycle   [  55% ] 000/020 VUs  0m33.0s/1m0s  5.00 iters/s
+
+running (0m34.0s), 000/020 VUs, 170 complete and 0 interrupted iterations
+comment_lifecycle   [  57% ] 000/020 VUs  0m34.0s/1m0s  5.00 iters/s
+
+running (0m35.0s), 000/020 VUs, 175 complete and 0 interrupted iterations
+comment_lifecycle   [  58% ] 000/020 VUs  0m35.0s/1m0s  5.00 iters/s
+
+running (0m36.0s), 000/020 VUs, 180 complete and 0 interrupted iterations
+comment_lifecycle   [  60% ] 000/020 VUs  0m36.0s/1m0s  5.00 iters/s
+
+running (0m37.0s), 000/020 VUs, 185 complete and 0 interrupted iterations
+comment_lifecycle   [  62% ] 000/020 VUs  0m37.0s/1m0s  5.00 iters/s
+
+running (0m38.0s), 000/020 VUs, 190 complete and 0 interrupted iterations
+comment_lifecycle   [  63% ] 000/020 VUs  0m38.0s/1m0s  5.00 iters/s
+
+running (0m39.0s), 000/020 VUs, 195 complete and 0 interrupted iterations
+comment_lifecycle   [  65% ] 000/020 VUs  0m39.0s/1m0s  5.00 iters/s
+
+running (0m40.0s), 000/020 VUs, 200 complete and 0 interrupted iterations
+comment_lifecycle   [  67% ] 000/020 VUs  0m40.0s/1m0s  5.00 iters/s
+
+running (0m41.0s), 000/020 VUs, 205 complete and 0 interrupted iterations
+comment_lifecycle   [  68% ] 000/020 VUs  0m41.0s/1m0s  5.00 iters/s
+
+running (0m42.0s), 000/020 VUs, 210 complete and 0 interrupted iterations
+comment_lifecycle   [  70% ] 000/020 VUs  0m42.0s/1m0s  5.00 iters/s
+
+running (0m43.0s), 000/020 VUs, 215 complete and 0 interrupted iterations
+comment_lifecycle   [  72% ] 000/020 VUs  0m43.0s/1m0s  5.00 iters/s
+
+running (0m44.0s), 000/020 VUs, 220 complete and 0 interrupted iterations
+comment_lifecycle   [  73% ] 000/020 VUs  0m44.0s/1m0s  5.00 iters/s
+
+running (0m45.0s), 000/020 VUs, 225 complete and 0 interrupted iterations
+comment_lifecycle   [  75% ] 000/020 VUs  0m45.0s/1m0s  5.00 iters/s
+
+running (0m46.0s), 000/020 VUs, 230 complete and 0 interrupted iterations
+comment_lifecycle   [  77% ] 000/020 VUs  0m46.0s/1m0s  5.00 iters/s
+
+running (0m47.0s), 000/020 VUs, 235 complete and 0 interrupted iterations
+comment_lifecycle   [  78% ] 000/020 VUs  0m47.0s/1m0s  5.00 iters/s
+
+running (0m48.0s), 000/020 VUs, 240 complete and 0 interrupted iterations
+comment_lifecycle   [  80% ] 000/020 VUs  0m48.0s/1m0s  5.00 iters/s
+
+running (0m49.0s), 000/020 VUs, 245 complete and 0 interrupted iterations
+comment_lifecycle   [  82% ] 000/020 VUs  0m49.0s/1m0s  5.00 iters/s
+
+running (0m50.0s), 000/020 VUs, 250 complete and 0 interrupted iterations
+comment_lifecycle   [  83% ] 000/020 VUs  0m50.0s/1m0s  5.00 iters/s
+
+running (0m51.0s), 000/020 VUs, 255 complete and 0 interrupted iterations
+comment_lifecycle   [  85% ] 000/020 VUs  0m51.0s/1m0s  5.00 iters/s
+
+running (0m52.0s), 000/020 VUs, 260 complete and 0 interrupted iterations
+comment_lifecycle   [  87% ] 000/020 VUs  0m52.0s/1m0s  5.00 iters/s
+
+running (0m53.0s), 000/020 VUs, 265 complete and 0 interrupted iterations
+comment_lifecycle   [  88% ] 000/020 VUs  0m53.0s/1m0s  5.00 iters/s
+
+running (0m54.0s), 000/020 VUs, 270 complete and 0 interrupted iterations
+comment_lifecycle   [  90% ] 000/020 VUs  0m54.0s/1m0s  5.00 iters/s
+
+running (0m55.0s), 000/020 VUs, 275 complete and 0 interrupted iterations
+comment_lifecycle   [  92% ] 000/020 VUs  0m55.0s/1m0s  5.00 iters/s
+
+running (0m56.0s), 000/020 VUs, 280 complete and 0 interrupted iterations
+comment_lifecycle   [  93% ] 000/020 VUs  0m56.0s/1m0s  5.00 iters/s
+
+running (0m57.0s), 000/020 VUs, 285 complete and 0 interrupted iterations
+comment_lifecycle   [  95% ] 000/020 VUs  0m57.0s/1m0s  5.00 iters/s
+
+running (0m58.0s), 000/020 VUs, 290 complete and 0 interrupted iterations
+comment_lifecycle   [  97% ] 000/020 VUs  0m58.0s/1m0s  5.00 iters/s
+
+running (0m59.0s), 000/020 VUs, 295 complete and 0 interrupted iterations
+comment_lifecycle   [  98% ] 000/020 VUs  0m59.0s/1m0s  5.00 iters/s
+
+running (1m00.0s), 000/020 VUs, 300 complete and 0 interrupted iterations
+comment_lifecycle   [ 100% ] 000/020 VUs  1m00.0s/1m0s  5.00 iters/s
+
+
+  █ THRESHOLDS 
+
+    checks
+    ✓ 'rate>0.99' rate=100.00%
+
+    comment_lifecycle_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 602     10.030279/s
+    checks_succeeded...: 100.00% 602 out of 602
+    checks_failed......: 0.00%   0 out of 602
+
+    ✓ comment create status is 201
+    ✓ comment delete status is 204
+
+    CUSTOM
+    comment_create_duration........: avg=12.99ms min=5.62ms med=13.92ms p(90)=17.01ms p(95)=17.94ms p(99)=19.43ms max=20.11ms
+    comment_create_status_201......: 301    5.01514/s
+    comment_delete_duration........: avg=7.16ms  min=3.72ms med=7.14ms  p(90)=8.79ms  p(95)=9.68ms  p(99)=11.8ms  max=14.6ms 
+    comment_delete_status_204......: 301    5.01514/s
+    comment_lifecycle_duration.....: avg=20.79ms min=10ms   med=22ms    p(90)=27ms    p(95)=27ms    p(99)=30ms    max=33ms   
+    comment_lifecycle_failed.......: 0.00%  0 out of 301
+
+    HTTP
+    http_req_duration..............: avg=10.07ms min=3.72ms med=8.41ms  p(90)=16.15ms p(95)=17.01ms p(99)=18.68ms max=20.11ms
+      { expected_response:true }...: avg=10.07ms min=3.72ms med=8.41ms  p(90)=16.15ms p(95)=17.01ms p(99)=18.68ms max=20.11ms
+    http_req_failed................: 0.00%  0 out of 602
+    http_reqs......................: 602    10.030279/s
+
+    EXECUTION
+    iteration_duration.............: avg=20.85ms min=9.89ms med=21.92ms p(90)=26.68ms p(95)=27.63ms p(99)=30.03ms max=32.81ms
+    iterations.....................: 301    5.01514/s
+    vus............................: 0      min=0        max=1 
+    vus_max........................: 20     min=20       max=20
+
+    NETWORK
+    data_received..................: 271 kB 4.5 kB/s
+    data_sent......................: 224 kB 3.7 kB/s
+
+
+
+
+running (1m00.0s), 000/020 VUs, 301 complete and 0 interrupted iterations
+comment_lifecycle ✓ [ 100% ] 000/020 VUs  1m0s  5.00 iters/s

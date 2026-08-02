@@ -2,7 +2,6 @@ package kr.adapterz.springdatajpa.config;
 
 import jakarta.servlet.Filter;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -39,8 +38,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("인증 없이 보호 API에 접근하면 401 Unauthorized를 반환한다")
-    void protectedEndpointWithoutTokenReturnsUnauthorized() throws Exception {
+    void 인증_없이_보호_API에_접근하면_401_Unauthorized를_반환한다() throws Exception {
         mockMvc.perform(get("/posts"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json;charset=UTF-8"))
@@ -48,8 +46,7 @@ class SecurityConfigTest {
     }
 
     @Test
-    @DisplayName("로그인 API는 인증 없이 접근할 수 있다")
-    void loginEndpointIsPublic() throws Exception {
+    void 로그인_API는_인증_없이_접근할_수_있다() throws Exception {
         mockMvc.perform(
                         post("/sessions")
                                 .contentType(MediaType.APPLICATION_JSON)

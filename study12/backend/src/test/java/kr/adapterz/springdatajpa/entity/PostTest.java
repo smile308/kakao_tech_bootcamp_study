@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.entity;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -16,8 +15,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("게시글 생성 시 기본값이 정상 설정된다")
-    void createPostDefaultValues() {
+    void 게시글_생성_시_기본값이_정상_설정된다() {
         User user = createUser();
 
         Post post = new Post(user, "title", "content");
@@ -44,8 +42,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("이미지가 있는 게시글을 생성하면 이미지가 저장된다")
-    void createPostWithImage() {
+    void 이미지가_있는_게시글을_생성하면_이미지가_저장된다() {
         Post post = new Post(createUser(), "title", "content", "image.png");
 
         assertAll(
@@ -57,8 +54,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("게시글 수정 시 제목, 내용, 이미지가 변경되고 수정 상태가 된다")
-    void updatePost() {
+    void 게시글_수정_시_제목_내용_이미지가_변경되고_수정_상태가_된다() {
         Post post = new Post(createUser(), "old", "old content", "old.png");
 
         post.update("new", "new content", "new.png");
@@ -72,8 +68,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("게시글 카운트와 삭제 상태가 정상 변경된다")
-    void updateCountsAndDelete() {
+    void 게시글_카운트와_삭제_상태가_정상_변경된다() {
         Post post = new Post(createUser(), "title", "content");
 
         post.addReply();
@@ -95,8 +90,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("이미지를 null이나 공백으로 교체하면 이미지 목록이 비워진다")
-    void replaceImagesWithNullOrBlank() {
+    void 이미지를_null이나_공백으로_교체하면_이미지_목록이_비워진다() {
         Post post = new Post(createUser(), "title", "content", "old.png");
 
         post.replaceImages((String) null);
@@ -111,8 +105,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("여러 이미지 교체 시 null과 공백 이미지는 제외된다")
-    void replaceImagesWithListSkipsNullAndBlank() {
+    void 여러_이미지_교체_시_null과_공백_이미지는_제외된다() {
         Post post = new Post(createUser(), "title", "content", "old.png");
 
         post.replaceImages(Arrays.asList("first.png", null, " ", "second.png"));
@@ -128,8 +121,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("여러 이미지 교체 시 이미지 목록이 null이면 목록이 비워진다")
-    void replaceImagesWithNullList() {
+    void 여러_이미지_교체_시_이미지_목록이_null이면_목록이_비워진다() {
         Post post = new Post(createUser(), "title", "content", "old.png");
 
         post.replaceImages((List<String>) null);
@@ -138,8 +130,7 @@ class PostTest {
     }
 
     @Test
-    @DisplayName("여러 이미지로 게시글을 수정하면 제목과 내용, 이미지 목록이 변경된다")
-    void updatePostWithImageList() {
+    void 여러_이미지로_게시글을_수정하면_제목과_내용_이미지_목록이_변경된다() {
         Post post = new Post(createUser(), "old", "old content", "old.png");
 
         post.update("new", "new content", List.of("first.png", "second.png"));

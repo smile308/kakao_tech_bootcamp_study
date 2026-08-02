@@ -68,14 +68,12 @@ public class Post {
     @Column(name ="deleted", nullable = false)
     private boolean deleted;
 
-    //초기값 설정
     public Post(User user, String postTitle, String postContent, String imageFile)
     {
         this(user, postTitle, postContent);
         replaceImages(imageFile);
     }
 
-    //이미지가 없는 경우
     public Post(User user, String postTitle, String postContent)
     {
         this.user=user;
@@ -90,7 +88,6 @@ public class Post {
     }
 
 
-    //게시물 수정
     public void update(String title, String contents, String imageFile) {
         this.postTitle = title;
         this.postContent = contents;
@@ -98,7 +95,6 @@ public class Post {
         isFixed=true;
     }
 
-    //게시물 수정
     public void update(String title, String contents, List<String> imageFiles) {
         this.postTitle = title;
         this.postContent = contents;
@@ -106,7 +102,7 @@ public class Post {
         isFixed=true;
     }
 
-    //기존 imageFile 이름을 유지하기 위한 대표 이미지 조회
+    // 기존 단일 이미지 응답과의 호환을 위해 첫 번째 이미지를 대표 이미지로 사용한다.
     public String getImageFile() {
         if (postImages == null || postImages.isEmpty()) {
             return null;
@@ -115,7 +111,6 @@ public class Post {
         return postImages.get(0).getImageFile();
     }
 
-    //이미지 1개 교체
     public void replaceImages(String imageFile) {
         postImages.clear();
 
@@ -126,7 +121,6 @@ public class Post {
         addImage(imageFile, 0);
     }
 
-    //이미지 여러 개 교체
     public void replaceImages(List<String> imageFiles) {
         postImages.clear();
 
@@ -145,40 +139,32 @@ public class Post {
         }
     }
 
-    //이미지 추가
     public void addImage(String imageFile, int imageOrder) {
         PostImage postImage = new PostImage(this, imageFile, imageOrder);
         postImages.add(postImage);
     }
 
-    //댓글 추가
     public void addReply(){
         postCounter.addReply();
     }
-    //댓글 삭제
     public void deleteReply(){
         postCounter.deleteReply();
     }
 
-    //좋아요
     public void like(){
         postCounter.like();
     }
 
-    //좋아요 취소
     public void likeCancle(){
         postCounter.cancelLike();
     }
 
-    //조회수 기능
     public void view(){
         postCounter.view();
     }
 
-    //삭제
     public void delete(){deleted=true;}
 
-    //신고
     public void report() {
         postCounter.report();
     }

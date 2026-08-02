@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.entity;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -9,9 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class PostReportTest {
 
     @Test
-    @DisplayName("게시글 신고 이력을 생성하면 게시글, 신고자, 사유, 생성 시간이 저장된다")
-    void createPostReport() {
-        // given
+    void 게시글_신고_이력을_생성하면_게시글_신고자_사유_생성_시간이_저장된다() {
         User writer = new User(
                 "writer@test.com",
                 "Password1!",
@@ -30,11 +27,9 @@ class PostReportTest {
 
         Post post = new Post(writer, "title", "content");
 
-        // when
         PostReport postReport =
                 new PostReport(post, reporter);
 
-        // then
         assertAll(
                 () -> assertThat(postReport.getPost()).isEqualTo(post),
                 () -> assertThat(postReport.getUser()).isEqualTo(reporter),

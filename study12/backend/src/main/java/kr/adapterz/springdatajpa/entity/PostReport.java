@@ -30,7 +30,6 @@ public class PostReport {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
-    // 신고한 사용자
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

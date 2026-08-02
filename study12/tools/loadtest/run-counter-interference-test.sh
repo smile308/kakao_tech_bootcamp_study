@@ -6,6 +6,8 @@ env_file="${1:-target-study11.env}"
 test_profile="${2:-comment-only}"
 data_variant="${3:-comments100}"
 test_name="post-counter-interference-${data_variant}"
+result_set="${RESULT_SET:-}"
+run_label="${RUN_LABEL:-}"
 
 if [[ ! -f "$env_file" ]]; then
   echo "env file not found: $env_file" >&2
@@ -29,6 +31,16 @@ fi
 
 if [[ ! "$data_variant" =~ ^[a-z0-9-]+$ ]]; then
   echo "data variant must contain only lowercase letters, numbers, and hyphens" >&2
+  exit 1
+fi
+
+if [[ -n "$result_set" && ! "$result_set" =~ ^[a-z0-9-]+$ ]]; then
+  echo "result set must contain only lowercase letters, numbers, and hyphens" >&2
+  exit 1
+fi
+
+if [[ -n "$run_label" && ! "$run_label" =~ ^[a-z0-9-]+$ ]]; then
+  echo "run label must contain only lowercase letters, numbers, and hyphens" >&2
   exit 1
 fi
 
@@ -223,8 +235,16 @@ if [[ "$initial_comment_counter" != "$initial_comment_rows" ]]; then
 fi
 
 timestamp="$(date '+%Y%m%d-%H%M%S')"
+run_id="${run_label:-$timestamp}"
 result_directory="results"
-result_prefix="${target_version}__${test_name}__${test_profile}__${timestamp}"
+container_result_directory="/results"
+
+if [[ -n "$result_set" ]]; then
+  result_directory="${result_directory}/${result_set}"
+  container_result_directory="${container_result_directory}/${result_set}"
+fi
+
+result_prefix="${target_version}__${test_name}__${test_profile}__${run_id}"
 k6_console_file="${result_directory}/${result_prefix}__k6-console.txt"
 k6_summary_file="${result_prefix}__k6-summary.json"
 run_metadata_file="${result_directory}/${result_prefix}__run-metadata.txt"
@@ -250,6 +270,8 @@ mkdir -p "$result_directory"
   echo "target_version=$target_version"
   echo "test_profile=$test_profile"
   echo "data_variant=$data_variant"
+  echo "result_set=${result_set:-default}"
+  echo "run_id=$run_id"
   echo "post_id=$POST_ID"
   echo "authentication_preflight=HTTP_200"
   echo "token_exp_epoch=$token_exp_epoch"
@@ -272,7 +294,8 @@ bash observe-mysql-locks.sh \
   "$env_file" \
   "${test_name}__${test_profile}" \
   "$observation_seconds" \
-  "$timestamp" \
+  "$run_id" \
+  "$result_directory" \
   >"$observer_console_file" 2>&1 &
 observer_pid=$!
 
@@ -289,7 +312,7 @@ docker compose \
   -e TEST_PROFILE="$test_profile" \
   -e DATA_VARIANT="$data_variant" \
   k6 run \
-  --summary-export="/results/${k6_summary_file}" \
+  --summary-export="${container_result_directory}/${k6_summary_file}" \
   /scripts/post-counter-interference.js \
   | tee "$k6_console_file"
 k6_status="${PIPESTATUS[0]}"

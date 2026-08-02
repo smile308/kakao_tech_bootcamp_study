@@ -10,7 +10,6 @@ import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
 import kr.adapterz.springdatajpa.repository.*;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -64,8 +63,7 @@ class PostServiceTest {
 
 
     @Test
-    @DisplayName("게시글 상세 조회 시 게시글이 없으면 No_Post 예외가 발생한다")
-    void getPostViewFailByNoPost() {
+    void 게시글_상세_조회_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
 
@@ -81,8 +79,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("신고로 차단된 게시글은 조회수를 증가시키지 않는다")
-    void getPostViewDoesNotIncrementBlockedPost() {
+    void 신고로_차단된_게시글은_조회수를_증가시키지_않는다() {
         Long postId = 1L;
         Long loginUserId = 2L;
         Post post = createPost(postId, createUser(1L));
@@ -108,8 +105,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 사용자가 없으면 조회수를 증가시키지 않는다")
-    void getPostViewDoesNotIncrementForMissingUser() {
+    void 로그인_사용자가_없으면_조회수를_증가시키지_않는다() {
         Long postId = 1L;
         Long loginUserId = 2L;
         Post post = createPost(postId, createUser(1L));
@@ -130,9 +126,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 신고 성공 시 신고 이력이 저장되고 게시글과 작성자의 신고 수가 증가한다")
-    void reportPostSuccess() {
-        // given
+    void 게시글_신고_성공_시_신고_이력이_저장되고_게시글과_작성자의_신고_수가_증가한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long reporterId = 2L;
@@ -154,11 +148,9 @@ class PostServiceTest {
         when(postReportRepository.existsByPostAndUser(post, reporter))
                 .thenReturn(false);
 
-        // when
         PostReportResponseDto response =
                 postService.reportPost(postId, reporterId);
 
-        // then
         assertThat(post.getReportCount()).isEqualTo(1);
         assertThat(writer.getReceivedReportCount()).isEqualTo(1);
 
@@ -174,16 +166,13 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 신고 시 게시글이 없으면 No_Post 예외가 발생한다")
-    void reportPostFailByNoPost() {
-        // given
+    void 게시글_신고_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long reporterId = 2L;
 
         when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> postService.reportPost(postId, reporterId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
@@ -192,9 +181,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 신고 시 로그인 유저가 없으면 No_User 예외가 발생한다")
-    void reportPostFailByNoUser() {
-        // given
+    void 게시글_신고_시_로그인_유저가_없으면_No_User_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long reporterId = 2L;
@@ -208,7 +195,6 @@ class PostServiceTest {
         when(userRepository.findByUserIdAndDeletedFalse(reporterId))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> postService.reportPost(postId, reporterId))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("No_User");
@@ -217,9 +203,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("자기 게시글은 신고할 수 없다")
-    void reportPostFailByOwnPost() {
-        // given
+    void 자기_게시글은_신고할_수_없다() {
         Long postId = 1L;
         Long loginUserId = 1L;
 
@@ -235,7 +219,6 @@ class PostServiceTest {
         when(userRepository.findByUserIdForUpdate(loginUserId))
                 .thenReturn(Optional.of(writer));
 
-        // when & then
         assertThatThrownBy(() -> postService.reportPost(postId, loginUserId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Cannot_Report_Own_Post");
@@ -244,9 +227,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("이미 신고한 게시글이면 Already_Reported 예외가 발생한다")
-    void reportPostFailByAlreadyReported() {
-        // given
+    void 이미_신고한_게시글이면_Already_Reported_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long reporterId = 2L;
@@ -267,7 +248,6 @@ class PostServiceTest {
         when(postReportRepository.existsByPostAndUser(post, reporter))
                 .thenReturn(true);
 
-        // when & then
         assertThatThrownBy(() -> postService.reportPost(postId, reporterId))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessage("Already_Reported");
@@ -276,8 +256,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 수정 시 작성자가 아니면 권한 예외가 발생한다")
-    void fixPostFailByForbidden() {
+    void 게시글_수정_시_작성자가_아니면_권한_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
@@ -312,8 +291,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("신고가 5회 누적된 게시글은 작성자도 수정할 수 없다")
-    void fixPostFailWhenReportCountReachesThreshold() {
+    void 신고가_5회_누적된_게시글은_작성자도_수정할_수_없다() {
         Long postId = 1L;
         Long writerId = 1L;
         Post post = createPost(postId, createUser(writerId));
@@ -332,8 +310,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("신고가 4회인 게시글은 작성자가 수정할 수 있다")
-    void fixPostSuccessBeforeReportCountReachesThreshold() {
+    void 신고가_4회인_게시글은_작성자가_수정할_수_있다() {
         Long postId = 1L;
         Long writerId = 1L;
         Post post = createPost(postId, createUser(writerId));
@@ -350,8 +327,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 삭제 시 게시글이 없으면 No_Post 예외가 발생한다")
-    void deletePostFailByNoPost() {
+    void 게시글_삭제_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
 
@@ -370,8 +346,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 삭제 시 작성자가 아니면 권한 예외가 발생한다")
-    void deletePostFailByForbidden() {
+    void 게시글_삭제_시_작성자가_아니면_권한_예외가_발생한다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
@@ -396,8 +371,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("신고가 5회 누적된 게시글은 작성자도 삭제할 수 없다")
-    void deletePostFailWhenReportCountReachesThreshold() {
+    void 신고가_5회_누적된_게시글은_작성자도_삭제할_수_없다() {
         Long postId = 1L;
         Long writerId = 1L;
         Post post = createPost(postId, createUser(writerId));
@@ -418,8 +392,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("신고가 4회인 게시글은 작성자가 삭제할 수 있다")
-    void deletePostSuccessBeforeReportCountReachesThreshold() {
+    void 신고가_4회인_게시글은_작성자가_삭제할_수_있다() {
         Long postId = 1L;
         Long writerId = 1L;
         Post post = createPost(postId, createUser(writerId));
@@ -440,8 +413,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("좋아요 시 로그인 유저가 없으면 No_User 예외가 발생한다")
-    void likePostFailByNoUser() {
+    void 좋아요_시_로그인_유저가_없으면_No_User_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         Post post = createPost(postId, createUser(2L));
@@ -459,8 +431,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("이미 좋아요한 게시글이면 Already_Liked 예외가 발생한다")
-    void likePostFailByAlreadyLiked() {
+    void 이미_좋아요한_게시글이면_Already_Liked_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         User loginUser = createUser(loginUserId);
@@ -485,8 +456,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("좋아요 취소 시 좋아요 내역이 없으면 Not_Liked 예외가 발생한다")
-    void cancelLikeFailByNotLiked() {
+    void 좋아요_취소_시_좋아요_내역이_없으면_Not_Liked_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         User loginUser = createUser(loginUserId);
@@ -509,9 +479,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 상세 조회 시 본인 게시글과 댓글의 isMine이 true로 반환된다")
-    void getPostViewSuccessByOwner() {
-        // given
+    void 게시글_상세_조회_시_본인_게시글과_댓글의_isMine이_true로_반환된다() {
         Long postId = 1L;
         Long loginUserId = 1L;
         Long otherUserId = 2L;
@@ -544,11 +512,9 @@ class PostServiceTest {
         when(viewCountUpdater.increment(postId, 0L))
                 .thenReturn(1L);
 
-        // when
         PostViewResponseDto response =
                 postService.getPostView(postId, loginUserId);
 
-        // then
         assertThat(response.getIsMine()).isTrue();
 
         assertThat(response.getComments()).hasSize(2);
@@ -578,9 +544,7 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시글 상세 조회 시 다른 사람의 게시글이면 isMine이 false로 반환된다")
-    void getPostViewSuccessByNonOwner() {
-        // given
+    void 게시글_상세_조회_시_다른_사람의_게시글이면_isMine이_false로_반환된다() {
         Long postId = 1L;
         Long writerId = 1L;
         Long loginUserId = 2L;
@@ -607,11 +571,9 @@ class PostServiceTest {
         when(viewCountUpdater.increment(postId, 0L))
                 .thenReturn(1L);
 
-        // when
         PostViewResponseDto response =
                 postService.getPostView(postId, loginUserId);
 
-        // then
         assertThat(response.getIsMine()).isFalse();
         assertThat(response.getComments()).isEmpty();
         assertThat(response.getViewCount()).isEqualTo(1L);

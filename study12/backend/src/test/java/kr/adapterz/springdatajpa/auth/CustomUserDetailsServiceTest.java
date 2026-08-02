@@ -2,7 +2,6 @@ package kr.adapterz.springdatajpa.auth;
 
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.repository.UserRepository;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,13 +27,10 @@ class CustomUserDetailsServiceTest {
     private CustomUserDetailsService customUserDetailsService;
 
     @Test
-    @DisplayName("이메일에 맞는 유저가 없으면 UsernameNotFoundException이 발생한다")
-    void loadUserByUsernameFailByNoUser() {
-        // given
+    void 이메일에_맞는_유저가_없으면_UsernameNotFoundException이_발생한다() {
         when(userRepository.findByEmailAndDeletedFalse("test@test.com"))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> customUserDetailsService.loadUserByUsername("test@test.com"))
                 .isInstanceOf(UsernameNotFoundException.class)
                 .hasMessage("No_User");
@@ -43,20 +39,16 @@ class CustomUserDetailsServiceTest {
     }
 
     @Test
-    @DisplayName("이메일에 맞는 유저가 있으면 CustomUserDetails를 반환한다")
-    void loadUserByUsernameSuccess() {
-        // given
+    void 이메일에_맞는_유저가_있으면_CustomUserDetails를_반환한다() {
         User user = new User("test@test.com", "encoded-password", "tester", "profile.png",0);
         ReflectionTestUtils.setField(user, "userId", 1L);
 
         when(userRepository.findByEmailAndDeletedFalse("test@test.com"))
                 .thenReturn(Optional.of(user));
 
-        // when
         CustomUserDetails userDetails =
                 customUserDetailsService.loadUserByUsername("test@test.com");
 
-        // then
         assertThat(userDetails.getUserId()).isEqualTo(1L);
         assertThat(userDetails.getUsername()).isEqualTo("test@test.com");
         assertThat(userDetails.getPassword()).isEqualTo("encoded-password");

@@ -19,20 +19,17 @@ public class UserController {
     private final UserService userService;
     private final RefreshCookieProvider refreshCookieProvider;
 
-    //회원가입
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponseDto createUser(@Valid @RequestBody UserRequestDto request){
         return userService.createUser(request);
     }
 
-    //내 회원정보 조회
     @GetMapping("/me")
     public UserInfoResponseDto getMyInfo(@AuthenticationPrincipal CustomUserDetails userDetails){
         return userService.getMyInfo(userDetails.getUserId());
     }
 
-    //회원 탈퇴
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public UserDeleteResponseDto deleteUser(
@@ -43,7 +40,6 @@ public class UserController {
         expireRefreshTokenCookie(response);
         return responseDto;
     }
-    //회원정보 수정
     @PatchMapping
     public UserPatchResponseDto patchUser(
             @AuthenticationPrincipal CustomUserDetails userDetails,
@@ -51,7 +47,6 @@ public class UserController {
     ){
         return userService.patchUser(userDetails.getUserId(), request);
     }
-    //비밀번호 수정
     @PatchMapping("/password")
     public UserPasswordResponseDto setPassword(
             @AuthenticationPrincipal CustomUserDetails userDetails,

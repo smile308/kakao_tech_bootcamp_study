@@ -24,24 +24,19 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
 
-    // 회원가입
     public UserResponseDto createUser(UserRequestDto request) {
-        // 비밀번호 확인
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }
 
-        // 활성 이메일 중복 체크
         if (userRepository.existsByEmailAndDeletedFalse(request.getEmail())) {
             throw new InvalidRequestException("Existed_Email");
         }
 
-        // 활성 닉네임 중복 체크
         if (userRepository.existsByNicknameAndDeletedFalse(request.getNickname())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
 
-        // 추가: 같은 이메일의 삭제 계정까지 포함해서 기존 누적 신고 수 조회
         int previousReceivedReportCount =
                 userRepository.findMaxReceivedReportCountByEmailIncludingDeleted(
                         request.getEmail()
@@ -66,14 +61,12 @@ public class UserService {
         return new UserResponseDto(savedUser);
     }
 
-    //내 회원정보 조회
     @Transactional(readOnly = true)
     public UserInfoResponseDto getMyInfo(Long loginUserId){
         User user = getLoginUser(loginUserId);
         return new UserInfoResponseDto(user);
     }
 
-    //회원 탈퇴
     public UserDeleteResponseDto deleteUser(Long loginUserId){
         UserDeleteResponseDto userDeleteResponseDto = new UserDeleteResponseDto();
         User user = getLoginUser(loginUserId);
@@ -84,11 +77,9 @@ public class UserService {
         authSessionRepository.revokeAllActiveByUser(user, LocalDateTime.now());
         return userDeleteResponseDto;
     }
-    //회원 정보 수정
     public UserPatchResponseDto patchUser(Long loginUserId, UserPatchRequestDto request){
         User user = getLoginUser(loginUserId);
 
-        //닉네임 중복 체크
         if (userRepository.existsByNicknameAndDeletedFalseAndUserIdNot(request.getNickname(), user.getUserId())) {
             throw new InvalidRequestException("Existed_Nickname");
         }
@@ -99,9 +90,7 @@ public class UserService {
         UserPatchResponseDto userPatchResponseDto = new UserPatchResponseDto();
         return userPatchResponseDto;
     }
-    //비밀번호 수정
     public UserPasswordResponseDto setPassword(Long loginUserId, UserPasswordRequestDto request){
-        //비밀번호 확인
         if (!request.getPassword().equals(request.getPasswordCheck())) {
             throw new InvalidRequestException("Invalid_Password");
         }

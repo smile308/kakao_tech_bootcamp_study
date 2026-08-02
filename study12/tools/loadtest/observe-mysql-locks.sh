@@ -6,6 +6,7 @@ env_file="${1:-target-study11.env}"
 test_name="${2:-hot-post-view}"
 duration_seconds="${3:-130}"
 timestamp="${4:-$(date '+%Y%m%d-%H%M%S')}"
+result_directory="${5:-results}"
 
 if [[ ! -f "$env_file" ]]; then
   echo "env file not found: $env_file" >&2
@@ -19,7 +20,6 @@ if [[ -z "$target_version" ]]; then
   exit 1
 fi
 
-result_directory="results"
 result_file="${result_directory}/${target_version}__${test_name}__${timestamp}__mysql-locks.txt"
 end_epoch="$(( $(date '+%s') + duration_seconds ))"
 

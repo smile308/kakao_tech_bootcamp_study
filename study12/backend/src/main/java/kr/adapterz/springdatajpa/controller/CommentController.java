@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 public class CommentController {
     private final CommentService commentService;
 
-    //댓글 등록
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CommentResponseDto commentPost(
@@ -25,7 +24,6 @@ public class CommentController {
         return commentService.commentPost(postId, userDetails.getUserId(), request);
     }
 
-    //댓글 삭제
     @DeleteMapping
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public CommentDeleteResponseDto commentDelete(
@@ -36,7 +34,6 @@ public class CommentController {
         return commentService.commentDelete(postId, userDetails.getUserId(), request);
     }
 
-    //댓글 수정
     @PatchMapping
     public CommentResponseDto commentFix(
             @PathVariable("postId") Long postId,

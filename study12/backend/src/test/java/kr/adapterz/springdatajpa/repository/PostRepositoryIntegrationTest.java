@@ -3,7 +3,6 @@ package kr.adapterz.springdatajpa.repository;
 import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,8 +26,7 @@ class PostRepositoryIntegrationTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("목록 조회에서 신고 4회 게시글은 노출하고 5회 게시글은 제외한다")
-    void reportedPostIsExcludedFromListAtThreshold() {
+    void 목록_조회에서_신고_4회_게시글은_노출하고_5회_게시글은_제외한다() {
         User writer = userRepository.save(
                 new User(
                         "report-list-writer@test.com",

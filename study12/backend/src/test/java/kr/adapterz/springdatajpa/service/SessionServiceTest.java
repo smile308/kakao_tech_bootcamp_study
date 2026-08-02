@@ -11,7 +11,6 @@ import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.LoginFailedException;
 import kr.adapterz.springdatajpa.repository.AuthSessionRepository;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -55,15 +54,12 @@ class SessionServiceTest {
     private SessionService sessionService;
 
     @Test
-    @DisplayName("로그인 인증 실패 시 Login_Failed 예외가 발생한다")
-    void createSessionFailByAuthenticationFail() {
-        // given
+    void 로그인_인증_실패_시_Login_Failed_예외가_발생한다() {
         SessionRequestDto request = createSessionRequest("test@test.com", "Password1!");
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new BadCredentialsException("Bad credentials"));
 
-        // when & then
         assertThatThrownBy(() -> sessionService.createSession(request))
                 .isInstanceOf(LoginFailedException.class)
                 .hasMessage("Login_Failed");
@@ -73,15 +69,12 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("정지된 계정으로 로그인하면 Suspended_Account 예외가 발생한다")
-    void createSessionFailBySuspendedAccount() {
-        // given
+    void 정지된_계정으로_로그인하면_Suspended_Account_예외가_발생한다() {
         SessionRequestDto request = createSessionRequest("suspended@test.com", "Password1!");
 
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new DisabledException("disabled"));
 
-        // when & then
         assertThatThrownBy(() -> sessionService.createSession(request))
                 .isInstanceOf(LoginFailedException.class)
                 .hasMessage("Suspended_Account");
@@ -91,9 +84,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 성공 시 AuthenticationManager로 인증한 뒤 JWT를 발급한다")
-    void createSessionSuccess() {
-        // given
+    void 로그인_성공_시_AuthenticationManager로_인증한_뒤_JWT를_발급한다() {
         SessionRequestDto request = createSessionRequest("test@test.com", "Password1!");
 
         User user = createUser(1L, "test@test.com", "encoded-password");
@@ -117,10 +108,8 @@ class SessionServiceTest {
         when(refreshTokenProvider.createExpirationTime())
                 .thenReturn(LocalDateTime.of(2026, 7, 21, 3, 0));
 
-        // when
         SessionResponseDto response = sessionService.createSession(request);
 
-        // then
         assertThat(response.getMessage()).isEqualTo("login_success");
         assertThat(response.getAccessToken()).isEqualTo("access-token");
         assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
@@ -152,9 +141,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("리프레시 토큰이 유효하면 새 액세스 토큰과 새 리프레시 토큰을 발급하고 세션을 회전한다")
-    void refreshSessionSuccess() {
-        // given
+    void 리프레시_토큰이_유효하면_새_액세스_토큰과_새_리프레시_토큰을_발급하고_세션을_회전한다() {
         User user = createUser(1L, "test@test.com", "encoded-password");
         AuthSession authSession = new AuthSession(
                 user,
@@ -180,11 +167,9 @@ class SessionServiceTest {
         when(jwtProvider.createAccessToken(1L, 0L))
                 .thenReturn("new-access-token");
 
-        // when
         SessionRefreshResponseDto response =
                 sessionService.refreshSession("old-refresh-token");
 
-        // then
         assertThat(response.getMessage()).isEqualTo("refresh_success");
         assertThat(response.getAccessToken()).isEqualTo("new-access-token");
         assertThat(response.getRefreshToken()).isEqualTo("new-refresh-token");
@@ -197,8 +182,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("리프레시 토큰이 없으면 Invalid_Refresh_Token 예외가 발생한다")
-    void refreshSessionFailByBlankToken() {
+    void 리프레시_토큰이_없으면_Invalid_Refresh_Token_예외가_발생한다() {
         assertThatThrownBy(() -> sessionService.refreshSession(" "))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
@@ -208,16 +192,13 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("저장된 세션이 없으면 Invalid_Refresh_Token 예외가 발생한다")
-    void refreshSessionFailByUnknownToken() {
-        // given
+    void 저장된_세션이_없으면_Invalid_Refresh_Token_예외가_발생한다() {
         when(refreshTokenProvider.hashRefreshToken("unknown-refresh-token"))
                 .thenReturn("unknown-refresh-token-hash");
 
         when(authSessionRepository.findByRefreshTokenHash("unknown-refresh-token-hash"))
                 .thenReturn(Optional.empty());
 
-        // when & then
         assertThatThrownBy(() -> sessionService.refreshSession("unknown-refresh-token"))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
@@ -226,9 +207,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("폐기된 세션이면 Invalid_Refresh_Token 예외가 발생한다")
-    void refreshSessionFailByRevokedSession() {
-        // given
+    void 폐기된_세션이면_Invalid_Refresh_Token_예외가_발생한다() {
         AuthSession authSession = new AuthSession(
                 createUser(1L, "test@test.com", "encoded-password"),
                 "refresh-token-hash",
@@ -242,7 +221,6 @@ class SessionServiceTest {
         when(authSessionRepository.findByRefreshTokenHash("refresh-token-hash"))
                 .thenReturn(Optional.of(authSession));
 
-        // when & then
         assertThatThrownBy(() -> sessionService.refreshSession("refresh-token"))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
@@ -251,9 +229,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("만료된 세션이면 Invalid_Refresh_Token 예외가 발생한다")
-    void refreshSessionFailByExpiredSession() {
-        // given
+    void 만료된_세션이면_Invalid_Refresh_Token_예외가_발생한다() {
         AuthSession authSession = new AuthSession(
                 createUser(1L, "test@test.com", "encoded-password"),
                 "refresh-token-hash",
@@ -266,7 +242,6 @@ class SessionServiceTest {
         when(authSessionRepository.findByRefreshTokenHash("refresh-token-hash"))
                 .thenReturn(Optional.of(authSession));
 
-        // when & then
         assertThatThrownBy(() -> sessionService.refreshSession("refresh-token"))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
@@ -275,9 +250,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴한 유저의 세션이면 Invalid_Refresh_Token 예외가 발생한다")
-    void refreshSessionFailByDeletedUser() {
-        // given
+    void 탈퇴한_유저의_세션이면_Invalid_Refresh_Token_예외가_발생한다() {
         User user = createUser(1L, "test@test.com", "encoded-password");
         user.delete();
         AuthSession authSession = new AuthSession(
@@ -292,7 +265,6 @@ class SessionServiceTest {
         when(authSessionRepository.findByRefreshTokenHash("refresh-token-hash"))
                 .thenReturn(Optional.of(authSession));
 
-        // when & then
         assertThatThrownBy(() -> sessionService.refreshSession("refresh-token"))
                 .isInstanceOf(AuthException.class)
                 .hasMessage("Invalid_Refresh_Token");
@@ -301,9 +273,7 @@ class SessionServiceTest {
     }
 
     @Test
-    @DisplayName("로그아웃 시 저장된 리프레시 토큰 세션을 폐기한다")
-    void deleteSessionRevokesSession() {
-        // given
+    void 로그아웃_시_저장된_리프레시_토큰_세션을_폐기한다() {
         AuthSession authSession = new AuthSession(
                 createUser(1L, "test@test.com", "encoded-password"),
                 "refresh-token-hash",
@@ -316,16 +286,13 @@ class SessionServiceTest {
         when(authSessionRepository.findByRefreshTokenHash("refresh-token-hash"))
                 .thenReturn(Optional.of(authSession));
 
-        // when
         sessionService.deleteSession("refresh-token");
 
-        // then
         assertThat(authSession.getRevokedAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("로그아웃 시 리프레시 토큰이 비어 있으면 아무 작업도 하지 않는다")
-    void deleteSessionDoesNothingByBlankToken() {
+    void 로그아웃_시_리프레시_토큰이_비어_있으면_아무_작업도_하지_않는다() {
         sessionService.deleteSession(" ");
 
         verifyNoInteractions(refreshTokenProvider);

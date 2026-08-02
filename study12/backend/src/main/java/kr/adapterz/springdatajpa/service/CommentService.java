@@ -25,7 +25,6 @@ public class CommentService {
     private final PostCounterRepository postCounterRepository;
     private final UserRepository userRepository;
 
-    //댓글 등록
     public CommentResponseDto commentPost(Long postId, Long loginUserId, CommentPostRequestDto request){
         User user = getLoginUser(loginUserId);
         Post post = getActivePostForInteraction(postId);
@@ -42,7 +41,6 @@ public class CommentService {
         return new CommentResponseDto(comment, user, true);
     }
 
-    //댓글 수정
     public CommentResponseDto commentFix(Long postId, Long loginUserId, CommentFixRequestDto request){
         validateActivePostWithLock(postId);
         Comment comment= commentRepository.findById(request.getCommentId()).orElseThrow(()-> new DataNullException("No_Comment"));
@@ -60,7 +58,6 @@ public class CommentService {
         return new CommentResponseDto(comment, comment.getUser(), true);
     }
 
-    //댓글 삭제
     public CommentDeleteResponseDto commentDelete(Long postId, Long loginUserId, CommentDeleteRequestDto request){
         CommentDeleteResponseDto commentDeleteResponseDto = new CommentDeleteResponseDto();
         getActivePostForInteraction(postId);

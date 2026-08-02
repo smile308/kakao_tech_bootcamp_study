@@ -3,7 +3,6 @@ package kr.adapterz.springdatajpa.repository;
 import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.User;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -26,8 +25,7 @@ class UserSoftDeleteIntegrationTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("탈퇴한 사용자는 활성 사용자 조회에서 제외된다")
-    void deletedUserIsExcludedFromActiveUserQueries() {
+    void 탈퇴한_사용자는_활성_사용자_조회에서_제외된다() {
         User user = userRepository.save(
                 new User(
                         "deleted-user@test.com",
@@ -54,8 +52,7 @@ class UserSoftDeleteIntegrationTest {
     }
 
     @Test
-    @DisplayName("작성자가 탈퇴해도 작성자의 게시글 목록과 상세를 조회할 수 있다")
-    void postRemainsReadableAfterWriterDeletesAccount() {
+    void 작성자가_탈퇴해도_작성자의_게시글_목록과_상세를_조회할_수_있다() {
         User writer = userRepository.save(
                 new User(
                         "deleted-writer@test.com",

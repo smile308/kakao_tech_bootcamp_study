@@ -13,7 +13,6 @@ import kr.adapterz.springdatajpa.repository.PostViewCountRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -69,9 +68,7 @@ class PostConcurrencyIntegrationTest {
     }
 
     @Test
-    @DisplayName("동시에 게시글을 조회해도 조회수가 요청 수만큼 증가한다")
-    void getPostViewIncrementsViewCountAtomically() throws Exception {
-        // given
+    void 동시에_게시글을_조회해도_조회수가_요청_수만큼_증가한다() throws Exception {
         int requestCount = 30;
         User writer = userRepository.saveAndFlush(
                 createUser("view-writer@test.com", "조회작성자")
@@ -86,13 +83,11 @@ class PostConcurrencyIntegrationTest {
         Long viewerId = viewer.getUserId();
         entityManager.clear();
 
-        // when
         runConcurrently(
                 requestCount,
                 ignored -> postService.getPostView(postId, viewerId)
         );
 
-        // then
         long separatedViewCount = postViewCountRepository.findById(postId)
                 .orElseThrow()
                 .getViewCount();
@@ -105,9 +100,7 @@ class PostConcurrencyIntegrationTest {
     }
 
     @Test
-    @DisplayName("서로 다른 유저가 동시에 좋아요를 눌러도 좋아요 수가 유실되지 않는다")
-    void likePostUsesPessimisticLock() throws Exception {
-        // given
+    void 서로_다른_유저가_동시에_좋아요를_눌러도_좋아요_수가_유실되지_않는다() throws Exception {
         int requestCount = 10;
         User writer = userRepository.saveAndFlush(
                 createUser("like-writer@test.com", "좋아요작성자")
@@ -119,13 +112,11 @@ class PostConcurrencyIntegrationTest {
         Long postId = post.getPostId();
         entityManager.clear();
 
-        // when
         runConcurrently(
                 requestCount,
                 index -> postService.likePost(postId, users.get(index).getUserId())
         );
 
-        // then
         PostCounter savedCounter = postCounterRepository.findById(postId).orElseThrow();
 
         assertThat(savedCounter.getLikeCount()).isEqualTo(requestCount);
@@ -133,9 +124,7 @@ class PostConcurrencyIntegrationTest {
     }
 
     @Test
-    @DisplayName("같은 작성자의 여러 게시글이 동시에 신고되어도 작성자의 누적 신고 수가 유실되지 않는다")
-    void reportPostLocksWriterUser() throws Exception {
-        // given
+    void 같은_작성자의_여러_게시글이_동시에_신고되어도_작성자의_누적_신고_수가_유실되지_않는다() throws Exception {
         int requestCount = 5;
         User writer = userRepository.saveAndFlush(
                 createUser("report-writer@test.com", "신고작성자")
@@ -145,7 +134,6 @@ class PostConcurrencyIntegrationTest {
         Long writerId = writer.getUserId();
         entityManager.clear();
 
-        // when
         runConcurrently(
                 requestCount,
                 index -> postService.reportPost(
@@ -154,7 +142,6 @@ class PostConcurrencyIntegrationTest {
                 )
         );
 
-        // then
         User savedWriter = userRepository.findById(writerId).orElseThrow();
         List<PostCounter> savedCounters = postCounterRepository.findAllById(
                 posts.stream()

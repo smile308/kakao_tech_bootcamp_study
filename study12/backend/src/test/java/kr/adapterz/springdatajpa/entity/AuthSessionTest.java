@@ -1,6 +1,5 @@
 package kr.adapterz.springdatajpa.entity;
 
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -11,20 +10,16 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 class AuthSessionTest {
 
     @Test
-    @DisplayName("리프레시 세션 생성 시 기본값이 정상 설정된다")
-    void createAuthSession() {
-        // given
+    void 리프레시_세션_생성_시_기본값이_정상_설정된다() {
         User user = createUser();
         LocalDateTime refreshExpiresAt = LocalDateTime.now().plusHours(3);
 
-        // when
         AuthSession authSession = new AuthSession(
                 user,
                 "refresh-token-hash",
                 refreshExpiresAt
         );
 
-        // then
         assertAll(
                 () -> assertThat(authSession.getUser()).isEqualTo(user),
                 () -> assertThat(authSession.getRefreshTokenHash())
@@ -37,9 +32,7 @@ class AuthSessionTest {
     }
 
     @Test
-    @DisplayName("폐기되지 않고 만료되지 않은 리프레시 세션만 활성 상태다")
-    void isActive() {
-        // given
+    void 폐기되지_않고_만료되지_않은_리프레시_세션만_활성_상태다() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 21, 12, 0);
         AuthSession authSession = new AuthSession(
                 createUser(),
@@ -47,7 +40,6 @@ class AuthSessionTest {
                 now.plusHours(1)
         );
 
-        // when & then
         assertThat(authSession.isActive(now)).isTrue();
         assertThat(authSession.isActive(now.plusHours(2))).isFalse();
 
@@ -57,22 +49,18 @@ class AuthSessionTest {
     }
 
     @Test
-    @DisplayName("리프레시 세션 회전 시 토큰 해시와 만료 시간이 교체된다")
-    void rotate() {
-        // given
+    void 리프레시_세션_회전_시_토큰_해시와_만료_시간이_교체된다() {
         AuthSession authSession = new AuthSession(
                 createUser(),
                 "old-refresh-token-hash",
                 LocalDateTime.of(2026, 7, 21, 12, 0)
         );
 
-        // when
         authSession.rotate(
                 "new-refresh-token-hash",
                 LocalDateTime.of(2026, 7, 21, 15, 0)
         );
 
-        // then
         assertAll(
                 () -> assertThat(authSession.getRefreshTokenHash())
                         .isEqualTo("new-refresh-token-hash"),
@@ -82,9 +70,7 @@ class AuthSessionTest {
     }
 
     @Test
-    @DisplayName("리프레시 세션 폐기는 최초 폐기 시간만 유지한다")
-    void revokeKeepsFirstRevokedAt() {
-        // given
+    void 리프레시_세션_폐기는_최초_폐기_시간만_유지한다() {
         AuthSession authSession = new AuthSession(
                 createUser(),
                 "refresh-token-hash",
@@ -93,11 +79,9 @@ class AuthSessionTest {
         LocalDateTime firstRevokedAt = LocalDateTime.of(2026, 7, 21, 12, 0);
         LocalDateTime secondRevokedAt = LocalDateTime.of(2026, 7, 21, 13, 0);
 
-        // when
         authSession.revoke(firstRevokedAt);
         authSession.revoke(secondRevokedAt);
 
-        // then
         assertThat(authSession.getRevokedAt()).isEqualTo(firstRevokedAt);
     }
 

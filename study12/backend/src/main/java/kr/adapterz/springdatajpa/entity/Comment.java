@@ -41,7 +41,6 @@ public class Comment {
         createdAt=LocalDateTime.now();
     }
 
-    //댓글 수정
     public void changeComment(String commentContent){
         this.commentContent=commentContent;
     }

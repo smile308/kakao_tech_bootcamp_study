@@ -75,14 +75,12 @@ public class User {
         this.profileImage = profileImage;
     }
 
-    //유저 삭제
     public void delete(){
         this.deleted = true;
         this.nickname = "삭제된 유저";
         this.profileImage = null;
     }
 
-    //신고 카운
     public void receiveReport() {
         receivedReportCount++;
     }

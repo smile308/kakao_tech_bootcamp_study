@@ -4,7 +4,6 @@ import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.PostViewCount;
 import kr.adapterz.springdatajpa.entity.User;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,8 +28,7 @@ class PostViewCountRepositoryIntegrationTest {
     private EntityManager entityManager;
 
     @Test
-    @DisplayName("게시글 저장 시 조회수 카운터도 같은 식별자로 저장된다")
-    void postSaveCascadesToPostViewCount() {
+    void 게시글_저장_시_조회수_카운터도_같은_식별자로_저장된다() {
         User writer = userRepository.save(
                 new User(
                         "view-count-writer@test.com",
@@ -56,8 +54,7 @@ class PostViewCountRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("분리된 조회수는 현재값과 기준값 중 큰 값에서 증가한다")
-    void incrementUsesGreaterCurrentOrBaselineViewCount() {
+    void 분리된_조회수는_현재값과_기준값_중_큰_값에서_증가한다() {
         User writer = userRepository.save(
                 new User(
                         "view-count-increment@test.com",
@@ -93,8 +90,7 @@ class PostViewCountRepositoryIntegrationTest {
     }
 
     @Test
-    @DisplayName("Redis 스냅샷은 기존 조회수를 감소시키지 않고 반영된다")
-    void persistMaxDoesNotDecreaseViewCount() {
+    void Redis_스냅샷은_기존_조회수를_감소시키지_않고_반영된다() {
         User writer = userRepository.save(
                 new User(
                         "view-count-persist@test.com",

@@ -3,7 +3,6 @@ package kr.adapterz.springdatajpa.auth;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,8 +37,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("유효한 JWT면 사용자 인증 정보를 SecurityContext에 저장한다")
-    void validTokenSetsAuthentication() throws Exception {
+    void 유효한_JWT면_사용자_인증_정보를_SecurityContext에_저장한다() throws Exception {
         String accessToken = "valid-access-token";
         User user = new User(
                 "test@test.com",
@@ -72,8 +70,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("JWT 인증 버전이 현재 사용자와 다르면 401 Invalid_Token을 반환한다")
-    void staleAuthVersionReturnsUnauthorized() throws Exception {
+    void JWT_인증_버전이_현재_사용자와_다르면_401_Invalid_Token을_반환한다() throws Exception {
         String accessToken = "stale-access-token";
         User user = new User(
                 "test@test.com",
@@ -103,8 +100,7 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    @DisplayName("위조되거나 만료된 JWT면 401 Invalid_Token을 반환한다")
-    void invalidTokenReturnsUnauthorized() throws Exception {
+    void 위조되거나_만료된_JWT면_401_Invalid_Token을_반환한다() throws Exception {
         String accessToken = "invalid-access-token";
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/posts");
         request.addHeader("Authorization", "Bearer " + accessToken);
