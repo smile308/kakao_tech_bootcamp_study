@@ -659,6 +659,8 @@ SET view_counter.view_count = GREATEST( -- 두 값 중 큰 값을 새 조회수�
 
 이 테스트는 MySQL 호환 모드의 빈 H2 DB에 실제 migration 폴더를 적용한다. 운영 MySQL 자체를 완전히 대체하는 테스트는 아니지만, `B3` SQL이 빈 DB를 만들 수 있는지와 Flyway가 `V1~V3` 대신 `B3`를 선택하는지는 빠르게 검증한다.
 
+H2 호환 모드의 한계는 10장의 `MySqlSchemaIntegrationTest`가 보완한다. CI의 `mysqlTest`는 실제 `mysql:8.4` container를 시작해 B3를 적용하고, Hibernate `ddl-auto: validate`로 Entity mapping을 검사한 뒤 실제 MySQL row lock에서 동시 좋아요가 유실되지 않는지 확인한다.
+
 ```java
 package kr.adapterz.springdatajpa.config; // migration 설정 테스트가 속한 package다.
 

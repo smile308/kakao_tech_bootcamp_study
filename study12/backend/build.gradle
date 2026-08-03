@@ -69,7 +69,7 @@ tasks.withType(Test).configureEach {
 tasks.named('test') {
 	systemProperty 'spring.profiles.active', 'test'
 	useJUnitPlatform {
-		excludeTags 'redis-integration'
+		excludeTags 'redis-integration', 'mysql-integration'
 	}
 	finalizedBy jacocoTestReport
 }
@@ -85,10 +85,23 @@ tasks.register('redisTest', Test) {
 	shouldRunAfter test
 }
 
+tasks.register('mysqlTest', Test) {
+	description = 'Runs schema and locking integration tests against a Testcontainers MySQL server.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'mysql-integration'
+	}
+	shouldRunAfter test
+}
+
 def coverageIncludes = [
-		'kr/adapterz/springdatajpa/entity/**',
-		'kr/adapterz/springdatajpa/auth/**',
-		'kr/adapterz/springdatajpa/config/**'
+	'kr/adapterz/springdatajpa/entity/**',
+	'kr/adapterz/springdatajpa/auth/**',
+	'kr/adapterz/springdatajpa/config/**',
+	'kr/adapterz/springdatajpa/service/**',
+	'kr/adapterz/springdatajpa/controller/**'
 ]
 
 tasks.named('jacocoTestReport') {
@@ -106,6 +119,8 @@ tasks.named('jacocoTestReport') {
 }
 
 tasks.named('jacocoTestCoverageVerification') {
+	dependsOn test
+
 	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
 		fileTree(dir: it, include: coverageIncludes)
 	}))
@@ -123,3 +138,4 @@ tasks.named('jacocoTestCoverageVerification') {
 
 check.dependsOn jacocoTestCoverageVerification
 check.dependsOn tasks.named('redisTest')
+check.dependsOn tasks.named('mysqlTest')

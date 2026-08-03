@@ -98,7 +98,7 @@ tasks.withType(Test).configureEach {
 tasks.named('test') {
 	systemProperty 'spring.profiles.active', 'test'
 	useJUnitPlatform {
-		excludeTags 'redis-integration'
+		excludeTags 'redis-integration', 'mysql-integration'
 	}
 	finalizedBy jacocoTestReport
 }
@@ -114,10 +114,23 @@ tasks.register('redisTest', Test) {
 	shouldRunAfter test
 }
 
+tasks.register('mysqlTest', Test) {
+	description = 'Runs schema and locking integration tests against a Testcontainers MySQL server.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		includeTags 'mysql-integration'
+	}
+	shouldRunAfter test
+}
+
 def coverageIncludes = [
 		'kr/adapterz/springdatajpa/entity/**',
 		'kr/adapterz/springdatajpa/auth/**',
-		'kr/adapterz/springdatajpa/config/**'
+		'kr/adapterz/springdatajpa/config/**',
+		'kr/adapterz/springdatajpa/service/**',
+		'kr/adapterz/springdatajpa/controller/**'
 ]
 
 tasks.named('jacocoTestReport') {
@@ -135,6 +148,8 @@ tasks.named('jacocoTestReport') {
 }
 
 tasks.named('jacocoTestCoverageVerification') {
+	dependsOn test
+
 	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
 		fileTree(dir: it, include: coverageIncludes)
 	}))
@@ -152,6 +167,7 @@ tasks.named('jacocoTestCoverageVerification') {
 
 check.dependsOn jacocoTestCoverageVerification
 check.dependsOn tasks.named('redisTest')
+check.dependsOn tasks.named('mysqlTest')
 ```
 
 ### 실제 코드의 라인별 주석본
@@ -230,7 +246,7 @@ tasks.withType(Test).configureEach { // Gradle의 모든 Test 종류 작업에 �
 tasks.named('test') { // Gradle이 기본으로 제공하는 test 작업의 동작을 추가 설정한다.
 	systemProperty 'spring.profiles.active', 'test' // 일반 테스트 실행 JVM에서 Spring의 test 프로필을 활성화한다.
 	useJUnitPlatform { // 이 test 작업에서 실행할 JUnit 5 테스트 범위를 설정한다.
-		excludeTags 'redis-integration' // redis-integration 태그 테스트는 일반 test 작업에서 제외한다.
+		excludeTags 'redis-integration', 'mysql-integration' // Docker 기반 Redis·MySQL 태그 테스트는 일반 test에서 제외한다.
 	}
 	finalizedBy jacocoTestReport // test가 끝나면 성공 여부와 관계없이 JaCoCo 보고서 작업을 이어서 실행한다.
 }
@@ -246,10 +262,23 @@ tasks.register('redisTest', Test) { // redisTest라는 새로운 Test 작업을 
 	shouldRunAfter test // 두 작업이 함께 예약됐을 때 redisTest를 일반 test 뒤에 실행하도록 순서를 권장한다.
 }
 
+tasks.register('mysqlTest', Test) { // 실제 MySQL 전용 Test 작업을 만든다.
+	description = 'Runs schema and locking integration tests against a Testcontainers MySQL server.' // 작업 목적을 표시한다.
+	group = 'verification' // 검증 작업 그룹에 포함한다.
+	testClassesDirs = sourceSets.test.output.classesDirs // compile된 test class를 사용한다.
+	classpath = sourceSets.test.runtimeClasspath // MySQL driver와 Testcontainers가 있는 test classpath를 쓴다.
+	useJUnitPlatform { // JUnit tag 선택 범위를 설정한다.
+		includeTags 'mysql-integration' // MySQL 통합 tag만 실행한다.
+	}
+	shouldRunAfter test // 함께 실행될 때 일반 test 뒤에 실행하도록 권장한다.
+}
+
 def coverageIncludes = [ // JaCoCo 보고서와 통과 기준에 포함할 실제 코드 경로 목록을 만든다.
 		'kr/adapterz/springdatajpa/entity/**', // Entity 패키지 아래의 모든 class를 포함한다.
 		'kr/adapterz/springdatajpa/auth/**', // 인증 패키지 아래의 모든 class를 포함한다.
-		'kr/adapterz/springdatajpa/config/**' // 설정 패키지 아래의 모든 class를 포함한다.
+		'kr/adapterz/springdatajpa/config/**', // 설정 패키지 아래의 모든 class를 포함한다.
+		'kr/adapterz/springdatajpa/service/**', // business logic 패키지를 포함한다.
+		'kr/adapterz/springdatajpa/controller/**' // HTTP Controller 패키지를 포함한다.
 ]
 
 tasks.named('jacocoTestReport') { // 테스트 커버리지 결과 파일을 생성하는 JaCoCo 작업을 설정한다.
@@ -267,8 +296,10 @@ tasks.named('jacocoTestReport') { // 테스트 커버리지 결과 파일을 생
 }
 
 tasks.named('jacocoTestCoverageVerification') { // 커버리지가 기준 이상인지 검사하는 JaCoCo 작업을 설정한다.
+	dependsOn test // coverage 검사 전에 일반 test 실행과 execution data 생성을 보장한다.
+
 	classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect { // 보고서와 동일하게 검증 대상 class를 제한한다.
-		fileTree(dir: it, include: coverageIncludes) // Entity, auth, config 경로의 class만 검증 대상으로 선택한다.
+		fileTree(dir: it, include: coverageIncludes) // Entity, auth, config, service, controller를 검증 대상으로 선택한다.
 	}))
 
 	violationRules { // 커버리지 기준을 통과하지 못했을 때 실패시킬 규칙을 선언한다.
@@ -284,6 +315,7 @@ tasks.named('jacocoTestCoverageVerification') { // 커버리지가 기준 이상
 
 check.dependsOn jacocoTestCoverageVerification // check 실행 시 JaCoCo 80% 검증도 반드시 실행하게 한다.
 check.dependsOn tasks.named('redisTest') // check 실행 시 Redis 통합 테스트도 반드시 실행하게 한다.
+check.dependsOn tasks.named('mysqlTest') // check 실행 시 MySQL migration·lock 테스트도 반드시 실행하게 한다.
 ```
 
 ## 1.3 핵심만 남긴 축약본
@@ -312,18 +344,22 @@ dependencies {
 }
 
 tasks.named("test") {
-    // 일반 테스트 실행, Redis 통합 테스트 제외
+    // 일반 테스트 실행, Redis·MySQL 통합 테스트 제외
 }
 
 tasks.register("redisTest", Test) {
     // Redis 통합 테스트만 별도 실행
 }
 
+tasks.register("mysqlTest", Test) {
+    // MySQL 통합 테스트만 별도 실행
+}
+
 tasks.named("jacocoTestCoverageVerification") {
     // 지정된 패키지의 라인 커버리지 80% 검사
 }
 
-check.dependsOn(/* 커버리지 검사와 Redis 테스트 */)
+check.dependsOn(/* 커버리지 검사와 Redis·MySQL 테스트 */)
 ```
 
 축약본에서는 개별 라이브러리 이름, Mockito JVM 옵션, 보고서 형식, 세부 패키지 경로를 생략했다. 이 값들은 실제 동작을 확인할 때는 중요하지만 전체 구조를 처음 구분할 때는 한꺼번에 외울 필요가 없다.
@@ -504,9 +540,9 @@ testImplementation 'org.mockito:mockito-core'
 
 - Spring Boot Test: JUnit, AssertJ, Spring 테스트 기능
 - Mockito: 가짜 의존성 생성
-- Testcontainers: 테스트 중 실제 Redis Docker 컨테이너 실행
+- Testcontainers: 테스트 중 실제 Redis·MySQL Docker 컨테이너 실행
 
-## 1.9 왜 Redis 테스트를 분리하는가?
+## 1.9 왜 Redis·MySQL 테스트를 분리하는가?
 
 일반 테스트 설정은 다음과 같다.
 
@@ -514,13 +550,13 @@ testImplementation 'org.mockito:mockito-core'
 tasks.named('test') {
 	systemProperty 'spring.profiles.active', 'test'
 	useJUnitPlatform {
-		excludeTags 'redis-integration'
+		excludeTags 'redis-integration', 'mysql-integration'
 	}
 	finalizedBy jacocoTestReport
 }
 ```
 
-`test` 작업은 `test` 프로필을 사용하고 `redis-integration` 태그가 붙은 테스트를 제외한다. 일반 단위 테스트와 H2 기반 통합 테스트를 먼저 빠르게 실행하기 위한 구조다.
+`test` 작업은 `test` 프로필을 사용하고 Docker가 필요한 Redis·MySQL tag를 제외한다. 일반 단위 테스트와 H2 기반 통합 테스트를 먼저 빠르게 실행하기 위한 구조다.
 
 Redis 통합 테스트는 별도 작업이다.
 
@@ -540,13 +576,29 @@ check.dependsOn tasks.named('redisTest')
 
 따라서 `check`를 실행하면 Redis 통합 테스트까지 포함된다.
 
+실제 MySQL 검증도 같은 방식으로 분리한다.
+
+```groovy
+tasks.register('mysqlTest', Test) {
+	useJUnitPlatform {
+		includeTags 'mysql-integration'
+	}
+}
+
+check.dependsOn tasks.named('mysqlTest')
+```
+
+`mysqlTest`는 빈 MySQL 8.4에 B3를 적용하고 Hibernate `validate`와 실제 row lock 동시성까지 검사한다. 따라서 `check`는 일반 test, Redis, MySQL을 모두 실행하며 local Docker가 꺼져 있으면 통합 검증 단계가 실패한다.
+
 ## 1.10 JaCoCo가 검사하는 범위
 
 ```groovy
 def coverageIncludes = [
 		'kr/adapterz/springdatajpa/entity/**',
 		'kr/adapterz/springdatajpa/auth/**',
-		'kr/adapterz/springdatajpa/config/**'
+		'kr/adapterz/springdatajpa/config/**',
+		'kr/adapterz/springdatajpa/service/**',
+		'kr/adapterz/springdatajpa/controller/**'
 ]
 ```
 
@@ -555,6 +607,8 @@ def coverageIncludes = [
 - Entity
 - 인증 관련 코드
 - 설정 관련 코드
+- Service business logic
+- HTTP Controller
 
 ```groovy
 minimum = 0.80
@@ -562,7 +616,7 @@ minimum = 0.80
 
 해당 범위에서 실행된 코드 줄의 비율이 80%보다 낮으면 커버리지 검증이 실패한다.
 
-주의할 점은 Service, Controller, Repository가 커버리지 강제 범위에서 빠져 있다는 것이다. 이 코드들의 테스트가 전혀 없다는 뜻은 아니며, 현재 80% 통과 조건을 계산할 때 제외된다는 뜻이다.
+Repository는 대부분 구현 line이 없는 Spring Data interface라 강제 범위에서 제외한다. 현재 일반 테스트 기준 다섯 package의 line coverage는 83.14%이며 80% 하한을 통과한다.
 
 ## 1.11 `test`와 `check`의 차이
 
@@ -571,16 +625,20 @@ minimum = 0.80
 ```text
 test
 → 일반 테스트
-→ redis-integration 제외
+→ redis-integration과 mysql-integration 제외
 → 종료 후 JaCoCo 보고서 생성
 
 redisTest
 → redis-integration 태그 테스트만 실행
 
+mysqlTest
+→ mysql-integration 태그 테스트만 실행
+→ 실제 MySQL migration·validate·row lock 검증
+
 check
 → 일반적인 검증 작업
 → 커버리지 80% 검증
-→ redisTest도 실행
+→ redisTest와 mysqlTest도 실행
 ```
 
 CI가 `./gradlew clean check`를 실행하는 이유는 일반 테스트만 실행하는 것보다 더 넓은 검증을 하기 위해서다.
@@ -679,7 +737,9 @@ html.required = true
 def coverageIncludes = [
     'entity/**',
     'auth/**',
-    'config/**'
+    'config/**',
+    'service/**',
+    'controller/**'
 ]
 ```
 
@@ -726,7 +786,9 @@ implementation('starter') {
 
 ```groovy
 check.dependsOn redisTest
+check.dependsOn mysqlTest
 redisTest.shouldRunAfter test
+mysqlTest.shouldRunAfter test
 ```
 
 - `dependsOn`: 앞 Task가 실행되면 뒤 Task도 반드시 실행 대상이 된다.
@@ -739,9 +801,9 @@ redisTest.shouldRunAfter test
 3. `implementation`, `runtimeOnly`, `testImplementation`의 차이는 무엇인가?
 4. H2와 MySQL Connector가 각각 필요한 환경은 어디인가?
 5. 일반 `test`에서 Redis 통합 테스트를 제외하는 이유는 무엇인가?
-6. `check`를 실행하면 Redis 통합 테스트도 실행되는가?
+6. `check`를 실행하면 Redis와 MySQL 통합 테스트도 실행되는가?
 7. 현재 JaCoCo 80% 기준이 적용되는 패키지는 어디인가?
-8. Service가 JaCoCo 강제 범위에 없다는 것이 Service 테스트가 하나도 없다는 뜻인가?
+8. Repository가 JaCoCo 강제 범위에서 제외된 이유는 무엇인가?
 9. `settings.gradle`의 `rootProject.name`은 무엇을 정하며, `spring.application.name`과 같은 설정인가?
 10. `repositories { mavenCentral() }`에서 중괄호 블록과 `mavenCentral()`은 각각 Groovy·Gradle에서 무엇을 의미하는가?
 11. `'group:name:version'` 형태의 dependency 좌표 세 부분은 각각 무엇을 가리키는가?
@@ -754,11 +816,11 @@ redisTest.shouldRunAfter test
 1. 아니다. `build.gradle`은 빌드, dependency, 테스트 Task 등을 설정하는 파일이고 HTTP 요청은 Controller가 처리한다.
 2. Plugin은 Gradle이 수행할 수 있는 빌드 기능과 Task를 확장하고, dependency는 애플리케이션이나 테스트 코드가 사용할 라이브러리다.
 3. `implementation`은 main 코드의 compile·실행에, `runtimeOnly`는 main 코드 compile에는 직접 쓰지 않고 실행 시에, `testImplementation`은 test 코드의 compile·실행에 사용된다.
-4. H2는 local과 일반 test의 memory DB에 필요하고, MySQL Connector는 prod에서 RDS MySQL에 JDBC로 연결할 때 필요하다.
-5. Redis 통합 test는 Docker·Testcontainers로 실제 Redis container를 시작하므로 더 느리고 외부 실행 환경이 필요하다. 빠른 일반 test와 분리하되 최종 `check`에서는 둘 다 실행한다.
-6. 실행된다. `check` Task가 `redisTest`를 dependency로 가지므로 일반 `test`와 Redis 통합 test가 모두 실행 대상이 된다.
-7. JaCoCo 80% 강제 기준은 `entity`, `auth`, `config` package에만 적용된다.
-8. 아니다. Service test가 존재할 수 있지만 Service package의 coverage가 현재 80% 강제 계산 범위에 포함되지 않는다는 뜻이다.
+4. H2는 local과 일반 test의 memory DB에 필요하고, MySQL Connector는 prod의 RDS와 `mysqlTest`의 MySQL Testcontainer에 JDBC로 연결할 때 필요하다.
+5. Redis·MySQL 통합 test는 Docker·Testcontainers로 실제 DB container를 시작하므로 더 느리고 외부 실행 환경이 필요하다. 빠른 일반 test와 분리하되 최종 `check`에서는 모두 실행한다.
+6. 실행된다. `check` Task가 `redisTest`와 `mysqlTest`를 dependency로 가지므로 일반 test와 두 통합 test가 모두 실행 대상이 된다.
+7. JaCoCo 80% 강제 기준은 `entity`, `auth`, `config`, `service`, `controller` package에 적용된다.
+8. Repository는 대부분 Spring Data가 runtime에 구현하는 interface라 측정할 실제 line이 거의 없기 때문이다. Repository query 동작 자체는 H2와 MySQL 통합 테스트로 검증한다.
 9. `rootProject.name`은 Gradle project의 이름을 정한다. `spring.application.name`은 실행 중인 Spring application의 이름이므로 서로 다른 설정이다.
 10. `{ ... }`는 `repositories` 설정을 묶는 Groovy closure이고, `mavenCentral()`은 Gradle이 제공하는 method를 호출해 Maven Central repository를 등록한다.
 11. `group`은 library를 배포한 조직·namespace, `name`은 module·artifact 이름, `version`은 사용할 release 버전을 가리킨다.

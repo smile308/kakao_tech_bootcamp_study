@@ -19,12 +19,20 @@ if [[ ! -f "${COMPOSE_FILE}" ]]; then
   exit 1
 fi
 
-for command_name in docker curl grep sed; do
+for command_name in docker curl grep sed flock; do
   if ! command -v "${command_name}" >/dev/null 2>&1; then
     echo "Required command is not installed: ${command_name}" >&2
     exit 1
   fi
 done
+
+LOCK_FILE="${DEPLOY_DIR}/.deploy.lock"
+exec 9>"${LOCK_FILE}"
+
+if ! flock -n 9; then
+  echo "Another backend deployment is already running." >&2
+  exit 1
+fi
 
 cd "${DEPLOY_DIR}"
 

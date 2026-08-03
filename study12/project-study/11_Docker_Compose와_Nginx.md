@@ -311,6 +311,7 @@ server {
     }
 
     location / {
+        client_max_body_size 20m;
         proxy_pass http://active_backend;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -399,6 +400,7 @@ server {
     }
 
     location /api/ {
+        client_max_body_size 20m;
         proxy_pass http://${BACKEND_UPSTREAM}/;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
@@ -428,9 +430,9 @@ server {
 → BACKEND_UPSTREAM의 /posts
 ```
 
-현재 설정에는 image 요청과 관련된 중요한 한계가 있다. `client_max_body_size 20m`은 frontend image 내부 Nginx의 `nginx/default.conf`에만 있다. 그러나 `/api/` 요청은 바깥 blue/green 배포 Nginx가 직접 `BACKEND_UPSTREAM`으로 보내므로 내부 frontend Nginx를 거치지 않는다. 바깥 frontend template과 backend Nginx에는 `client_max_body_size`가 없다.
+큰 Base64 image 요청은 프론트 배포 Nginx와 백엔드 배포 Nginx를 모두 통과한다. 따라서 blue·green frontend template의 `/api/` location과 blue·green backend 설정의 `/` location에 `client_max_body_size 20m`을 동일하게 두었다.
 
-Nginx 기본 request body 제한은 별도 설정이 없으면 일반적으로 1 MiB이므로, Base64 image가 포함된 큰 게시글·profile 요청은 Java validation에 도달하기 전에 proxy에서 413으로 거부될 수 있다. 현재 backend validator가 image 하나에 decoded 3 MiB를 허용하고 게시글 image를 최대 3개 받는다는 정책과 proxy 제한이 맞지 않는다. 실제 배포에서 해당 크기를 허용하려면 요청이 통과하는 바깥 frontend Nginx와 backend Nginx 양쪽의 body size 정책을 의도에 맞게 설정해야 한다.
+현재 backend validator는 image 하나에 decoded 3 MiB를 허용하고 게시글 image를 최대 3개 받는다. Base64로 변환하면 image 하나가 약 4 MiB, 세 개가 약 12 MiB가 되므로 JSON 등 부가 데이터를 포함해도 20 MiB 안에서 처리할 여유가 있다. 20 MiB를 넘는 요청은 가장 앞의 Nginx에서 413으로 차단되고, 제한 안의 요청은 두 proxy를 통과한 뒤 Java validation을 받는다. 현재 전송 형식은 multipart가 아니라 JSON 내부 Base64 문자열이므로 `spring.servlet.multipart.max-file-size`로 해결하는 문제가 아니다.
 
 ## 11.8 환경변수, 포트, 네트워크, 볼륨
 
@@ -626,6 +628,7 @@ location = /api { # 슬래시 없는 정확한 /api 요청을 처리한다.
 }
 
 location /api/ { # /api/ 아래의 모든 API 요청을 처리한다.
+    client_max_body_size 20m; # Base64 image JSON을 고려해 이 API proxy가 받을 body를 20MiB까지 허용한다.
     proxy_pass http://${BACKEND_UPSTREAM}/; # /api/ prefix를 제거하고 외부 백엔드 upstream에 전달한다.
 }
 
@@ -690,6 +693,7 @@ server { # 외부 HTTP 요청을 받을 Nginx 가상 서버를 선언한다.
     }
 
     location / { # health 이외의 모든 backend API 요청을 처리한다.
+        client_max_body_size 20m; # frontend proxy를 통과한 Base64 image JSON을 backend proxy에서도 20MiB까지 허용한다.
         proxy_pass http://active_backend; # 원래 URI를 유지하여 활성 backend로 전달한다.
         proxy_http_version 1.1; # upstream 통신에 HTTP/1.1을 사용한다.
         proxy_set_header Host $host; # 사용자가 요청한 host 정보를 backend에 전달한다.
@@ -890,7 +894,7 @@ Nginx가 request body를 읽을 수 있는 최대 크기다. 초과하면 upstre
 10. blue와 green Nginx 파일을 모두 반복해서 깊게 읽지 않아도 되는 이유는 무엇인가?
 11. `deploy/.env.example`과 실제 `deploy/.env`는 역할이 어떻게 다른가?
 12. prod YAML의 Cookie Secure 기본값이 true인데도 현재 Compose에서 false가 될 수 있는 이유는 무엇인가?
-13. frontend 내부 Nginx에만 `client_max_body_size 20m`을 둔 것이 `/api` image upload에 충분하지 않은 이유는 무엇인가?
+13. `/api` image 요청 경로의 frontend·backend 배포 Nginx 양쪽에 `client_max_body_size 20m`이 필요한 이유는 무엇인가?
 14. `$${ACTIVE_COLOR}`에서 dollar sign을 두 번 쓰는 이유는 무엇인가?
 15. 현재 repository의 Nginx 설정만으로 HTTPS 종료가 구성됐다고 말할 수 있는가?
 

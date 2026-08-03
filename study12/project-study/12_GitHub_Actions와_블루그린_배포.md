@@ -81,10 +81,10 @@ uses: actions/checkout@v6
 # Repository 소스를 Runner로 가져온다.
 
 ./gradlew clean check
-# 일반 테스트, Redis 테스트, JaCoCo 검증까지 수행한다.
+# 일반 테스트, Redis·MySQL Testcontainers, JaCoCo 검증까지 수행한다.
 ```
 
-Redis Testcontainers 때문에 Runner에서도 Docker가 필요하며 GitHub의 Ubuntu Runner가 Docker 실행 환경을 제공한다.
+Redis와 MySQL Testcontainers 때문에 Runner에서도 Docker가 필요하며 GitHub의 Ubuntu Runner가 Docker 실행 환경을 제공한다. MySQL test에서는 빈 DB의 B3 migration, Hibernate validate와 실제 row lock을 검사한다.
 
 ## 12.4 실제 코드 발췌: 이미지 빌드와 push
 
@@ -206,12 +206,15 @@ deploy:
   needs:
     - build-and-push
   runs-on: ubuntu-latest
+  concurrency:
+    group: backend-production-deploy
+    cancel-in-progress: false
   permissions:
     id-token: write
     contents: read
 ```
 
-따라서 `main`에 push했다고 항상 EC2 배포까지 실행되는 것은 아니다. Repository variable인 `DEPLOY_ENABLED`가 문자열 `true`여야 하며, PR 실행은 제외된다. `needs` 때문에 테스트와 image push가 성공한 뒤에만 배포 Job이 시작된다.
+따라서 `main`에 push했다고 항상 EC2 배포까지 실행되는 것은 아니다. Repository variable인 `DEPLOY_ENABLED`가 문자열 `true`여야 하며, PR 실행은 제외된다. `needs` 때문에 테스트와 image push가 성공한 뒤에만 배포 Job이 시작된다. `concurrency`는 같은 백엔드 배포 Job이 동시에 실행되지 않게 직렬화하며, `cancel-in-progress: false`는 이미 실행 중인 배포를 새 배포가 중간에 취소하지 않게 한다. 프론트는 별도의 `frontend-production-deploy` 그룹을 사용하므로 백엔드와 프론트 배포는 서로 막지 않는다.
 
 Workflow는 다음 작업을 수행하는 명령 목록을 만든다.
 
@@ -231,7 +234,9 @@ PARAMETERS=$(jq -n \
   --arg deploy_path "${DEPLOY_PATH}" \
   --arg raw_base_url "${RAW_BASE_URL}" \
   --arg image_tag "${IMAGE_TAG}" \
+  --arg execution_timeout "900" \
   '{
+    executionTimeout: [$execution_timeout],
     commands: [
       "set -Eeuo pipefail",
       ("install -d -m 755 " + $deploy_path + "/nginx"),
@@ -249,7 +254,7 @@ COMMAND_ID=$(aws ssm send-command \
   --instance-ids "${DEPLOY_INSTANCE_ID}" \
   --document-name "AWS-RunShellScript" \
   --comment "Deploy backend commit ${IMAGE_TAG} with Blue/Green" \
-  --timeout-seconds 900 \
+  --timeout-seconds 60 \
   --parameters "${PARAMETERS}" \
   --query "Command.CommandId" \
   --output text)
@@ -266,7 +271,7 @@ Workflow는 `CommandId`를 받아 상태를 반복 조회하고 `Success`일 때
 실제 상태 조회 코드:
 
 ```bash
-for attempt in {1..90}; do
+for attempt in {1..200}; do
   STATUS=$(aws ssm get-command-invocation \
     --command-id "${COMMAND_ID}" \
     --instance-id "${DEPLOY_INSTANCE_ID}" \
@@ -282,17 +287,45 @@ for attempt in {1..90}; do
       ;;
   esac
 
-  echo "Deployment status: ${STATUS:-Pending} (${attempt}/90)"
+  echo "Deployment status: ${STATUS:-Pending} (${attempt}/200)"
   sleep 5
 done
 
-echo "Backend deployment did not finish within 450 seconds." >&2
+echo "Backend deployment did not finish within 1000 seconds." >&2
 exit 1
 ```
 
-90회마다 5초를 기다리므로 Workflow는 최대 약 450초 동안 조회한다. 하지만 `send-command`의 `--timeout-seconds`는 900초다. 따라서 450초가 지나 Workflow가 실패해도 SSM 명령을 취소하는 코드는 없으며, EC2의 배포 명령은 그 뒤에도 실행 중일 수 있다.
+`--timeout-seconds 60`은 명령이 SSM Agent에 전달되어 실행을 시작하기까지의 제한이고, `executionTimeout: ["900"]`은 시작된 shell 명령의 실행 제한이다. 서로 역할이 다른 값이다. 대기 Step에는 `timeout-minutes: 18`이 설정되어 있고, 5초 간격으로 최대 200회, 약 1000초 동안 상태를 확인한다. 전달 대기 60초와 실제 실행 900초를 합친 최악의 제한보다 조금 더 오래 조회하므로 최종 timeout 상태를 확인할 여유가 있다. 대기 Step이 실패하거나 Workflow가 취소되면 다음 정리 Step이 남아 있는 SSM 명령에 취소를 요청한다.
+
+```yaml
+- name: Cancel unfinished backend deployment
+  if: ${{ (failure() || cancelled()) && steps.send-command.outputs.command_id != '' }}
+  env:
+    COMMAND_ID: ${{ steps.send-command.outputs.command_id }}
+    DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }}
+  run: |
+    aws ssm cancel-command \
+      --command-id "${COMMAND_ID}" \
+      --instance-ids "${DEPLOY_INSTANCE_ID}" || true
+```
+
+`cancel-command`는 취소를 요청하는 명령이다. 요청 순간 이미 끝난 명령일 수도 있으므로 `|| true`로 정리 Step 자체가 원래 실패 원인을 덮어쓰지 않게 한다.
 
 ## 12.8 실제 배포 스크립트 흐름
+
+배포 스크립트도 같은 EC2 배포 경로에서 두 인스턴스가 동시에 실행되는 상황을 막는다.
+
+```bash
+LOCK_FILE="${DEPLOY_DIR}/.deploy.lock"
+exec 9>"${LOCK_FILE}"
+
+if ! flock -n 9; then
+  echo "Another backend deployment is already running." >&2
+  exit 1
+fi
+```
+
+`exec 9>...`는 9번 파일 디스크립터를 lock 파일에 연결한다. `flock -n 9`는 기다리지 않고 lock 획득을 시도한다. 다른 배포가 이미 lock을 보유하면 새 배포는 즉시 실패하며, 성공한 경우에는 이 스크립트 프로세스가 끝날 때 운영체제가 lock을 해제한다. Workflow의 `concurrency`는 GitHub Actions 배포끼리 막고, 이 파일 lock은 EC2에서 수동 실행한 배포까지 포함해 최종 배포 자원을 보호한다.
 
 색상 선택:
 
@@ -476,11 +509,21 @@ SSM 연결 성공 여부
 
 배포 문제를 인증·연결 문제와 애플리케이션 문제로 분리해서 진단할 수 있게 한다.
 
-## 12.11.1 현재 배포 구조에서 반드시 알아야 할 한계
+## 12.11.1 동시 실행과 SSM 대기 문제를 해결한 구조
 
-### 동시 배포를 막는 잠금이 없다
+### 같은 종류의 동시 배포를 두 단계에서 막는다
 
-백엔드와 프론트 Workflow 각각에는 GitHub Actions의 `concurrency` 설정이 없고, 배포 스크립트에도 파일 lock이 없다. 같은 repository에 짧은 간격으로 두 commit이 push되어 같은 종류의 배포 run 두 개가 겹치면, 두 run이 해당 `DEPLOY_PATH`의 같은 `.env`, container와 Nginx를 동시에 바꿀 수 있다. 현재 코드만으로는 나중에 시작한 배포가 항상 최종 상태가 된다고 보장할 수 없다. 백엔드와 프론트가 서로 같은 배포 경로를 쓴다는 뜻은 아니며, 각 repository 안에서 이전 run과 다음 run이 겹치는 문제다.
+Workflow의 `concurrency`가 같은 종류의 배포 Job을 직렬화하고, EC2 배포 스크립트의 `flock`이 같은 `DEPLOY_PATH`를 사용하는 실행을 한 번 더 막는다. 따라서 두 실행이 같은 `.env`, container와 Nginx를 동시에 수정하지 않는다. GitHub Actions concurrency에서는 실행 중인 배포는 취소하지 않지만 대기 중인 run이 여러 개 쌓이면 최신 pending run만 남을 수 있으므로, 모든 중간 commit이 반드시 차례로 배포된다는 뜻은 아니다.
+
+### SSM 제한보다 Workflow가 더 오래 기다리고 실패 시 취소한다
+
+명령 전달 제한은 60초, 실제 shell 실행 제한은 900초이고 Workflow는 최대 약 1000초 동안 결과를 조회한다. 대기 실패 또는 Workflow 취소 시 `cancel-command`를 호출하여 GitHub Actions는 끝났는데 EC2 명령만 계속 실행될 가능성을 줄인다. 취소 요청과 실제 EC2 프로세스 종료 사이에는 짧은 지연이 있을 수 있다.
+
+## 12.11.2 현재 배포 구조에서 남아 있는 한계
+
+### rollback은 여전히 최선 시도다
+
+이번 변경에서는 rollback 구현을 수정하지 않았다. `rollback_proxy` 내부의 Nginx 재생성 등에 `|| true`가 있으므로 복구 명령 자체가 실패해도 함수는 그 실패를 밖으로 전달하지 않는다. 따라서 정상 배포에는 영향을 주지 않지만, **Nginx 전환 후 오류가 발생한 드문 상황에서 자동 복구가 반드시 성공한다고 보장할 수 없다.** 이 경우 container 상태와 Nginx 응답을 확인하고 수동 복구해야 한다. 보류할 수는 있지만 안전하다고 간주하여 무시할 문제는 아니다.
 
 ### EC2가 GHCR image를 pull할 인증은 별도 전제다
 
@@ -498,10 +541,6 @@ wait_for_health "http://127.0.0.1:${nginx_port}/health"
 
 이 요청은 EC2 자신이 host에 publish된 Nginx port로 보내는 것이다. Nginx가 새 backend로 연결되는지는 확인하지만 DNS, 외부 Load Balancer, Security Group의 inbound 경로, CDN과 실제 사용자 인터넷 경로까지 검증하지는 않는다.
 
-### SSM 실행과 Workflow 대기 시간이 다르다
-
-Workflow의 상태 조회는 450초 뒤 실패하지만 SSM 명령 제한은 900초이고 취소 단계가 없다. 이 경우 GitHub Actions 화면은 실패인데 EC2에서는 배포가 계속되는 상태가 생길 수 있다.
-
 ## 12.12 핵심 축약본
 
 ```text
@@ -515,7 +554,7 @@ AWS:
 OIDC → 임시 IAM Role → SSM
 
 EC2:
-배포 파일 다운로드 → 비활성 색상 실행
+배포 파일 다운로드 → flock 획득 → 비활성 색상 실행
 → 내부 health → Nginx 전환
 → EC2 loopback의 Nginx 경유 health → 이전 색상 정리
 → 실패 시 rollback
@@ -564,7 +603,7 @@ jobs:                            # 서로 의존하거나 병렬 실행할 Job �
         run: chmod +x gradlew    # gradlew 파일에 실행 권한을 추가한다.
 
       - name: Run existing tests and verification # 최종 검증 단계 이름이다.
-        run: ./gradlew clean check --no-daemon # 이전 산출물을 지우고 일반·Redis 테스트와 커버리지 검증을 실행한다.
+        run: ./gradlew clean check --no-daemon # 이전 산출물을 지우고 일반·Redis·MySQL 테스트와 커버리지 검증을 실행한다.
 ```
 
 ### Image build와 push
@@ -635,6 +674,9 @@ deploy:                         # EC2 배포를 담당하는 Job ID다.
   needs:
     - build-and-push             # image build와 GHCR push가 성공한 뒤 실행한다.
   runs-on: ubuntu-latest         # 앞 Job과 별개의 새 Runner를 배정받는다.
+  concurrency:                  # 같은 배포 자원을 사용하는 Job의 동시 실행 규칙이다.
+    group: backend-production-deploy # 백엔드 운영 배포끼리 같은 concurrency 그룹으로 묶는다.
+    cancel-in-progress: false    # 새 Job이 이미 실행 중인 배포를 중간 취소하지 않고 기다리게 한다.
   permissions:
     id-token: write              # AWS OIDC token 발급을 허용한다.
     contents: read               # Repository 내용 읽기만 허용한다.
@@ -647,7 +689,9 @@ PARAMETERS=$(jq -n \ # 입력 파일 없이 SSM parameters JSON을 만들고 결
   --arg deploy_path "${DEPLOY_PATH}" \ # 배포 경로를 jq 문자열 변수로 안전하게 전달한다.
   --arg raw_base_url "${RAW_BASE_URL}" \ # 현재 commit의 deploy 파일 raw URL을 전달한다.
   --arg image_tag "${IMAGE_TAG}" \ # 현재 commit SHA인 image tag를 전달한다.
+  --arg execution_timeout "900" \ # 시작된 원격 shell을 최대 900초 실행할 문자열 값을 전달한다.
   '{ # jq가 생성할 JSON object를 시작한다.
+    executionTimeout: [$execution_timeout], # AWS-RunShellScript의 실행 제한 parameter를 문자열 배열로 만든다.
     commands: [ # SSM Agent가 EC2에서 순서대로 실행할 shell 명령 배열이다.
       "set -Eeuo pipefail", # EC2 쪽 shell에도 엄격한 오류 처리 옵션을 켠다.
       ("install -d -m 755 " + $deploy_path + "/nginx"), # 배포 및 Nginx 설정 디렉터리를 만든다.
@@ -669,7 +713,7 @@ COMMAND_ID=$(aws ssm send-command \ # EC2에 원격 shell 명령을 보내고 �
   --instance-ids "${DEPLOY_INSTANCE_ID}" \ # 배포할 관리 대상 EC2 ID를 지정한다.
   --document-name "AWS-RunShellScript" \ # EC2에서 Linux shell 명령을 실행하는 SSM 문서를 사용한다.
   --comment "Deploy backend commit ${IMAGE_TAG} with Blue/Green" \ # AWS 기록에 배포 commit 설명을 남긴다.
-  --timeout-seconds 900 \ # SSM 명령 전체 제한 시간을 15분으로 지정한다.
+  --timeout-seconds 60 \ # 명령이 SSM Agent에 전달되어 실행을 시작하기까지 최대 60초 기다린다.
   --parameters "${PARAMETERS}" \ # jq로 만든 실제 다운로드·배포 명령 목록을 전달한다.
   --query "Command.CommandId" \ # 전체 JSON 중 추적에 필요한 CommandId만 선택한다.
   --output text) # 선택한 ID를 plain text로 출력해 shell 변수에 담는다.
@@ -677,8 +721,16 @@ COMMAND_ID=$(aws ssm send-command \ # EC2에 원격 shell 명령을 보내고 �
 
 ### SSM 상태 조회
 
+실제 Step에는 다음 실행 제한이 있다.
+
+```yaml
+- name: Wait for backend deployment # SSM 명령이 끝날 때까지 상태를 조회하는 Step이다.
+  id: wait-deployment              # 이 Step을 식별할 ID다.
+  timeout-minutes: 18              # Step 자체는 최대 18분까지만 실행한다.
+```
+
 ```bash
-for attempt in {1..90}; do # 1부터 90까지 최대 90번 상태를 조회한다.
+for attempt in {1..200}; do # 1부터 200까지 최대 200번 상태를 조회한다.
   STATUS=$(aws ssm get-command-invocation \ # 특정 EC2에서 실행 중인 명령 결과를 조회한다.
     --command-id "${COMMAND_ID}" \ # 앞 Step에서 받은 SSM CommandId를 지정한다.
     --instance-id "${DEPLOY_INSTANCE_ID}" \ # 명령을 실행한 EC2 instance를 지정한다.
@@ -694,12 +746,26 @@ for attempt in {1..90}; do # 1부터 90까지 최대 90번 상태를 조회한�
       ;;
   esac
 
-  echo "Deployment status: ${STATUS:-Pending} (${attempt}/90)" # 빈 상태는 Pending으로 표시하고 진행 횟수를 출력한다.
+  echo "Deployment status: ${STATUS:-Pending} (${attempt}/200)" # 빈 상태는 Pending으로 표시하고 진행 횟수를 출력한다.
   sleep 5 # 다음 AWS API 조회 전 5초 기다린다.
 done
 
-echo "Backend deployment did not finish within 450 seconds." >&2 # 90회 안에 끝나지 않았음을 표준 오류에 쓴다.
-exit 1 # Workflow 대기를 실패로 끝내지만 SSM 명령을 취소하지는 않는다.
+echo "Backend deployment did not finish within 1000 seconds." >&2 # 200회 안에 끝나지 않았음을 표준 오류에 쓴다.
+exit 1 # Workflow 대기 Step을 실패로 끝내 다음 취소 Step이 실행되게 한다.
+```
+
+### 끝나지 않은 SSM 명령 취소
+
+```yaml
+- name: Cancel unfinished backend deployment # 실패하거나 취소된 run의 원격 명령을 정리하는 Step이다.
+  if: ${{ (failure() || cancelled()) && steps.send-command.outputs.command_id != '' }} # 앞 Step 실패 또는 run 취소 상태이고 CommandId가 있을 때만 실행한다.
+  env:
+    COMMAND_ID: ${{ steps.send-command.outputs.command_id }} # 전송 Step이 만든 SSM CommandId를 shell 환경변수로 넣는다.
+    DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }} # 명령을 보낸 EC2 ID를 환경변수로 넣는다.
+  run: |
+    aws ssm cancel-command \ # 해당 SSM 명령에 취소를 요청한다.
+      --command-id "${COMMAND_ID}" \ # 취소할 CommandId를 지정한다.
+      --instance-ids "${DEPLOY_INSTANCE_ID}" || true # 대상 EC2를 지정하고, 이미 끝난 명령 등의 취소 오류는 원래 실패를 덮지 않게 무시한다.
 ```
 
 ### 배포 대상 색상 선택
@@ -721,6 +787,23 @@ if [[ ! -f "${COMPOSE_FILE}" ]]; then # Compose 파일이 일반 파일로 존�
   echo "Missing Compose file: ${COMPOSE_FILE}" >&2 # 누락된 파일 경로를 표준 오류에 출력한다.
   exit 1 # container 구성을 실행할 수 없으므로 종료한다.
 fi
+
+for command_name in docker curl grep sed flock; do # 배포에 필요한 각 명령을 차례로 검사하며 flock도 포함한다.
+  if ! command -v "${command_name}" >/dev/null 2>&1; then # 현재 PATH에서 명령을 찾을 수 없는지 확인한다.
+    echo "Required command is not installed: ${command_name}" >&2 # 빠진 명령 이름을 표준 오류에 출력한다.
+    exit 1 # 필수 명령이 없으면 배포 도중 실패하기 전에 종료한다.
+  fi
+done
+
+LOCK_FILE="${DEPLOY_DIR}/.deploy.lock" # 같은 배포 경로를 대표하는 lock 파일 경로를 정한다.
+exec 9>"${LOCK_FILE}" # 현재 shell의 9번 파일 디스크립터를 lock 파일에 연결한다.
+
+if ! flock -n 9; then # 기다리지 않고 9번 디스크립터의 배타적 lock을 얻지 못했는지 확인한다.
+  echo "Another backend deployment is already running." >&2 # 이미 실행 중인 배포가 있음을 표준 오류에 출력한다.
+  exit 1 # 같은 자원을 동시에 수정하지 않고 새 배포를 실패시킨다.
+fi
+
+cd "${DEPLOY_DIR}" # lock을 획득한 뒤 Compose와 .env가 있는 배포 경로로 이동한다.
 ```
 
 `.env`를 다루는 핵심 함수의 주석본:
@@ -814,7 +897,7 @@ rollback_proxy() { # Nginx 전환 뒤 실패했을 때 호출할 복구 절차�
 ## 12.13 스킵할 코드
 
 - 백엔드와 프론트 Workflow의 동일한 checkout, Docker login, metadata 문법
-- 90회 반복 상태 조회의 shell 문법
+- 200회 반복 상태 조회의 shell 문법
 - blue와 green case의 이름만 다른 부분
 - 결과 출력용 AWS query 문자열
 
@@ -996,10 +1079,10 @@ SSM Agent가 등록된 EC2에 AWS API를 통해 명령을 전달한다. Workflow
 11. OIDC 확인 Workflow를 전체 배포와 분리한 이유는 무엇인가?
 12. `DEPLOY_ENABLED`가 설정되지 않았을 때 main push가 EC2 배포까지 진행되는가?
 13. `127.0.0.1:${nginx_port}/health`가 확인하는 범위와 확인하지 못하는 범위는 무엇인가?
-14. Workflow가 450초 뒤 실패해도 EC2 명령이 계속될 수 있는 이유는 무엇인가?
+14. SSM 전달 제한 60초, 실행 제한 900초, Workflow 조회 약 1000초는 각각 무엇을 제한하며 취소 Step은 어떤 역할을 하는가?
 15. `rollback_proxy`가 호출되어도 서비스 복구를 보장할 수 없는 이유는 무엇인가?
 16. private GHCR package를 사용한다면 EC2에 어떤 준비가 필요한가?
-17. 같은 backend 또는 frontend Workflow의 배포 run 두 개가 겹칠 때 생길 수 있는 문제는 무엇인가?
+17. Workflow `concurrency`와 EC2의 `flock`은 각각 어느 범위의 동시 배포를 막는가?
 
 ## 12.15 오답노트
 
