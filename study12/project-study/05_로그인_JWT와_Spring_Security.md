@@ -14,6 +14,26 @@
 → Access Token은 프론트 localStorage
 ```
 
+### 5.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+로그인 화면
+→ authApi.login()
+→ request(POST /sessions)
+→ SessionOriginInterceptor
+→ SecurityFilterChain의 permitAll
+→ SessionController
+→ SessionService
+→ AuthenticationManager
+→ CustomUserDetailsService → UserRepository
+→ PasswordEncoder 검증
+→ JwtProvider + RefreshTokenProvider
+→ AuthSessionRepository 저장
+→ Access Token response body + Refresh Token Set-Cookie
+```
+
+로그인 뒤 보호 API는 `request()`가 `Authorization` header를 붙이고, `JwtAuthenticationFilter`가 token claim과 현재 사용자의 `authVersion`을 대조한 뒤 `SecurityContext`에 인증 정보를 넣는다. Access Token 만료로 401이 오면 프론트의 공유 `refreshPromise`가 `/sessions/refresh` 한 번으로 요청들을 모으고, 백엔드는 `AuthSession` row lock 안에서 Refresh Token을 회전한다. 이 장은 이 세 흐름을 `로그인 → 일반 인증 요청 → 재발급` 순서로 읽는다.
+
 ## 5.2 실제 코드 발췌: 보안 경로 설정
 
 ```java

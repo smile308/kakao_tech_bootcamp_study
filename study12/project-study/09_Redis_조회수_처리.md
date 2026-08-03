@@ -1,6 +1,6 @@
-# 8장. Redis 조회수 처리
+# 9장. Redis 조회수 처리
 
-## 8.1 학습 목표
+## 9.1 학습 목표
 
 게시글 조회수를 Redis에서 원자적으로 증가시키고 여러 백엔드 인스턴스가 안전하게 RDS에 반영하는 전체 흐름을 학습한다.
 
@@ -16,7 +16,28 @@
 → 값이 그대로면 dirty 해제
 ```
 
-## 8.2 구현체를 바꾸는 인터페이스
+### 9.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+GET /posts/{postId}
+→ PostService가 RDS의 두 조회수 값 중 큰 값을 baseline으로 선택
+→ ViewCountUpdater interface
+→ Redis 활성: RedisViewCountStore.increment()
+→ Lua가 count key 초기화·증가와 dirty set 등록을 원자적으로 실행
+→ 증가한 값을 상세 response에 즉시 사용
+
+별도 Scheduler tick
+→ RedisViewCountFlushScheduler
+→ Redisson 분산 lock
+→ dirty postId별 snapshot
+→ ViewCountPersistenceService
+→ PostViewCountRepository의 GREATEST update
+→ 저장 중 값이 바뀌지 않았을 때만 dirty acknowledge
+```
+
+Redis를 끈 환경에서는 같은 interface에 `DatabaseViewCountUpdater`가 주입되어 RDS를 직접 증가시킨다. 따라서 Controller와 `PostService`는 저장소가 Redis인지 DB인지 알 필요가 없다. 요청 흐름과 Scheduler 흐름은 서로 다른 thread와 transaction에서 실행되므로 반드시 나누어 읽는다.
+
+## 9.2 구현체를 바꾸는 인터페이스
 
 실제 코드:
 
@@ -57,7 +78,7 @@ public class DatabaseViewCountUpdater
 
 설정값에 따라 둘 중 하나만 Spring Bean이 되므로 `PostService` 코드를 바꾸지 않고 구현을 교체할 수 있다.
 
-## 8.3 Redis 키 구조
+## 9.3 Redis 키 구조
 
 공통 설정:
 
@@ -140,7 +161,7 @@ dirty-set-key: "bamboo:{post-view}:dirty" # 아직 RDS에 반영할 변경이 �
 flush-lock-key: "bamboo:{post-view}:flush-lock" # 여러 backend Scheduler가 공유하는 Redisson 분산 락 이름이다.
 ```
 
-## 8.4 실제 코드 발췌: 증가 Lua 스크립트
+## 9.4 실제 코드 발췌: 증가 Lua 스크립트
 
 ```lua
 local count_type = redis.call('TYPE', KEYS[1]).ok
@@ -182,7 +203,7 @@ Lua 스크립트 전체는 Redis 서버 안에서 하나의 원자적 작업으�
 
 여기서 원자적이라는 말은 “다른 Redis command가 script 중간에 끼어들지 않는다”는 뜻이다. Redis Lua는 DB Transaction처럼 script 실행 중 이미 수행된 write를 오류 발생 시 자동 rollback하지 않는다. 현재 증가 script는 write 전에 두 key type을 먼저 검사하여 예상 가능한 type 오류가 중간 write 뒤 발생할 가능성을 줄인다.
 
-## 8.5 실제 코드 발췌: Java에서 Lua 실행
+## 9.5 실제 코드 발췌: Java에서 Lua 실행
 
 ```java
 @Override
@@ -237,7 +258,7 @@ Redis가 값을 반환하지 않거나 Redis 접근 계층의 `DataAccessExcepti
 
 fallback으로 DB 기준값만 응답하는 요청은 조회수를 RDS에서 직접 증가시키지 않는다. 따라서 Redis 장애 동안 들어온 조회 횟수는 영구 저장되지 않고 사용자에게도 마지막 영구값이 반복되어 보일 수 있다. “가용성 우선”은 요청 성공을 우선한다는 뜻이지 증가분까지 보존한다는 뜻은 아니다.
 
-## 8.6 DB 기준값이 필요한 이유
+## 9.6 DB 기준값이 필요한 이유
 
 Redis가 재시작되거나 키가 사라질 수 있다.
 
@@ -286,7 +307,7 @@ RedisViewCountStore가 선택된 상태에서 Redis 통신만 실패
 → 마지막 DB baseline을 응답하고 증가분은 기록하지 못함
 ```
 
-## 8.7 실제 코드 발췌: Flush Scheduler
+## 9.7 실제 코드 발췌: Flush Scheduler
 
 ```java
 @Scheduled(
@@ -387,7 +408,7 @@ private void releaseIfOwned(RLock lock, boolean acquired) {
 
 각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 전체 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 `removeDirtyIfCountMissing()`가 count key의 부재를 Redis 안에서 다시 확인한 뒤 고아 dirty member를 제거한다.
 
-## 8.8 Snapshot 저장과 dirty 확인
+## 9.8 Snapshot 저장과 dirty 확인
 
 ```java
 long snapshotViewCount = snapshot.getAsLong();
@@ -452,7 +473,7 @@ Lua가 먼저 고아 dirty를 제거함
 → 이후 새 조회가 count key를 만들고 dirty를 다시 추가
 ```
 
-## 8.9 실제 코드 발췌: RDS 최대값 반영
+## 9.9 실제 코드 발췌: RDS 최대값 반영
 
 ```java
 @Transactional
@@ -499,7 +520,7 @@ int persistMaxViewCount(
 
 Transaction이 commit된 후에만 dirty 해제가 실행되어야 한다. 테스트에서는 저장 호출과 acknowledge 호출의 순서를 검증한다.
 
-## 8.10 Redis AOF와 Docker volume
+## 9.10 Redis AOF와 Docker volume
 
 Compose 실제 설정:
 
@@ -546,7 +567,7 @@ Redis가 작업 저장소라고 해서 항상 재시작 시 모든 값이 사라
 
 `restart: unless-stopped`는 process가 비정상 종료되거나 Docker daemon이 재시작될 때 container 재시작을 시도하되 사용자가 명시적으로 중지한 상태는 유지하는 정책이다. AOF `everysec`는 보통 성능과 내구성의 절충이며, 장애 시 최근 약 1초 범위의 write가 유실될 가능성까지 없애는 설정은 아니다.
 
-## 8.11 장애별 동작
+## 9.11 장애별 동작
 
 | 장애 | 현재 동작 |
 |---|---|
@@ -558,7 +579,7 @@ Redis가 작업 저장소라고 해서 항상 재시작 시 모든 값이 사라
 | snapshot count key 없음 | count key가 여전히 없을 때만 Lua로 고아 dirty ID 제거 |
 | Redis 재시작 | AOF와 volume으로 복구 시도. `everysec` 특성상 최근 write 유실 가능성은 남음 |
 
-## 8.12 핵심 축약본
+## 9.12 핵심 축약본
 
 ```text
 요청 경로:
@@ -571,7 +592,7 @@ DB 기준값 → Redis 원자적 INCR → dirty 표시
 ```
 
 
-## 8.12.1 전체 원문 코드 라인별 주석본
+## 9.12.1 전체 원문 코드 라인별 주석본
 
 아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
 
@@ -916,7 +937,7 @@ redis:                         # Redis 서비스 정의를 시작한다.
     - backend-network          # backend container가 service 이름 redis로 접근할 공유 network다.
 ```
 
-## 8.13 스킵할 코드
+## 9.13 스킵할 코드
 
 - 로그 메시지 문구
 - `OptionalLong`의 Java 문법 세부
@@ -926,7 +947,7 @@ redis:                         # Redis 서비스 정의를 시작한다.
 다만 두 Lua 스크립트, 분산 락, snapshot 이후 조건부 dirty 해제는 스킵하지 않는다.
 
 
-## 8.13.1 이 장에서 필요한 Redis·Lua·다형성 문법
+## 9.13.1 이 장에서 필요한 Redis·Lua·다형성 문법
 
 ### interface 다형성
 
@@ -1040,7 +1061,7 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 - Redis 구현이 선택된 상태에서 `DataAccessException`이 발생하면 구현체를 교체하지 않는다. 그 요청은 baseline만 반환하므로 조회 증가분이 보존되지 않는다.
 - `@ConditionalOnProperty`는 application 시작 시 Bean 구성을 결정하며 요청 중 장애를 감지해 동적으로 다른 Bean으로 전환하는 기능이 아니다.
 
-## 8.14 이해 확인
+## 9.14 이해 확인
 
 1. `ViewCountUpdater` 인터페이스를 둔 이유는 무엇인가?
 2. Redis 활성 여부에 따라 구현체는 어떻게 선택되는가?
@@ -1057,6 +1078,6 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 13. snapshot count key가 사라졌지만 dirty ID가 남아 있으면 왜 Java에서 바로 제거하지 않고 Lua로 다시 확인하는가?
 14. AOF `everysec`와 volume을 사용하면 최근 조회수 유실 가능성이 완전히 사라지는가?
 
-## 8.15 오답노트
+## 9.15 오답노트
 
 이 장의 이해 확인에서 틀리거나 핵심이 부족한 문제를 여기에 누적한다.

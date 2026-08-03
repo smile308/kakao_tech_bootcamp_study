@@ -202,7 +202,7 @@ ddl-auto: validate
 → Entity와 migration 결과가 맞는지 검사하고 구조는 변경하지 않음
 ```
 
-새 빈 DB에는 `B3__current_schema.sql`이 현재 전체 스키마를 생성한다. `baseline-on-migrate: false`는 이력 없는 기존 non-empty DB를 자동으로 받아들이지 않게 하며, 빈 DB에서 B3를 실행하는 동작은 막지 않는다. 자세한 migration 흐름은 9장에서 다룬다.
+새 빈 DB에는 `B3__current_schema.sql`이 현재 전체 스키마를 생성한다. `baseline-on-migrate: false`는 이력 없는 기존 non-empty DB를 자동으로 받아들이지 않게 하며, 빈 DB에서 B3를 실행하는 동작은 막지 않는다. 자세한 migration 흐름은 10장에서 다룬다.
 
 ## 2.5 실제 코드 원문: 테스트 설정
 

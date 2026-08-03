@@ -81,6 +81,21 @@ wait_for_health() {
   return 1
 }
 
+wait_for_redis() {
+  local attempt
+
+  for ((attempt = 1; attempt <= HEALTH_ATTEMPTS; attempt += 1)); do
+    if [[ "$(compose exec -T redis redis-cli PING 2>/dev/null || true)" == "PONG" ]]; then
+      return 0
+    fi
+
+    echo "Redis health check ${attempt}/${HEALTH_ATTEMPTS} failed"
+    sleep "${HEALTH_INTERVAL_SECONDS}"
+  done
+
+  return 1
+}
+
 active_color="$(get_env_value BACKEND_ACTIVE_COLOR blue)"
 
 case "${active_color}" in
@@ -119,6 +134,15 @@ rollback_proxy() {
 echo "Active backend: ${active_color}"
 echo "Deployment target: ${target_color}"
 echo "Image tag: ${IMAGE_TAG}"
+
+if ! compose up -d redis; then
+  exit 1
+fi
+
+if ! wait_for_redis; then
+  compose logs --tail=100 redis || true
+  exit 1
+fi
 
 set_env_value "${target_tag_key}" "${IMAGE_TAG}"
 

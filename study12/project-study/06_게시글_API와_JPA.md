@@ -14,6 +14,21 @@ PostController
 → Response DTO
 ```
 
+### 6.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+PostController endpoint
+→ PostService의 public Transaction method
+→ 권한·삭제·신고 차단 검사
+→ PostRepository와 보조 Repository 조회
+→ 필요한 row lock 또는 version 검사
+→ Entity 상태 변경 / count query
+→ Transaction commit과 dirty checking
+→ Response DTO 또는 PostResponseFactory
+```
+
+상세 조회는 `Post → 댓글·좋아요·신고 여부 → 조회수 증가 → PostViewResponseDto` 순서다. 작성·수정·삭제는 `요청 DTO → 작성자 확인 → image 검증 → Entity 변경`을 따른다. 좋아요·신고·댓글은 같은 `PostCounter`를 함께 수정하므로 단순 CRUD가 아니라 어떤 row를 먼저 잠그는지까지 읽어야 한다. 6장에 없는 화면 상태 갱신과 댓글 UI 연결은 8장에서 이어진다.
+
 ## 6.2 게시글 Entity 묶음
 
 게시글 한 행만으로 모든 정보를 표현하지 않는다.

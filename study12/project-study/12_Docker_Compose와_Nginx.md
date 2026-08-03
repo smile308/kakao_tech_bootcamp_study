@@ -1,6 +1,6 @@
-# 11장. Docker, Compose와 Nginx
+# 12장. Docker, Compose와 Nginx
 
-## 11.1 학습 목표
+## 12.1 학습 목표
 
 소스 코드가 Docker 이미지가 되고, Compose가 여러 컨테이너를 연결하며, Nginx가 사용자 요청을 활성 컨테이너로 전달하는 구조를 학습한다.
 
@@ -21,7 +21,24 @@ Nginx
 → 정적 파일 제공과 reverse proxy
 ```
 
-## 11.2 실제 코드 원문: 백엔드 Dockerfile
+### 12.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+Dockerfile
+→ build stage가 산출물을 만드는 과정
+→ runtime stage가 실제 실행에 가져가는 파일
+→ Compose service의 image·environment·port·volume·network
+→ .env 값 치환
+→ blue/green 두 service의 차이
+→ Nginx active 설정과 upstream
+→ /api prefix 제거·proxy_pass
+→ backend /actuator/health
+→ Redis volume과 AOF
+```
+
+사용자 요청은 `브라우저 → 프론트 Nginx → /api 요청이면 백엔드 Nginx → 활성 Spring container → RDS/Redis` 순서로 이동한다. Dockerfile은 이미지를 만드는 시간의 흐름이고, Compose와 Nginx는 만들어진 이미지를 운영할 때의 연결 흐름이므로 섞어서 읽지 않는다. 배포 스크립트가 active 색상을 바꾸는 과정은 13장에서 이 구성 위에 이어진다.
+
+## 12.2 실제 코드 원문: 백엔드 Dockerfile
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -75,7 +92,7 @@ USER spring:spring
 
 멀티 스테이지 빌드는 Gradle cache와 소스 파일 같은 빌드 재료를 최종 운영 이미지에 넣지 않는다.
 
-## 11.3 실제 코드 원문: 프론트 Dockerfile
+## 12.3 실제 코드 원문: 프론트 Dockerfile
 
 ```dockerfile
 # syntax=docker/dockerfile:1
@@ -117,7 +134,7 @@ Nginx runtime 단계
 
 `VITE_API_BASE_URL`은 Vite build 시 JavaScript 번들 안에 들어간다. 이미 만들어진 이미지의 런타임 환경변수만 바꿔서는 번들 값이 자동 변경되지 않는다.
 
-## 11.4 컨테이너 내부 프론트 Nginx
+## 12.4 컨테이너 내부 프론트 Nginx
 
 실제 코드:
 
@@ -161,7 +178,7 @@ location = /health
 # 프론트 컨테이너가 응답 가능한지 배포 스크립트가 확인한다.
 ```
 
-## 11.5 실제 Compose 원문: 백엔드
+## 12.5 실제 Compose 원문: 백엔드
 
 ```yaml
 name: week12-backend
@@ -291,7 +308,7 @@ JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
 
 현재 repository의 Nginx 설정은 모두 `listen 80`이며 certificate와 `listen 443 ssl` 설정은 없다. 즉 TLS 종료가 load balancer 같은 외부 구성에서 이루어진다는 코드도 이 repository 안에서는 확인할 수 없다. 실제 HTTPS가 외부에서 제공되는지 확인한 뒤 Cookie Secure 값과 `X-Forwarded-Proto` 신뢰 설정을 함께 맞춰야 한다.
 
-## 11.6 실제 Nginx blue 설정
+## 12.6 실제 Nginx blue 설정
 
 ```nginx
 upstream active_backend {
@@ -324,7 +341,7 @@ server {
 
 green 설정은 `backend-blue`가 `backend-green`으로 바뀌는 점만 다르므로 한쪽을 이해한 뒤 중복 설명하지 않는다.
 
-## 11.7 실제 Compose 원문: 프론트
+## 12.7 실제 Compose 원문: 프론트
 
 ```yaml
 name: week12-frontend
@@ -374,7 +391,7 @@ networks:
 
 `$${ACTIVE_COLOR}`처럼 dollar sign을 두 번 쓴 값은 Compose가 한 번 처리한 뒤 container shell에 `${ACTIVE_COLOR}` 형태로 전달하려는 escape다. `envsubst '$$BACKEND_UPSTREAM'`도 Compose 단계에서 dollar sign 하나를 보존하고, container 안의 `envsubst`가 Nginx template의 `${BACKEND_UPSTREAM}`만 실제 값으로 바꾼다.
 
-## 11.7.1 프론트 배포 Nginx의 API 분기
+## 12.7.1 프론트 배포 Nginx의 API 분기
 
 blue template의 실제 원문 전체:
 
@@ -434,7 +451,7 @@ server {
 
 현재 backend validator는 image 하나에 decoded 3 MiB를 허용하고 게시글 image를 최대 3개 받는다. Base64로 변환하면 image 하나가 약 4 MiB, 세 개가 약 12 MiB가 되므로 JSON 등 부가 데이터를 포함해도 20 MiB 안에서 처리할 여유가 있다. 20 MiB를 넘는 요청은 가장 앞의 Nginx에서 413으로 차단되고, 제한 안의 요청은 두 proxy를 통과한 뒤 Java validation을 받는다. 현재 전송 형식은 multipart가 아니라 JSON 내부 Base64 문자열이므로 `spring.servlet.multipart.max-file-size`로 해결하는 문제가 아니다.
 
-## 11.8 환경변수, 포트, 네트워크, 볼륨
+## 12.8 환경변수, 포트, 네트워크, 볼륨
 
 ```text
 environment
@@ -471,7 +488,7 @@ host shell 환경변수 또는 deploy/.env
 
 `.env`가 없더라도 모든 변수가 없어지는 것은 아니다. `:-`가 있는 값은 Compose 기본값을 사용하지만, `:?`가 있는 DB credential·JWT secret·image 이름 등은 Compose가 container를 만들기 전에 오류로 중단한다.
 
-## 11.9 핵심 축약본
+## 12.9 핵심 축약본
 
 ```text
 백엔드 이미지
@@ -491,7 +508,7 @@ Nginx
 ```
 
 
-## 11.9.1 전체 원문 코드 라인별 주석본
+## 12.9.1 전체 원문 코드 라인별 주석본
 
 아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
 
@@ -706,7 +723,7 @@ server { # 외부 HTTP 요청을 받을 Nginx 가상 서버를 선언한다.
 
 green 파일에서는 `backend-blue` 한 줄만 `backend-green`으로 바뀌고 나머지 의미는 동일하다.
 
-## 11.10 스킵할 코드
+## 12.10 스킵할 코드
 
 - blue와 green에 반복되는 동일 환경변수
 - 동일한 proxy header 반복
@@ -723,7 +740,7 @@ green 파일에서는 `backend-blue` 한 줄만 `backend-green`으로 바뀌고 
 - Redis volume과 AOF
 
 
-## 11.10.1 이 장에서 필요한 Docker·Compose·Nginx 문법
+## 12.10.1 이 장에서 필요한 Docker·Compose·Nginx 문법
 
 ### Dockerfile은 순서대로 layer를 만든다
 
@@ -880,7 +897,7 @@ Nginx가 request body를 읽을 수 있는 최대 크기다. 초과하면 upstre
 - `ENV`: 이후 build step과 만들어진 image의 container 환경에 남는 environment variable이다.
 - Vite의 `VITE_*` 값은 `npm run build`가 실행될 때 bundle에 치환된다. runtime Nginx container에서 값을 바꿔도 이미 생성된 JavaScript는 다시 build되지 않는다.
 
-## 11.11 이해 확인
+## 12.11 이해 확인
 
 1. Image와 Container는 무엇이 다른가?
 2. 백엔드 Dockerfile에서 JDK와 JRE 단계를 분리한 이유는 무엇인가?
@@ -898,6 +915,6 @@ Nginx가 request body를 읽을 수 있는 최대 크기다. 초과하면 upstre
 14. `$${ACTIVE_COLOR}`에서 dollar sign을 두 번 쓰는 이유는 무엇인가?
 15. 현재 repository의 Nginx 설정만으로 HTTPS 종료가 구성됐다고 말할 수 있는가?
 
-## 11.12 오답노트
+## 12.12 오답노트
 
 이 장의 이해 확인에서 틀리거나 핵심이 부족한 문제를 여기에 누적한다.

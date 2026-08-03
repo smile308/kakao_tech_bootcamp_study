@@ -1,6 +1,6 @@
-# 12장. GitHub Actions와 블루–그린 배포
+# 13장. GitHub Actions와 블루–그린 배포
 
-## 12.1 학습 목표
+## 13.1 학습 목표
 
 GitHub에 코드를 push한 뒤 테스트, 이미지 제작, Registry 저장, AWS 인증, EC2 배포와 rollback까지 이어지는 흐름을 학습한다.
 
@@ -19,7 +19,30 @@ push 또는 pull request
 → 기존 색상 중지
 ```
 
-## 12.2 실제 Workflow 시작 조건
+### 13.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+Workflow on 조건
+→ test Job
+→ build-and-push Job
+→ commit SHA image tag
+→ deploy Job의 if·needs·concurrency
+→ OIDC 임시 AWS credential
+→ SSM parameter JSON과 CommandId
+→ EC2가 현재 commit의 배포 파일 다운로드
+→ deploy script의 flock
+→ active 색상 읽기와 target 색상 결정
+→ target image pull·container 실행
+→ target 직접 health
+→ .env active 색상 변경·Nginx 재생성
+→ Nginx 경유 health
+→ 이전 container 중지 또는 rollback
+→ Workflow가 SSM 결과 출력·미완료 명령 취소
+```
+
+이 장에서는 GitHub Runner에서 실행되는 명령과 EC2에서 실행되는 명령을 항상 구분한다. `docker build/push`는 Runner에서, `docker compose pull/up`은 SSM을 통해 EC2에서 실행된다. `concurrency`는 GitHub 배포 Job끼리, `flock`은 EC2에서 같은 배포 경로를 사용하는 스크립트끼리 막는다.
+
+## 13.2 실제 Workflow 시작 조건
 
 ```yaml
 name: Backend CI/CD
@@ -45,7 +68,7 @@ workflow_dispatch
 → GitHub 화면에서 수동 실행
 ```
 
-## 12.3 실제 코드 발췌: 백엔드 테스트 Job
+## 13.3 실제 코드 발췌: 백엔드 테스트 Job
 
 ```yaml
 jobs:
@@ -86,7 +109,7 @@ uses: actions/checkout@v6
 
 Redis와 MySQL Testcontainers 때문에 Runner에서도 Docker가 필요하며 GitHub의 Ubuntu Runner가 Docker 실행 환경을 제공한다. MySQL test에서는 빈 DB의 B3 migration, Hibernate validate와 실제 row lock을 검사한다.
 
-## 12.4 실제 코드 발췌: 이미지 빌드와 push
+## 13.4 실제 코드 발췌: 이미지 빌드와 push
 
 ```yaml
 build-and-push:
@@ -148,7 +171,7 @@ GHCR
 
 Job마다 서로 다른 새 Runner를 사용하므로 build Job에도 다시 `checkout`이 필요하다. test Job의 workspace가 다음 Job에 자동 공유되는 것은 아니다.
 
-## 12.5 OIDC와 AWS 임시 인증
+## 13.5 OIDC와 AWS 임시 인증
 
 실제 코드:
 
@@ -174,7 +197,7 @@ GitHub Workflow가 OIDC token 요청
 
 장기 AWS Access Key를 GitHub Secret에 저장하지 않고 짧은 수명의 권한을 받는 구조다.
 
-## 12.6 `vars`, `secrets`, `env`
+## 13.6 `vars`, `secrets`, `env`
 
 ```text
 vars
@@ -195,7 +218,7 @@ ${VAR}
 
 현재 운영 DB 비밀번호와 JWT 비밀키는 GitHub Workflow가 직접 EC2로 전달하지 않는다. EC2 배포 경로의 `.env`에 미리 안전하게 준비되어 있고 Compose가 읽는다.
 
-## 12.7 SSM으로 EC2 명령 전송
+## 13.7 SSM으로 EC2 명령 전송
 
 배포 Job 자체에는 다음 조건이 있다.
 
@@ -311,7 +334,7 @@ exit 1
 
 `cancel-command`는 취소를 요청하는 명령이다. 요청 순간 이미 끝난 명령일 수도 있으므로 `|| true`로 정리 Step 자체가 원래 실패 원인을 덮어쓰지 않게 한다.
 
-## 12.8 실제 배포 스크립트 흐름
+## 13.8 실제 배포 스크립트 흐름
 
 배포 스크립트도 같은 EC2 배포 경로에서 두 인스턴스가 동시에 실행되는 상황을 막는다.
 
@@ -422,7 +445,7 @@ compose() {
 
 `get_env_value`는 마지막으로 일치한 `KEY=value`에서 `value`만 꺼내고, 키가 없으면 전달받은 기본값을 쓴다. `set_env_value`는 키가 있으면 그 줄을 바꾸고 없으면 파일 끝에 추가한다. `compose`의 `"$@"`는 함수에 전달된 모든 인자를 원래 인자 경계를 유지한 채 `docker compose` 뒤에 전달한다.
 
-## 12.9 rollback
+## 13.9 rollback
 
 새 target이 실패하면:
 
@@ -459,7 +482,7 @@ rollback_proxy() {
 
 Nginx 재생성이나 container 중지 뒤의 `|| true`는 복구 명령이 실패해도 함수 실행을 계속하게 한다. 따라서 스크립트는 배포 실패로 종료하더라도 Nginx가 실제로 이전 상태로 돌아갔다고 보장할 수 없다. 특히 기존 backend 중지가 일부 진행된 뒤 실패하면 이전 색상으로 proxy를 돌리는 것만으로 서비스가 반드시 회복되는 것도 아니다.
 
-## 12.10 프론트 CI/CD의 차이
+## 13.10 프론트 CI/CD의 차이
 
 검증:
 
@@ -495,7 +518,7 @@ build-args:                 # Dockerfile의 ARG로 전달할 build 시점 변수
 
 이 값은 image가 만들어진 뒤 container를 실행할 때가 아니라 `npm run build`가 실행되는 시점에 JavaScript 코드에 포함된다.
 
-## 12.11 OIDC 확인 Workflow
+## 13.11 OIDC 확인 Workflow
 
 `aws-oidc-check.yml`은 전체 배포 전에 다음만 독립적으로 검사한다.
 
@@ -509,7 +532,7 @@ SSM 연결 성공 여부
 
 배포 문제를 인증·연결 문제와 애플리케이션 문제로 분리해서 진단할 수 있게 한다.
 
-## 12.11.1 동시 실행과 SSM 대기 문제를 해결한 구조
+## 13.11.1 동시 실행과 SSM 대기 문제를 해결한 구조
 
 ### 같은 종류의 동시 배포를 두 단계에서 막는다
 
@@ -519,7 +542,7 @@ Workflow의 `concurrency`가 같은 종류의 배포 Job을 직렬화하고, EC2
 
 명령 전달 제한은 60초, 실제 shell 실행 제한은 900초이고 Workflow는 최대 약 1000초 동안 결과를 조회한다. 대기 실패 또는 Workflow 취소 시 `cancel-command`를 호출하여 GitHub Actions는 끝났는데 EC2 명령만 계속 실행될 가능성을 줄인다. 취소 요청과 실제 EC2 프로세스 종료 사이에는 짧은 지연이 있을 수 있다.
 
-## 12.11.2 현재 배포 구조에서 남아 있는 한계
+## 13.11.2 현재 배포 구조에서 남아 있는 한계
 
 ### rollback은 여전히 최선 시도다
 
@@ -541,7 +564,7 @@ wait_for_health "http://127.0.0.1:${nginx_port}/health"
 
 이 요청은 EC2 자신이 host에 publish된 Nginx port로 보내는 것이다. Nginx가 새 backend로 연결되는지는 확인하지만 DNS, 외부 Load Balancer, Security Group의 inbound 경로, CDN과 실제 사용자 인터넷 경로까지 검증하지는 않는다.
 
-## 12.12 핵심 축약본
+## 13.12 핵심 축약본
 
 ```text
 CI:
@@ -561,7 +584,7 @@ EC2:
 ```
 
 
-## 12.12.1 전체 원문 코드 라인별 주석본
+## 13.12.1 전체 원문 코드 라인별 주석본
 
 아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
 
@@ -706,7 +729,7 @@ PARAMETERS=$(jq -n \ # 입력 파일 없이 SSM parameters JSON을 만들고 결
   }') # JSON object와 명령 치환을 닫고 결과를 PARAMETERS에 대입한다.
 ```
 
-이 주석본은 줄 끝 주석 때문에 그대로 실행하는 코드가 아니다. 바로 위 12.7의 주석 없는 원문이 실행 가능한 실제 형식이다.
+이 주석본은 줄 끝 주석 때문에 그대로 실행하는 코드가 아니다. 바로 위 13.7의 주석 없는 원문이 실행 가능한 실제 형식이다.
 
 ```bash
 COMMAND_ID=$(aws ssm send-command \ # EC2에 원격 shell 명령을 보내고 결과 ID를 변수에 저장한다.
@@ -894,7 +917,7 @@ rollback_proxy() { # Nginx 전환 뒤 실패했을 때 호출할 복구 절차�
 
 `|| true` 때문에 rollback 함수가 호출되었다는 사실과 실제 proxy 복구 성공은 같은 뜻이 아니다. 장애 시에는 container 상태와 Nginx 응답을 별도로 다시 확인해야 한다.
 
-## 12.13 스킵할 코드
+## 13.13 스킵할 코드
 
 - 백엔드와 프론트 Workflow의 동일한 checkout, Docker login, metadata 문법
 - 200회 반복 상태 조회의 shell 문법
@@ -914,7 +937,7 @@ rollback_proxy() { # Nginx 전환 뒤 실패했을 때 호출할 복구 절차�
 - rollback 명령 실패를 무시하는 부분
 
 
-## 12.13.1 이 장에서 필요한 GitHub Actions·Shell 문법
+## 13.13.1 이 장에서 필요한 GitHub Actions·Shell 문법
 
 ### Workflow, Job, Step, Action
 
@@ -1064,7 +1087,7 @@ SSM Agent가 등록된 EC2에 AWS API를 통해 명령을 전달한다. Workflow
 
 단순히 실패 container를 끄는 것만이 아니다. 사용자 트래픽을 결정하는 `ACTIVE_COLOR`, Nginx 설정과 비활성 tag를 배포 전 일관된 상태로 되돌려야 한다.
 
-## 12.14 이해 확인
+## 13.14 이해 확인
 
 1. pull request와 main push에서 실행 범위는 어떻게 다른가?
 2. `needs: test`는 build Job에 어떤 영향을 주는가?
@@ -1084,6 +1107,6 @@ SSM Agent가 등록된 EC2에 AWS API를 통해 명령을 전달한다. Workflow
 16. private GHCR package를 사용한다면 EC2에 어떤 준비가 필요한가?
 17. Workflow `concurrency`와 EC2의 `flock`은 각각 어느 범위의 동시 배포를 막는가?
 
-## 12.15 오답노트
+## 13.15 오답노트
 
 이 장의 이해 확인에서 틀리거나 핵심이 부족한 문제를 여기에 누적한다.

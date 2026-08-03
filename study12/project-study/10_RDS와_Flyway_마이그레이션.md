@@ -1,6 +1,6 @@
-# 9장. RDS와 Flyway 마이그레이션
+# 10장. RDS와 Flyway 마이그레이션
 
-## 9.1 학습 목표
+## 10.1 학습 목표
 
 이미 데이터가 존재하는 운영 RDS의 구조를 애플리케이션 변경에 맞춰 안전하게 발전시키는 방법을 학습한다.
 
@@ -13,7 +13,23 @@
 → 애플리케이션 실행 계속
 ```
 
-## 9.2 마이그레이션 파일 규칙
+### 10.1.1 이 장의 실제 코드 읽기 순서
+
+```text
+application-prod.yaml의 DataSource
+→ 환경변수로 RDS 주소·계정 주입
+→ Spring Boot가 DataSource 생성
+→ Flyway가 migration location과 history 조회
+→ 새 빈 DB: B3 baseline migration으로 현재 전체 schema 생성
+→ 기존 이력 DB: 아직 적용하지 않은 V migration만 순서대로 실행
+→ flyway_schema_history에 성공·checksum 기록
+→ Hibernate ddl-auto=validate가 Entity와 schema 대조
+→ 일치하면 Repository 사용 가능
+```
+
+`B3`는 새 DB를 현재 구조로 곧바로 만드는 시작점이고, `V1~V3`는 과거 구조에서 여기까지 발전시킨 변경 이력이다. 이미 운영 RDS에 적용된 SQL도 새 환경 재현과 변경 근거 때문에 파일로 남는다. SQL 문법을 먼저 외우기보다 각 migration의 `변경 전 구조 → 데이터 보정 → 제약 추가 → 변경 후 Entity` 순서로 읽는다.
+
+## 10.2 마이그레이션 파일 규칙
 
 현재 파일:
 
@@ -50,7 +66,7 @@ V{버전}__{설명}.sql
 
 한 번 운영에 적용된 기존 migration 파일을 수정하면 checksum 검증이 실패하거나 환경별 이력이 달라질 수 있다. 새로운 변경은 다음 `V` 버전 파일로 추가한다. `B3`도 배포되어 사용된 뒤에는 수정하지 않고, 나중에 baseline을 압축할 필요가 생기면 더 높은 버전의 새 `B` 파일을 추가한다.
 
-## 9.3 운영 Flyway 실제 설정
+## 10.3 운영 Flyway 실제 설정
 
 파일: `application-prod.yaml`의 실제 관련 원문:
 
@@ -107,7 +123,7 @@ Flyway migration 실행·검증
 
 자동 baseline을 끄면 잘못된 기존 DB를 애플리케이션이 임의로 받아들이지 않는다. 새 빈 DB에는 `B3`가 정상 실행된다.
 
-### 9.3.1 B3가 추가된 이유
+### 10.3.1 B3가 추가된 이유
 
 기존 `V1~V3`는 처음부터 전체 DB를 만드는 파일이 아니다. 이미 Hibernate가 만들어 둔 `users`, `posts` 등을 전제로 일부 구조만 변경한다. 따라서 빈 RDS에서는 `V2`의 `ALTER TABLE users`부터 실패할 수 있었다.
 
@@ -130,7 +146,7 @@ post_view_counts
 
 테이블 생성 순서도 의미가 있다. 예를 들어 `posts.user_id` foreign key는 `users`를 참조하므로 `users`가 먼저 생성되어야 한다. 이후 자식 테이블이 `users`와 `posts`를 참조한다.
 
-## 9.4 V1 실제 코드의 핵심 원문
+## 10.4 V1 실제 코드의 핵심 원문
 
 ```sql
 SET @posts_exists = (
@@ -173,7 +189,7 @@ posts 없음
 
 MySQL의 `IF` 결과로 DDL 문장을 직접 실행할 수 없어서 `PREPARE → EXECUTE → DEALLOCATE`를 사용한다.
 
-## 9.5 V1 데이터 이전
+## 10.5 V1 데이터 이전
 
 ```sql
 SET @legacy_counter_column_count = (
@@ -228,7 +244,7 @@ LEFT JOIN + IS NULL
 
 V1에서 like/report/reply/view 컬럼 존재 여부를 확인하고 기본값을 보정하는 코드가 반복된다. `like_count` 하나의 패턴을 이해한 뒤 나머지는 같은 맥락으로 스킵한다.
 
-## 9.6 V2 실제 코드
+## 10.6 V2 실제 코드
 
 ```sql
 ALTER TABLE users
@@ -253,7 +269,7 @@ V2는 컬럼이 이미 있는지 검사하지 않는다. Flyway가 버전별 SQL
 
 이 전제는 “Flyway가 V2를 이미 성공 기록했다면 다시 실행하지 않는다”는 뜻이다. Flyway 이력 없이 과거의 `ddl-auto: update`나 사람이 먼저 같은 `auth_version` column을 만든 DB에서는 V2가 duplicate column 오류로 실패할 수 있다. 현재는 `ddl-auto: validate`와 `baseline-on-migrate: false`로 바꿔 새 자동 변경과 무검증 자동 baseline을 막았지만, 기존 RDS의 과거 상태는 배포 전에 직접 확인해야 한다.
 
-## 9.7 V3 실제 코드
+## 10.7 V3 실제 코드
 
 ```sql
 CREATE TABLE IF NOT EXISTS post_view_counts (
@@ -293,7 +309,7 @@ SET view_counter.view_count = GREATEST(
 
 `IF NOT EXISTS`는 table 이름이 존재하는지만 확인한다. 이미 존재하는 table의 column type·foreign key가 현재 기대와 다른 경우까지 자동으로 고쳐주는 것은 아니다.
 
-## 9.8 Entity와 migration 비교
+## 10.8 Entity와 migration 비교
 
 migration 적용 후 DB 구조가 Java Entity가 기대하는 구조와 일치해야 한다.
 
@@ -312,7 +328,7 @@ Entity만 변경하고 운영 DB migration을 만들지 않으면 애플리케�
 
 반대로 migration만 적용하고 코드가 새 구조를 사용하지 않으면 새 테이블은 존재하지만 기능은 바뀌지 않는다.
 
-## 9.9 RDS 연결과 migration 시점
+## 10.9 RDS 연결과 migration 시점
 
 Compose가 제공하는 환경변수:
 
@@ -368,7 +384,7 @@ ORDER BY installed_rank;
 
 또한 MySQL의 많은 DDL은 implicit commit을 일으킨다. 한 migration 파일 중간에 실패하면 앞에서 성공한 DDL까지 일반 Transaction처럼 모두 rollback된다고 가정하면 안 된다. 재실행 전 실제 schema와 `flyway_schema_history` 상태를 함께 확인하고 복구 migration 또는 수동 정리가 필요할 수 있다.
 
-## 9.10 핵심 축약본
+## 10.10 핵심 축약본
 
 ```text
 V1
@@ -391,7 +407,7 @@ Hibernate validate
 ```
 
 
-## 9.10.1 전체 원문 코드 라인별 주석본
+## 10.10.1 전체 원문 코드 라인별 주석본
 
 아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
 
@@ -653,13 +669,13 @@ SET view_counter.view_count = GREATEST( -- 두 값 중 큰 값을 새 조회수�
 );
 ```
 
-## 9.10.2 빈 DB baseline 검증 테스트
+## 10.10.2 빈 DB baseline 검증 테스트
 
 파일: `FlywayBaselineMigrationTest.java`
 
 이 테스트는 MySQL 호환 모드의 빈 H2 DB에 실제 migration 폴더를 적용한다. 운영 MySQL 자체를 완전히 대체하는 테스트는 아니지만, `B3` SQL이 빈 DB를 만들 수 있는지와 Flyway가 `V1~V3` 대신 `B3`를 선택하는지는 빠르게 검증한다.
 
-H2 호환 모드의 한계는 10장의 `MySqlSchemaIntegrationTest`가 보완한다. CI의 `mysqlTest`는 실제 `mysql:8.4` container를 시작해 B3를 적용하고, Hibernate `ddl-auto: validate`로 Entity mapping을 검사한 뒤 실제 MySQL row lock에서 동시 좋아요가 유실되지 않는지 확인한다.
+H2 호환 모드의 한계는 11장의 `MySqlSchemaIntegrationTest`가 보완한다. CI의 `mysqlTest`는 실제 `mysql:8.4` container를 시작해 B3를 적용하고, Hibernate `ddl-auto: validate`로 Entity mapping을 검사한 뒤 실제 MySQL row lock에서 동시 좋아요가 유실되지 않는지 확인한다.
 
 ```java
 package kr.adapterz.springdatajpa.config; // migration 설정 테스트가 속한 package다.
@@ -738,7 +754,7 @@ class FlywayBaselineMigrationTest { // 빈 DB baseline 동작만 검증하는 te
 }
 ```
 
-## 9.11 스킵할 코드
+## 10.11 스킵할 코드
 
 - V1의 네 카운터 컬럼별 동일한 존재 확인과 `ALTER` 반복
 - `information_schema` 조회문의 컬럼 이름 반복
@@ -753,7 +769,7 @@ class FlywayBaselineMigrationTest { // 빈 DB baseline 동작만 검증하는 te
 - Flyway 적용 순서와 이력
 
 
-## 9.11.1 이 장에서 필요한 SQL·Flyway 문법
+## 10.11.1 이 장에서 필요한 SQL·Flyway 문법
 
 ### DDL과 DML
 
@@ -872,7 +888,7 @@ Entity만 바꾸고 migration을 빼먹거나 migration의 type이 Entity와 다
 
 MySQL의 `CREATE TABLE`, `ALTER TABLE` 같은 많은 DDL은 Transaction 경계를 암묵적으로 확정할 수 있다. migration 뒤쪽 문장이 실패해도 앞 DDL이 전부 자동 취소된다고 보장할 수 없다. 실패 복구 때는 SQL 파일만 다시 실행하기 전에 실제 table·column과 Flyway 이력을 확인한다.
 
-## 9.12 이해 확인
+## 10.12 이해 확인
 
 1. Flyway는 어떤 정보를 보고 실행할 migration을 결정하는가?
 2. 적용된 migration 파일을 나중에 직접 수정하면 왜 위험한가?
@@ -892,6 +908,6 @@ MySQL의 `CREATE TABLE`, `ALTER TABLE` 같은 많은 DDL은 Transaction 경계�
 16. 기존 RDS에서는 배포 전에 `flyway_schema_history`의 무엇을 확인해야 하는가?
 17. `post_likes_seq`가 baseline에 필요한 이유는 무엇인가?
 
-## 9.13 오답노트
+## 10.13 오답노트
 
 이 장의 이해 확인에서 틀리거나 핵심이 부족한 문제를 여기에 누적한다.
