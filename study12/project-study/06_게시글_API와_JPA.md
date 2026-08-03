@@ -224,6 +224,39 @@ post.deleted = false
 
 `EntityGraph`가 없으면 DTO 변환 중 연관관계마다 추가 쿼리가 발생하는 N+1 문제가 생길 수 있다.
 
+상세·상호작용에 사용되는 나머지 Repository도 역할이 겹치지 않는다. 아래는 import와 `@Param` 반복을 생략한 핵심 축약본이며, 각 query의 의미를 확인하기 위한 부분이다.
+
+```java
+public interface LikeRepository extends JpaRepository<Like, Long> {
+    boolean existsByPostAndUser(Post post, User user);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM Like postLike
+            WHERE postLike.post.postId = :postId
+              AND postLike.user.userId = :userId
+            """)
+    int deleteByPostIdAndUserId(Long postId, Long userId);
+}
+
+public interface PostReportRepository extends JpaRepository<PostReport, Long> {
+    boolean existsByPostAndUser(Post post, User user);
+}
+
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+    @Query("""
+        select c
+        from Comment c
+        join fetch c.user
+        where c.post = :post
+        order by c.commentId asc
+    """)
+    List<Comment> findByPostWithUser(Post post);
+}
+```
+
+`LikeRepository.existsByPostAndUser`와 `PostReportRepository.existsByPostAndUser`는 상세 응답의 `isLiked`, `isReported` boolean을 만든다. Like 삭제 query는 post와 user 두 조건을 함께 사용해 다른 사용자의 좋아요를 지우지 않게 하고, 반환된 삭제 행 수 1을 Service가 확인한다. Comment query의 `join fetch c.user`는 댓글 목록을 만들 때 작성자 정보를 함께 준비하고 `commentId asc`로 화면 순서를 고정한다. 이 세 Repository는 모두 Service가 transaction 안에서 호출하며, Repository가 DB 연결 주소를 직접 설정하지는 않는다.
+
 ## 6.6 수정과 낙관적 락
 
 실제 코드:

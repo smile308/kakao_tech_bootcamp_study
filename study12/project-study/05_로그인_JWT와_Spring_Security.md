@@ -493,6 +493,146 @@ return ResponseCookie.from(COOKIE_NAME, refreshToken)
 | `Path` | 쿠키를 전송할 URL 범위 제한 |
 | `Max-Age` | 쿠키 유효 시간 |
 
+### AuthSession Entity: DB에 저장되는 Refresh Session 한 건
+
+로그인·재발급 흐름에서 `AuthSession`은 단순한 token 문자열이 아니라 “어떤 사용자에게 발급된 Refresh Token이 언제까지 유효하고 폐기되었는가”를 저장하는 DB Entity다. 실제 원문:
+
+```java
+@Getter
+@Entity
+@Table(
+        name = "auth_sessions",
+        indexes = {
+                @Index(name = "idx_auth_sessions_user_id", columnList = "user_id"),
+                @Index(name = "idx_auth_sessions_refresh_expires_at", columnList = "refresh_expires_at")
+        }
+)
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class AuthSession {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "auth_session_id")
+    private Long authSessionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "refresh_token_hash", nullable = false, unique = true, length = 64)
+    private String refreshTokenHash;
+
+    @Column(name = "refresh_expires_at", nullable = false)
+    private LocalDateTime refreshExpiresAt;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "revoked_at")
+    private LocalDateTime revokedAt;
+
+    public AuthSession(
+            User user,
+            String refreshTokenHash,
+            LocalDateTime refreshExpiresAt
+    ) {
+        this.user = user;
+        this.refreshTokenHash = refreshTokenHash;
+        this.refreshExpiresAt = refreshExpiresAt;
+        this.createdAt = LocalDateTime.now();
+        this.revokedAt = null;
+    }
+
+    public boolean isActive(LocalDateTime now) {
+        return revokedAt == null && refreshExpiresAt.isAfter(now);
+    }
+
+    public void rotate(
+            String refreshTokenHash,
+            LocalDateTime refreshExpiresAt
+    ) {
+        this.refreshTokenHash = refreshTokenHash;
+        this.refreshExpiresAt = refreshExpiresAt;
+    }
+
+    public void revoke(LocalDateTime revokedAt) {
+        if (this.revokedAt == null) {
+            this.revokedAt = revokedAt;
+        }
+    }
+}
+```
+
+라인별 주석본:
+
+```java
+@Getter // private field의 getter를 Lombok이 생성해 Service가 읽을 수 있게 한다.
+@Entity // 이 class를 JPA가 DB table과 매핑할 Entity로 등록한다.
+@Table( // 기본 table 이름과 검색용 index를 지정한다.
+        name = "auth_sessions", // Refresh Session row가 저장될 table 이름이다.
+        indexes = { // 자주 사용하는 만료·사용자 조건의 DB index 목록이다.
+                @Index(name = "idx_auth_sessions_user_id", columnList = "user_id"), // 사용자별 session revoke·조회에 도움을 준다.
+                @Index(name = "idx_auth_sessions_refresh_expires_at", columnList = "refresh_expires_at") // 만료 session 정리 query에 도움을 준다.
+        }
+)
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // JPA가 Entity를 복원할 때 사용할 생성자를 외부에서는 직접 호출하지 못하게 한다.
+public class AuthSession { // Refresh Token 하나의 서버 측 상태를 표현하는 Entity다.
+
+    @Id // table의 primary key field다.
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // DB auto-increment 방식으로 ID를 만든다.
+    @Column(name = "auth_session_id") // Java field를 auth_session_id column에 연결한다.
+    private Long authSessionId; // session row 자체의 식별자다.
+
+    @ManyToOne(fetch = FetchType.LAZY) // 여러 session이 하나의 User에 속하고 User는 필요할 때 지연 조회한다.
+    @JoinColumn(name = "user_id", nullable = false) // auth_sessions.user_id foreign key를 지정하고 소유 User 없음을 허용하지 않는다.
+    private User user; // 이 Refresh Session을 발급받은 사용자다.
+
+    @Column(name = "refresh_token_hash", nullable = false, unique = true, length = 64) // 원문이 아닌 SHA-256 hex hash를 유일하게 저장한다.
+    private String refreshTokenHash; // Cookie 원문을 hash한 값이며 재발급 때 조회 조건으로 사용한다.
+
+    @Column(name = "refresh_expires_at", nullable = false) // Refresh Token 만료 시각을 필수 column으로 저장한다.
+    private LocalDateTime refreshExpiresAt; // 현재 시각과 비교해 session 활성 여부를 판단한다.
+
+    @Column(name = "created_at", nullable = false, updatable = false) // 처음 만들어진 시각은 저장 후 수정하지 않는다.
+    private LocalDateTime createdAt; // session 발급 시각이다.
+
+    @Column(name = "revoked_at") // null이면 아직 명시적으로 폐기되지 않은 상태다.
+    private LocalDateTime revokedAt; // 로그아웃·비밀번호 변경·탈퇴가 발생한 시각을 기록한다.
+
+    public AuthSession( // 로그인 성공 때 사용할 업무용 생성자다.
+            User user, // session 소유 User를 받는다.
+            String refreshTokenHash, // DB에 저장할 hash를 받는다.
+            LocalDateTime refreshExpiresAt // Refresh Token의 만료 시각을 받는다.
+    ) {
+        this.user = user; // 소유 관계를 Entity에 저장한다.
+        this.refreshTokenHash = refreshTokenHash; // 원문이 아닌 hash만 저장한다.
+        this.refreshExpiresAt = refreshExpiresAt; // 만료 시각을 저장한다.
+        this.createdAt = LocalDateTime.now(); // 생성 순간을 기록한다.
+        this.revokedAt = null; // 새 session은 폐기되지 않은 상태로 시작한다.
+    }
+
+    public boolean isActive(LocalDateTime now) { // 주어진 시각에 이 session이 재발급 가능한지 판단한다.
+        return revokedAt == null && refreshExpiresAt.isAfter(now); // 폐기되지 않았고 만료 시각이 아직 지나지 않아야 true다.
+    }
+
+    public void rotate( // Refresh Token 회전 시 같은 row의 token 상태를 교체한다.
+            String refreshTokenHash, // 새 원문의 hash다.
+            LocalDateTime refreshExpiresAt // 새 token의 만료 시각이다.
+    ) {
+        this.refreshTokenHash = refreshTokenHash; // 이전 hash를 새 hash로 바꾼다.
+        this.refreshExpiresAt = refreshExpiresAt; // 이전 만료 시각을 새 만료 시각으로 바꾼다.
+    }
+
+    public void revoke(LocalDateTime revokedAt) { // 로그아웃 등으로 session을 폐기한다.
+        if (this.revokedAt == null) { // 이미 폐기된 session의 최초 시각을 덮어쓰지 않는다.
+            this.revokedAt = revokedAt; // 처음 폐기된 시각만 기록한다.
+        }
+    }
+}
+```
+
+이 Entity의 상태 변경은 일반 setter를 외부에 공개하지 않고 `rotate`·`revoke`라는 업무 method로 제한한다. 따라서 호출자는 hash와 만료 시각을 임의로 한 필드만 바꾸는 대신, “재발급” 또는 “폐기”라는 의도를 드러내는 method를 사용한다. 실제 schema의 `unique = true`는 같은 hash가 두 session에 저장되는 것을 막고, Repository의 비관적 lock은 같은 기존 row를 동시에 회전하는 요청을 직렬화한다.
+
 ### Refresh Session 회전의 실제 코드
 
 Repository 조회에는 실제로 비관적 write lock이 적용되어 있다.
@@ -1359,6 +1499,7 @@ if (!(authVersionClaim instanceof Number authVersion)) {
 11. `authenticationEntryPoint`, `accessDeniedHandler`, JWT Filter의 catch는 각각 어떤 상황에서 응답을 직접 만드는가?
 12. 같은 기존 Refresh Token으로 재발급 요청 두 개가 동시에 들어와도 하나만 성공하도록 만드는 backend 장치는 무엇인가?
 13. 현재 세션 Origin 정책에서 header가 없거나 허용 목록에 없는 요청은 각각 어떻게 처리되는가?
+14. `AuthSession`의 `refreshTokenHash`, `refreshExpiresAt`, `revokedAt`은 각각 어떤 상태를 표현하며 `isActive`, `rotate`, `revoke`는 언제 호출되는가?
 
 ## 5.11 오답노트
 
