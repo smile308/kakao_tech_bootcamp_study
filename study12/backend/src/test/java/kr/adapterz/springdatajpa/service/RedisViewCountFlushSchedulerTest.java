@@ -105,8 +105,9 @@ class RedisViewCountFlushSchedulerTest {
 
         scheduler.flushDirtyViewCounts();
 
-        verify(persistenceService, never())
-                .persist(42L, 0L);
+        verifyNoInteractions(persistenceService);
+        verify(redisViewCountStore)
+                .removeDirtyIfCountMissing(42L);
         verify(lock).unlock();
     }
 

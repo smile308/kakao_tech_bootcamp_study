@@ -62,6 +62,15 @@ public class RedisViewCountStore implements ViewCountUpdater {
                     return 0
                     """, Long.class);
 
+    private static final RedisScript<Long> REMOVE_DIRTY_IF_COUNT_MISSING_SCRIPT =
+            new DefaultRedisScript<>("""
+                    if redis.call('EXISTS', KEYS[1]) == 0 then
+                        return redis.call('SREM', KEYS[2], ARGV[1])
+                    end
+
+                    return 0
+                    """, Long.class);
+
     private final StringRedisTemplate redisTemplate;
     private final ViewCountProperties properties;
 
@@ -127,6 +136,19 @@ public class RedisViewCountStore implements ViewCountUpdater {
         }
 
         return OptionalLong.of(Long.parseLong(value));
+    }
+
+    public boolean removeDirtyIfCountMissing(Long postId) {
+        Long removed = redisTemplate.execute(
+                REMOVE_DIRTY_IF_COUNT_MISSING_SCRIPT,
+                List.of(
+                        properties.countKey(postId),
+                        properties.dirtySetKey()
+                ),
+                Long.toString(postId)
+        );
+
+        return Long.valueOf(1L).equals(removed);
     }
 
     public boolean acknowledgeIfUnchanged(

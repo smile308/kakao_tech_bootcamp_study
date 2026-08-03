@@ -162,7 +162,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: false
@@ -175,8 +175,7 @@ spring:
 
   flyway:
     enabled: true
-    baseline-on-migrate: true
-    baseline-version: "0"
+    baseline-on-migrate: false
     locations: classpath:db/migration
     validate-on-migrate: true
 
@@ -193,17 +192,17 @@ cors:
 
 `refresh-cookie-secure`는 YAML에서는 property가 없을 때 `true`를 쓴다. 그러나 현재 `deploy/compose.yaml`은 `JWT_REFRESH_COOKIE_SECURE`이 없으면 `false`를 container에 넣는다. 따라서 **현재 Compose의 기본 배포값은 `false`**이며, HTTPS로 배포할 때는 `.env`에 `JWT_REFRESH_COOKIE_SECURE=true`를 지정해야 한다.
 
-`Flyway`와 `ddl-auto: update`가 모두 스키마에 영향을 줄 수 있다는 점을 주의해야 한다. 현재 설정을 이해할 때는 다음처럼 구분한다.
+현재 운영 DB 구조 변경과 검증 책임은 다음처럼 나뉜다.
 
 ```text
 Flyway
 → 버전이 붙은 SQL 파일을 순서대로 적용하고 이력을 기록
 
-ddl-auto
-→ Entity와 현재 DB 구조를 비교해 Hibernate가 스키마 변경 시도
+ddl-auto: validate
+→ Entity와 migration 결과가 맞는지 검사하고 구조는 변경하지 않음
 ```
 
-운영 스키마 변경 책임을 Flyway로 일원화하려면 일반적으로 `ddl-auto: validate` 또는 `none`을 검토한다. 현재 프로젝트는 `update`이므로 두 방식이 함께 동작할 가능성을 이해해야 한다.
+새 빈 DB에는 `B3__current_schema.sql`이 현재 전체 스키마를 생성한다. `baseline-on-migrate: false`는 이력 없는 기존 non-empty DB를 자동으로 받아들이지 않게 하며, 빈 DB에서 B3를 실행하는 동작은 막지 않는다. 자세한 migration 흐름은 9장에서 다룬다.
 
 ## 2.5 실제 코드 원문: 테스트 설정
 
@@ -409,7 +408,7 @@ spring:                                     # prod profile에서 덮어쓸 Sprin
 
   jpa:
     hibernate:
-      ddl-auto: update                      # 현재 설정은 Entity와 DB 차이에 따라 Hibernate가 변경을 시도한다.
+      ddl-auto: validate                    # Flyway 결과와 Entity가 맞는지 검사하고 DB 구조는 자동 변경하지 않는다.
     properties:
       hibernate:
         format_sql: false                   # 운영 SQL 로그 포맷 기능을 끈다.
@@ -422,8 +421,7 @@ spring:                                     # prod profile에서 덮어쓸 Sprin
 
   flyway:
     enabled: true                           # 운영 시작 시 Flyway migration을 실행한다.
-    baseline-on-migrate: true               # 비어 있지 않은 기존 스키마에 Flyway 이력이 없으면 migrate 시 baseline 등록을 허용한다.
-    baseline-version: "0"                   # baseline이 수행되면 기존 스키마를 버전 0으로 기록한다.
+    baseline-on-migrate: false              # 이력 없는 기존 non-empty DB를 자동 baseline으로 받아들이지 않는다.
     locations: classpath:db/migration       # JAR의 db/migration 경로에서 SQL 파일을 찾는다.
     validate-on-migrate: true               # 적용 이력과 현재 migration 파일의 일치 여부를 검사한다.
 
@@ -557,12 +555,12 @@ profiles:
 ```yaml
 enabled: true
 port: 6379
-baseline-version: "0"
+example-text: "0"
 ```
 
 - `true`는 boolean이다.
 - `6379`는 숫자다.
-- `"0"`은 따옴표가 있으므로 문자열이다.
+- `"0"`은 따옴표가 있으므로 문자열이다. `example-text`는 YAML 문법 설명을 위한 예시 key다.
 - Spring은 대상 Java 타입에 맞춰 많은 값을 자동 변환한다.
 
 ### Spring property placeholder

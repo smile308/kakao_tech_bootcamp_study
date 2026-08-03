@@ -73,6 +73,7 @@ public class RedisViewCountFlushScheduler {
                     redisViewCountStore.findViewCountSnapshot(postId);
 
             if (snapshot.isEmpty()) {
+                redisViewCountStore.removeDirtyIfCountMissing(postId);
                 return;
             }
 

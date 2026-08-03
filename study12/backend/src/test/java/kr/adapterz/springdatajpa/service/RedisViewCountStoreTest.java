@@ -106,4 +106,20 @@ class RedisViewCountStoreTest {
 
         assertThat(viewCount).isEqualTo(100L);
     }
+
+    @Test
+    void 조회수_키가_없으면_dirty_표시를_제거한다() {
+        when(redisTemplate.execute(
+                ArgumentMatchers.<RedisScript<Long>>any(),
+                eq(List.of(
+                        "bamboo:{post-view}:count:42",
+                        "bamboo:{post-view}:dirty"
+                )),
+                eq("42")
+        )).thenReturn(1L);
+
+        boolean removed = store.removeDirtyIfCountMissing(42L);
+
+        assertThat(removed).isTrue();
+    }
 }

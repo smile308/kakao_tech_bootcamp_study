@@ -345,6 +345,7 @@ private void flushOne(Long postId) {
                 redisViewCountStore.findViewCountSnapshot(postId);
 
         if (snapshot.isEmpty()) {
+            redisViewCountStore.removeDirtyIfCountMissing(postId);
             return;
         }
 
@@ -384,7 +385,7 @@ private void releaseIfOwned(RLock lock, boolean acquired) {
 }
 ```
 
-각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 전체 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 dirty member를 제거하지 않고 그대로 반환하므로 그 ID는 이후 주기에도 남아 재확인된다.
+각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 전체 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 `removeDirtyIfCountMissing()`가 count key의 부재를 Redis 안에서 다시 확인한 뒤 고아 dirty member를 제거한다.
 
 ## 8.8 Snapshot 저장과 dirty 확인
 
@@ -430,6 +431,26 @@ return 0
 ```
 
 값이 증가했다면 dirty를 유지하여 다음 Scheduler 주기에 다시 저장한다.
+
+count key가 없는데 dirty ID만 남은 경우에는 저장할 snapshot 자체가 없다. dirty를 계속 보관해도 사라진 값을 복구할 수 없으므로 다음 Lua로 고아 dirty를 정리한다.
+
+```lua
+if redis.call('EXISTS', KEYS[1]) == 0 then
+    return redis.call('SREM', KEYS[2], ARGV[1])
+end
+
+return 0
+```
+
+Java에서 `GET → SREM`을 별도 명령으로 실행하면 두 명령 사이에 새 조회가 count key와 dirty를 다시 만들 수 있다. 그러고도 이전 Scheduler가 `SREM`하면 새 증가분을 저장할 기회를 잃는다. Lua는 count key 부재 확인과 dirty 제거 사이에 다른 Redis 명령이 끼어들지 못하게 한다.
+
+```text
+Lua 실행 전에 새 조회가 들어옴
+→ count key가 존재하므로 dirty 유지
+
+Lua가 먼저 고아 dirty를 제거함
+→ 이후 새 조회가 count key를 만들고 dirty를 다시 추가
+```
 
 ## 8.9 실제 코드 발췌: RDS 최대값 반영
 
@@ -534,7 +555,7 @@ Redis가 작업 저장소라고 해서 항상 재시작 시 모든 값이 사라
 | 분산 락 획득 실패 | 이번 flush 건너뜀 |
 | RDS 저장 실패 | dirty 유지, 다음 주기 재시도 |
 | 저장 중 조회수 증가 | snapshot 불일치로 dirty 유지 |
-| snapshot count key 없음 | 해당 dirty ID를 제거하지 않고 다음 주기에도 재확인 |
+| snapshot count key 없음 | count key가 여전히 없을 때만 Lua로 고아 dirty ID 제거 |
 | Redis 재시작 | AOF와 volume으로 복구 시도. `everysec` 특성상 최근 write 유실 가능성은 남음 |
 
 ## 8.12 핵심 축약본
@@ -546,6 +567,7 @@ DB 기준값 → Redis 원자적 INCR → dirty 표시
 반영 경로:
 분산 락 → dirty 조회 → snapshot → RDS max 저장
 → Redis가 snapshot 그대로일 때만 dirty 제거
+→ count key가 사라졌다면 Lua 재확인 후 고아 dirty 제거
 ```
 
 
@@ -746,7 +768,8 @@ private void flushOne(Long postId) { // dirty 게시글 하나를 RDS에 반영�
                 redisViewCountStore.findViewCountSnapshot(postId); // 현재 조회수를 snapshot으로 읽는다.
 
         if (snapshot.isEmpty()) { // dirty ID는 있지만 count key가 없는지 확인한다.
-            return; // 제거하지 않고 반환하여 다음 주기에도 다시 확인하게 한다.
+            redisViewCountStore.removeDirtyIfCountMissing(postId); // count key가 지금도 없을 때만 Lua로 고아 dirty를 제거한다.
+            return; // RDS에 저장할 snapshot이 없으므로 이 ID 처리를 끝낸다.
         }
 
         long snapshotViewCount = snapshot.getAsLong(); // 존재하는 primitive long 값을 꺼낸다.
@@ -804,6 +827,31 @@ if current and current == ARGV[1] then -- key가 존재하며 저장한 snapshot
 end
 
 return 0 -- 값이 달라졌으면 새 증가분을 다음 주기에 저장하도록 dirty를 유지한다.
+```
+
+### count key가 사라진 경우의 고아 dirty 정리
+
+```java
+public boolean removeDirtyIfCountMissing(Long postId) { // 저장할 count가 없는 dirty ID를 경쟁 조건 없이 정리한다.
+    Long removed = redisTemplate.execute( // Redis 서버에서 확인과 제거를 하나의 Lua 작업으로 실행한다.
+            REMOVE_DIRTY_IF_COUNT_MISSING_SCRIPT, // count 부재일 때만 SREM하는 script다.
+            List.of( // Lua의 KEYS 배열에 전달할 두 key다.
+                    properties.countKey(postId), // KEYS[1]은 게시글의 조회수 count key다.
+                    properties.dirtySetKey() // KEYS[2]는 RDS 반영 대기 ID set이다.
+            ),
+            Long.toString(postId) // ARGV[1]은 dirty set에서 제거할 게시글 ID다.
+    );
+
+    return Long.valueOf(1L).equals(removed); // 실제 한 member가 제거됐을 때만 true를 반환한다.
+}
+```
+
+```lua
+if redis.call('EXISTS', KEYS[1]) == 0 then -- 실행 시점에도 count key가 없는지 Redis 안에서 확인한다.
+    return redis.call('SREM', KEYS[2], ARGV[1]) -- 없을 때만 복구 불가능한 고아 dirty ID를 제거한다.
+end
+
+return 0 -- 새 조회가 count key를 만들었다면 새 증가분 보존을 위해 dirty를 유지한다.
 ```
 
 ### RDS 저장
@@ -1006,7 +1054,7 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 10. AOF와 Docker volume은 각각 무엇을 보존하는가?
 11. Redis 구현이 활성화된 상태의 통신 장애와 `VIEW_COUNT_REDIS_ENABLED=false`는 DB 처리 방식이 어떻게 다른가?
 12. Redis Lua의 원자성이 script 오류 시 이전 write까지 rollback한다는 뜻인가?
-13. snapshot count key가 사라졌지만 dirty ID가 남아 있으면 현재 Scheduler는 어떻게 처리하는가?
+13. snapshot count key가 사라졌지만 dirty ID가 남아 있으면 왜 Java에서 바로 제거하지 않고 Lua로 다시 확인하는가?
 14. AOF `everysec`와 volume을 사용하면 최근 조회수 유실 가능성이 완전히 사라지는가?
 
 ## 8.15 오답노트

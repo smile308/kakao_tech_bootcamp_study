@@ -194,6 +194,21 @@ class RedisViewCountStoreIntegrationTest {
     }
 
     @Test
+    void 조회수_키가_없을_때만_고아_dirty_표시를_제거한다() {
+        redisTemplate.opsForSet().add(DIRTY_SET_KEY, "42");
+
+        assertThat(store.removeDirtyIfCountMissing(42L)).isTrue();
+        assertThat(store.findDirtyPostIds()).isEmpty();
+
+        store.increment(42L, 100L);
+
+        assertThat(store.removeDirtyIfCountMissing(42L)).isFalse();
+        assertThat(store.findDirtyPostIds()).containsExactly(42L);
+        assertThat(redisTemplate.opsForValue().get(COUNT_KEY))
+                .isEqualTo("101");
+    }
+
+    @Test
     void 두_백엔드_중_한_백엔드만_분산_락을_획득한다() {
         RLock firstBackendLock =
                 redissonClient.getLock(FLUSH_LOCK_KEY);
