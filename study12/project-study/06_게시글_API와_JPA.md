@@ -112,6 +112,60 @@ private Post post;
 
 `@MapsId`는 이 연관관계의 foreign key인 `post_id`를 `PostCounter` 자신의 primary key로도 함께 사용한다. 따라서 Post와 PostCounter는 같은 ID를 공유하는 1:1 구조다. `PostViewCount`도 같은 mapping을 사용한다.
 
+### `Post`와 공유 primary key 카운터
+
+```java
+@Version // JPA가 concurrent update 충돌을 확인할 version field로 지정한다.
+@Column(name = "version", nullable = false) // posts.version column에 null 없이 mapping한다.
+private Long version; // client가 수정 요청에 다시 보내는 현재 version 값이다.
+
+@ManyToOne(fetch = FetchType.LAZY) // 여러 Post가 한 User 작성자를 참조하며 필요할 때 조회한다.
+@JoinColumn(name = "user_id", nullable = false) // posts.user_id foreign key column을 이 field가 관리한다.
+private User user; // 게시글 작성자 Entity다.
+
+@Column(name = "post_title", nullable = false, length = 26) // 제목 column과 DB 길이 제한을 지정한다.
+private String postTitle; // 게시글 제목이다.
+
+@Column(name = "post_content", nullable = false) // 본문 column을 null 불가로 mapping한다.
+private String postContent; // 게시글 본문이다.
+
+@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true) // PostImage.post가 FK 주인이며 저장·삭제를 전파하고 관계에서 빠진 image를 삭제한다.
+@OrderBy("imageOrder ASC") // collection을 읽을 때 imageOrder field 오름차순으로 정렬한다.
+private List<PostImage> postImages = new ArrayList<>(); // 게시글 image Entity 목록을 빈 mutable list로 초기화한다.
+
+@Column(name = "is_fixed", nullable = false) // 한 번 수정됐는지 기록하는 column이다.
+private boolean isFixed; // version 강제 증가 판단에도 사용한다.
+
+@OneToOne( // Post 하나와 PostCounter 하나의 1:1 관계다.
+        mappedBy = "post", // FK는 PostCounter.post field가 관리한다.
+        fetch = FetchType.LAZY, // 실제 접근할 때 조회하는 전략이다.
+        cascade = CascadeType.ALL, // Post의 영속 동작을 counter에도 전파한다.
+        orphanRemoval = true, // 관계에서 분리된 counter를 삭제 대상으로 본다.
+        optional = false // counter가 반드시 존재하는 관계임을 나타낸다.
+)
+private PostCounter postCounter; // 좋아요·신고·댓글과 기존 조회수 counter다.
+
+@OneToOne( // Post 하나와 BIGINT 조회수 Entity 하나의 1:1 관계다.
+        mappedBy = "post", // FK는 PostViewCount.post field가 관리한다.
+        fetch = FetchType.LAZY, // 필요할 때 조회한다.
+        cascade = CascadeType.ALL, // Post 영속 동작을 조회수 Entity에도 전파한다.
+        orphanRemoval = true, // 관계에서 빠진 조회수 Entity를 삭제한다.
+        optional = false // 반드시 존재하는 관계다.
+)
+private PostViewCount postViewCount; // long 조회수를 저장하는 별도 Entity다.
+```
+
+```java
+@Id // PostCounter의 primary key다.
+@Column(name = "post_id") // post_counters.post_id column에 mapping한다.
+private Long postId; // Post ID와 같은 값을 공유한다.
+
+@MapsId // 아래 연관관계의 ID를 위 primary key 값으로 사용한다.
+@OneToOne(fetch = FetchType.LAZY, optional = false) // counter 하나가 반드시 Post 하나와 연결된다.
+@JoinColumn(name = "post_id") // 같은 post_id column을 foreign key로도 사용한다.
+private Post post; // counter가 속한 Post다.
+```
+
 ## 6.3 실제 코드 발췌: Controller
 
 ```java
@@ -141,6 +195,34 @@ public PostFixResponseDto fixPost(
 
 @AuthenticationPrincipal
 // JWT Filter가 SecurityContext에 저장한 로그인 사용자 정보를 받는다.
+```
+
+### 게시글 상세·수정 Controller
+
+```java
+@GetMapping("/{postId}") // GET /posts/{postId} 요청을 상세 조회 메서드에 연결한다.
+public PostViewResponseDto getPostView( // 상세 화면에 필요한 응답 DTO를 반환한다.
+        @PathVariable("postId") Long postId, // URL의 postId 부분을 Long으로 변환해 받는다.
+        @AuthenticationPrincipal CustomUserDetails userDetails // JWT Filter가 저장한 로그인 principal을 받는다.
+) {
+    return postService.getPostView( // 실제 조회 규칙과 Transaction은 Service에 맡긴다.
+            postId, // 조회할 게시글 ID를 전달한다.
+            userDetails.getUserId() // 로그인 사용자별 좋아요·소유권 판단을 위해 사용자 ID를 전달한다.
+    );
+}
+
+@PatchMapping("/{postId}") // PATCH /posts/{postId} 요청을 수정 메서드에 연결한다.
+public PostFixResponseDto fixPost( // 수정 완료 응답 DTO를 반환한다.
+        @PathVariable("postId") Long postId, // 수정할 게시글 ID를 URL에서 받는다.
+        @AuthenticationPrincipal CustomUserDetails userDetails, // 현재 로그인 사용자를 받는다.
+        @Valid @RequestBody PostFixRequestDto request // JSON 수정값을 DTO로 바꾸고 형식을 검증한다.
+) {
+    return postService.fixPost( // 소유권, version과 이미지 검증을 Service에 맡긴다.
+            postId, // 수정 대상 ID다.
+            userDetails.getUserId(), // 작성자와 비교할 로그인 사용자 ID다.
+            request // 제목, 내용, 이미지, version이 담긴 요청이다.
+    );
+}
 ```
 
 ## 6.4 실제 코드 발췌: 상세 조회 Service
@@ -189,6 +271,53 @@ public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
 클래스에는 기본적으로 `@Transactional(readOnly = true)`가 있지만 조회수 증가는 상태를 변경하므로 이 메서드에 `@Transactional`을 다시 지정했다.
 
 상세 조회는 단순 SELECT 하나가 아니다. 화면이 요구하는 댓글, 좋아요 여부, 신고 여부, 작성자 여부와 조회수를 조합한다.
+
+### 상세 조회 Service
+
+```java
+@Transactional // 조회수 증가도 포함하므로 읽기 전용이 아닌 Transaction을 시작한다.
+public PostViewResponseDto getPostView(Long postId, Long loginUserId) { // 게시글 상세 응답 전체를 조립한다.
+    Post post = getViewablePost(postId); // 존재하고 삭제·신고 차단되지 않은 게시글을 조회한다.
+    User loginUser = getLoginUser(loginUserId); // 요청 사용자가 현재 유효한 계정인지 조회한다.
+
+    List<Comment> comments = commentRepository.findByPostWithUser(post); // 댓글과 댓글 작성자를 함께 조회한다.
+    List<CommentResponseDto> commentResponseDtos = new ArrayList<>(); // 화면에 전달할 댓글 DTO 목록을 만든다.
+
+    for (Comment comment : comments) { // 조회한 댓글을 하나씩 응답 모양으로 변환한다.
+        boolean isMyComment = comment.getUser().getUserId().equals(loginUserId); // 댓글 작성자와 로그인 사용자가 같은지 판단한다.
+        CommentResponseDto commentResponseDto = new CommentResponseDto( // 댓글 Entity에서 응답 DTO를 만든다.
+                comment, // 댓글 본문과 작성 시간을 제공한다.
+                comment.getUser(), // 작성자 닉네임·프로필 정보를 제공한다.
+                isMyComment // 화면에서 수정·삭제 버튼 표시 여부에 사용한다.
+        );
+        commentResponseDtos.add(commentResponseDto); // 완성한 댓글 DTO를 응답 목록에 추가한다.
+    }
+
+    boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser); // 로그인 사용자의 좋아요 존재 여부를 조회한다.
+    boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser); // 신고 존재 여부를 조회한다.
+    boolean isMine = post.getUser().getUserId().equals(loginUserId); // 게시글 작성자 본인인지 판단한다.
+
+    long baselineViewCount = Math.max( // 마이그레이션 전후 두 DB 카운터 중 안전한 큰 값을 선택한다.
+            post.getPostCounter().getViewCount(), // 기존 PostCounter의 조회수다.
+            post.getPostViewCount().getViewCount() // 새 BIGINT PostViewCount의 조회수다.
+    );
+
+    long updatedViewCount = viewCountUpdater.increment( // 설정에 따라 Redis 또는 DB 구현으로 조회수를 증가시킨다.
+            postId, // 증가할 게시글 ID다.
+            baselineViewCount // Redis가 비어 있을 때 사용할 DB 기준값이다.
+    );
+
+    return new PostViewResponseDto( // 모든 조회 결과를 하나의 상세 응답으로 조립한다.
+            post, // 제목, 내용, 이미지와 작성자 정보의 기반이다.
+            post.getPostCounter(), // 좋아요·신고·댓글 카운터를 제공한다.
+            updatedViewCount, // 이번 요청으로 증가한 조회수다.
+            commentResponseDtos, // 화면에 표시할 댓글 목록이다.
+            isLiked, // 좋아요 버튼 상태다.
+            isReported, // 신고 버튼 상태다.
+            isMine // 수정·삭제 버튼 상태다.
+    );
+}
+```
 
 ## 6.5 실제 코드 발췌: Repository와 EntityGraph
 
@@ -257,6 +386,28 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
 `LikeRepository.existsByPostAndUser`와 `PostReportRepository.existsByPostAndUser`는 상세 응답의 `isLiked`, `isReported` boolean을 만든다. Like 삭제 query는 post와 user 두 조건을 함께 사용해 다른 사용자의 좋아요를 지우지 않게 하고, 반환된 삭제 행 수 1을 Service가 확인한다. Comment query의 `join fetch c.user`는 댓글 목록을 만들 때 작성자 정보를 함께 준비하고 `commentId asc`로 화면 순서를 고정한다. 이 세 Repository는 모두 Service가 transaction 안에서 호출하며, Repository가 DB 연결 주소를 직접 설정하지는 않는다.
 
+### 상세 Repository
+
+```java
+@EntityGraph( // 이번 조회에서 함께 불러올 LAZY 연관관계를 지정한다.
+        attributePaths = { // fetch 대상 필드 이름 목록이다.
+                "user", // 게시글 작성자를 함께 조회한다.
+                "postImages", // 게시글 이미지 목록을 함께 조회한다.
+                "postCounter", // 좋아요·신고·댓글 카운터를 함께 조회한다.
+                "postViewCount" // 새 조회수 Entity를 함께 조회한다.
+        }
+)
+@Query(""" // 메서드에서 실행할 JPQL을 직접 작성한다.
+        SELECT post
+        FROM Post post
+        WHERE post.postId = :postId
+          AND post.deleted = false
+        """)
+Optional<Post> findByPostIdAndDeletedFalse( // 없을 수 있으므로 Optional<Post>를 반환한다.
+        @Param("postId") Long postId // Java 인자를 JPQL의 :postId에 연결한다.
+);
+```
+
 ## 6.6 수정과 낙관적 락
 
 실제 코드:
@@ -301,6 +452,33 @@ JPA는 `Post` 자체의 column 값이 바뀌지 않으면 Post UPDATE가 필요 
 `version`은 “마지막에 저장한 사람이 무조건 앞선 변경을 덮어쓰기”를 방지한다.
 
 여기에는 두 겹의 방어가 있다. `validatePostVersion()`은 client가 보낸 version이 현재 영속 Entity와 맞는지 일찍 검사하고, Entity의 `@Version`은 조회 이후 commit 사이에 다른 Transaction이 먼저 수정했는지도 UPDATE 조건으로 검사한다.
+
+### version 검증
+
+```java
+private void validatePostVersion(Post post, Long requestVersion) { // DB Entity와 클라이언트가 본 version을 비교한다.
+    if (!Objects.equals(post.getVersion(), requestVersion)) { // null 안전 비교로 두 version이 다른지 확인한다.
+        throw new PostVersionConflictException(); // 오래된 화면의 수정이면 409로 변환될 예외를 던진다.
+    }
+}
+```
+
+```java
+if (requiresForcedVersionIncrement(post, request)) { // Post 자체 column 변경이 없을 수 있는 후속 수정인지 검사한다.
+    entityManager.lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT); // commit 때 Post version을 강제로 증가시킨다.
+}
+```
+
+```java
+private boolean requiresForcedVersionIncrement( // 강제 version 증가가 필요한지 계산한다.
+        Post post, // 현재 영속 Post다.
+        PostFixRequestDto request // client가 보낸 수정 값이다.
+) {
+    return post.isFixed() // 이미 한 번 수정되어 update()의 isFixed 변경이 더는 일어나지 않고
+            && Objects.equals(post.getPostTitle(), request.getTitle()) // 제목도 현재 값과 같고
+            && Objects.equals(post.getPostContent(), request.getContent()); // 내용도 현재 값과 같을 때 true다.
+}
+```
 
 ## 6.7 좋아요와 비관적 락
 
@@ -366,6 +544,51 @@ Like 행 존재
 
 DB의 사용자·게시글 unique 제약과 `DataIntegrityViolationException` 처리는 같은 사용자의 중복 좋아요 경쟁도 막는다. `saveAndFlush()`를 사용하는 이유는 unique 제약 검사를 method 뒤 commit까지 미루지 않고 이 `try/catch` 안에서 발생시키기 위해서다.
 
+### 좋아요 Transaction 핵심
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE) // 조회할 counter row에 DB write lock을 요청한다.
+@Query(""" // Entity와 field 이름을 사용하는 JPQL 조회를 선언한다.
+        SELECT counter
+        FROM PostCounter counter
+        WHERE counter.postId = :postId
+        """)
+Optional<PostCounter> findByPostIdForUpdate( // row가 없을 가능성을 Optional로 반환한다.
+        @Param("postId") Long postId // method 인자를 JPQL의 :postId parameter에 연결한다.
+);
+
+@Modifying(clearAutomatically = true, flushAutomatically = true) // 변경 query 전 flush하고 실행 뒤 persistence context를 비운다.
+@Query(""" // DB에서 직접 likeCount를 증가시키는 JPQL update다.
+        UPDATE PostCounter counter
+        SET counter.likeCount = counter.likeCount + 1
+        WHERE counter.postId = :postId
+        """)
+int incrementLikeCount(@Param("postId") Long postId); // 변경된 row 수를 int로 반환한다.
+```
+
+```java
+@Transactional // Like row와 counter 변경을 한 업무 단위로 묶는다.
+public LikeResponseDto likePost(Long postId, Long loginUserId) { // 게시글 ID와 로그인 사용자 ID로 좋아요를 추가한다.
+    Post post = getActivePostForInteraction(postId); // 삭제되지 않은 상호작용 대상 게시글을 조회한다.
+
+    User user = getLoginUser(loginUserId); // 삭제되지 않은 로그인 사용자를 조회한다.
+
+    getPostCounterForUpdate(postId); // 카운터 row에 비관적 write lock을 걸어 동시 counter 변경을 직렬화한다.
+    validateActivePostAfterCounterUpdate(postId); // lock을 기다리는 사이 게시글이 삭제되지 않았는지 read lock 조회로 다시 확인한다.
+
+    try { // DB unique 제약 위반을 프로젝트 오류로 바꿀 범위를 시작한다.
+        likeRepository.saveAndFlush(new Like(post, user)); // Like row를 즉시 flush해 같은 사용자 중복을 현재 위치에서 확인한다.
+    } catch (DataIntegrityViolationException e) { // post_id·user_id unique 제약 위반 등을 잡는다.
+        throw new InvalidRequestException("Already_Liked"); // 중복 좋아요용 400 업무 예외로 바꾼다.
+    }
+    validateCounterUpdate( // update query가 정확히 한 row를 바꿨는지 검사한다.
+            postCounterRepository.incrementLikeCount(postId) // DB에서 like_count를 원자적으로 1 증가시킨다.
+    );
+
+    return new LikeResponseDto(getPostCounter(postId).getLikeCount()); // 갱신된 counter를 다시 읽어 응답 DTO에 넣는다.
+}
+```
+
 ## 6.8 신고 흐름
 
 Service의 실제 원문:
@@ -430,256 +653,7 @@ public PostReportResponseDto reportPost(
 
 `post_reports(post_id, user_id)` unique constraint도 중복 row 자체를 막는 최종 DB 제약으로 남아 있다. 하지만 현재 Service 흐름에서 동시 중복 신고를 순서대로 처리하게 만드는 핵심은 unique 예외 변환이 아니라 중복 검사보다 먼저 획득하는 게시글 write lock이다.
 
-## 6.9 핵심 축약본
-
-```java
-Controller {
-    HTTP 값을 받아 Service 호출
-}
-
-Service {
-    조회와 검증 순서를 조합
-    Transaction 경계 설정
-    응답 DTO 생성
-}
-
-Repository {
-    필요한 Entity와 연관관계 조회
-    락과 수정 쿼리 실행
-}
-
-Entity {
-    상태와 상태 변경 규칙 보유
-}
-```
-
-
-## 6.9.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### `Post`와 공유 primary key 카운터
-
-```java
-@Version // JPA가 concurrent update 충돌을 확인할 version field로 지정한다.
-@Column(name = "version", nullable = false) // posts.version column에 null 없이 mapping한다.
-private Long version; // client가 수정 요청에 다시 보내는 현재 version 값이다.
-
-@ManyToOne(fetch = FetchType.LAZY) // 여러 Post가 한 User 작성자를 참조하며 필요할 때 조회한다.
-@JoinColumn(name = "user_id", nullable = false) // posts.user_id foreign key column을 이 field가 관리한다.
-private User user; // 게시글 작성자 Entity다.
-
-@Column(name = "post_title", nullable = false, length = 26) // 제목 column과 DB 길이 제한을 지정한다.
-private String postTitle; // 게시글 제목이다.
-
-@Column(name = "post_content", nullable = false) // 본문 column을 null 불가로 mapping한다.
-private String postContent; // 게시글 본문이다.
-
-@OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true) // PostImage.post가 FK 주인이며 저장·삭제를 전파하고 관계에서 빠진 image를 삭제한다.
-@OrderBy("imageOrder ASC") // collection을 읽을 때 imageOrder field 오름차순으로 정렬한다.
-private List<PostImage> postImages = new ArrayList<>(); // 게시글 image Entity 목록을 빈 mutable list로 초기화한다.
-
-@Column(name = "is_fixed", nullable = false) // 한 번 수정됐는지 기록하는 column이다.
-private boolean isFixed; // version 강제 증가 판단에도 사용한다.
-
-@OneToOne( // Post 하나와 PostCounter 하나의 1:1 관계다.
-        mappedBy = "post", // FK는 PostCounter.post field가 관리한다.
-        fetch = FetchType.LAZY, // 실제 접근할 때 조회하는 전략이다.
-        cascade = CascadeType.ALL, // Post의 영속 동작을 counter에도 전파한다.
-        orphanRemoval = true, // 관계에서 분리된 counter를 삭제 대상으로 본다.
-        optional = false // counter가 반드시 존재하는 관계임을 나타낸다.
-)
-private PostCounter postCounter; // 좋아요·신고·댓글과 기존 조회수 counter다.
-
-@OneToOne( // Post 하나와 BIGINT 조회수 Entity 하나의 1:1 관계다.
-        mappedBy = "post", // FK는 PostViewCount.post field가 관리한다.
-        fetch = FetchType.LAZY, // 필요할 때 조회한다.
-        cascade = CascadeType.ALL, // Post 영속 동작을 조회수 Entity에도 전파한다.
-        orphanRemoval = true, // 관계에서 빠진 조회수 Entity를 삭제한다.
-        optional = false // 반드시 존재하는 관계다.
-)
-private PostViewCount postViewCount; // long 조회수를 저장하는 별도 Entity다.
-```
-
-```java
-@Id // PostCounter의 primary key다.
-@Column(name = "post_id") // post_counters.post_id column에 mapping한다.
-private Long postId; // Post ID와 같은 값을 공유한다.
-
-@MapsId // 아래 연관관계의 ID를 위 primary key 값으로 사용한다.
-@OneToOne(fetch = FetchType.LAZY, optional = false) // counter 하나가 반드시 Post 하나와 연결된다.
-@JoinColumn(name = "post_id") // 같은 post_id column을 foreign key로도 사용한다.
-private Post post; // counter가 속한 Post다.
-```
-
-### 게시글 상세·수정 Controller
-
-```java
-@GetMapping("/{postId}") // GET /posts/{postId} 요청을 상세 조회 메서드에 연결한다.
-public PostViewResponseDto getPostView( // 상세 화면에 필요한 응답 DTO를 반환한다.
-        @PathVariable("postId") Long postId, // URL의 postId 부분을 Long으로 변환해 받는다.
-        @AuthenticationPrincipal CustomUserDetails userDetails // JWT Filter가 저장한 로그인 principal을 받는다.
-) {
-    return postService.getPostView( // 실제 조회 규칙과 Transaction은 Service에 맡긴다.
-            postId, // 조회할 게시글 ID를 전달한다.
-            userDetails.getUserId() // 로그인 사용자별 좋아요·소유권 판단을 위해 사용자 ID를 전달한다.
-    );
-}
-
-@PatchMapping("/{postId}") // PATCH /posts/{postId} 요청을 수정 메서드에 연결한다.
-public PostFixResponseDto fixPost( // 수정 완료 응답 DTO를 반환한다.
-        @PathVariable("postId") Long postId, // 수정할 게시글 ID를 URL에서 받는다.
-        @AuthenticationPrincipal CustomUserDetails userDetails, // 현재 로그인 사용자를 받는다.
-        @Valid @RequestBody PostFixRequestDto request // JSON 수정값을 DTO로 바꾸고 형식을 검증한다.
-) {
-    return postService.fixPost( // 소유권, version과 이미지 검증을 Service에 맡긴다.
-            postId, // 수정 대상 ID다.
-            userDetails.getUserId(), // 작성자와 비교할 로그인 사용자 ID다.
-            request // 제목, 내용, 이미지, version이 담긴 요청이다.
-    );
-}
-```
-
-### 상세 조회 Service
-
-```java
-@Transactional // 조회수 증가도 포함하므로 읽기 전용이 아닌 Transaction을 시작한다.
-public PostViewResponseDto getPostView(Long postId, Long loginUserId) { // 게시글 상세 응답 전체를 조립한다.
-    Post post = getViewablePost(postId); // 존재하고 삭제·신고 차단되지 않은 게시글을 조회한다.
-    User loginUser = getLoginUser(loginUserId); // 요청 사용자가 현재 유효한 계정인지 조회한다.
-
-    List<Comment> comments = commentRepository.findByPostWithUser(post); // 댓글과 댓글 작성자를 함께 조회한다.
-    List<CommentResponseDto> commentResponseDtos = new ArrayList<>(); // 화면에 전달할 댓글 DTO 목록을 만든다.
-
-    for (Comment comment : comments) { // 조회한 댓글을 하나씩 응답 모양으로 변환한다.
-        boolean isMyComment = comment.getUser().getUserId().equals(loginUserId); // 댓글 작성자와 로그인 사용자가 같은지 판단한다.
-        CommentResponseDto commentResponseDto = new CommentResponseDto( // 댓글 Entity에서 응답 DTO를 만든다.
-                comment, // 댓글 본문과 작성 시간을 제공한다.
-                comment.getUser(), // 작성자 닉네임·프로필 정보를 제공한다.
-                isMyComment // 화면에서 수정·삭제 버튼 표시 여부에 사용한다.
-        );
-        commentResponseDtos.add(commentResponseDto); // 완성한 댓글 DTO를 응답 목록에 추가한다.
-    }
-
-    boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser); // 로그인 사용자의 좋아요 존재 여부를 조회한다.
-    boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser); // 신고 존재 여부를 조회한다.
-    boolean isMine = post.getUser().getUserId().equals(loginUserId); // 게시글 작성자 본인인지 판단한다.
-
-    long baselineViewCount = Math.max( // 마이그레이션 전후 두 DB 카운터 중 안전한 큰 값을 선택한다.
-            post.getPostCounter().getViewCount(), // 기존 PostCounter의 조회수다.
-            post.getPostViewCount().getViewCount() // 새 BIGINT PostViewCount의 조회수다.
-    );
-
-    long updatedViewCount = viewCountUpdater.increment( // 설정에 따라 Redis 또는 DB 구현으로 조회수를 증가시킨다.
-            postId, // 증가할 게시글 ID다.
-            baselineViewCount // Redis가 비어 있을 때 사용할 DB 기준값이다.
-    );
-
-    return new PostViewResponseDto( // 모든 조회 결과를 하나의 상세 응답으로 조립한다.
-            post, // 제목, 내용, 이미지와 작성자 정보의 기반이다.
-            post.getPostCounter(), // 좋아요·신고·댓글 카운터를 제공한다.
-            updatedViewCount, // 이번 요청으로 증가한 조회수다.
-            commentResponseDtos, // 화면에 표시할 댓글 목록이다.
-            isLiked, // 좋아요 버튼 상태다.
-            isReported, // 신고 버튼 상태다.
-            isMine // 수정·삭제 버튼 상태다.
-    );
-}
-```
-
-### 상세 Repository
-
-```java
-@EntityGraph( // 이번 조회에서 함께 불러올 LAZY 연관관계를 지정한다.
-        attributePaths = { // fetch 대상 필드 이름 목록이다.
-                "user", // 게시글 작성자를 함께 조회한다.
-                "postImages", // 게시글 이미지 목록을 함께 조회한다.
-                "postCounter", // 좋아요·신고·댓글 카운터를 함께 조회한다.
-                "postViewCount" // 새 조회수 Entity를 함께 조회한다.
-        }
-)
-@Query(""" // 메서드에서 실행할 JPQL을 직접 작성한다.
-        SELECT post
-        FROM Post post
-        WHERE post.postId = :postId
-          AND post.deleted = false
-        """)
-Optional<Post> findByPostIdAndDeletedFalse( // 없을 수 있으므로 Optional<Post>를 반환한다.
-        @Param("postId") Long postId // Java 인자를 JPQL의 :postId에 연결한다.
-);
-```
-
-### version 검증
-
-```java
-private void validatePostVersion(Post post, Long requestVersion) { // DB Entity와 클라이언트가 본 version을 비교한다.
-    if (!Objects.equals(post.getVersion(), requestVersion)) { // null 안전 비교로 두 version이 다른지 확인한다.
-        throw new PostVersionConflictException(); // 오래된 화면의 수정이면 409로 변환될 예외를 던진다.
-    }
-}
-```
-
-```java
-if (requiresForcedVersionIncrement(post, request)) { // Post 자체 column 변경이 없을 수 있는 후속 수정인지 검사한다.
-    entityManager.lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT); // commit 때 Post version을 강제로 증가시킨다.
-}
-```
-
-```java
-private boolean requiresForcedVersionIncrement( // 강제 version 증가가 필요한지 계산한다.
-        Post post, // 현재 영속 Post다.
-        PostFixRequestDto request // client가 보낸 수정 값이다.
-) {
-    return post.isFixed() // 이미 한 번 수정되어 update()의 isFixed 변경이 더는 일어나지 않고
-            && Objects.equals(post.getPostTitle(), request.getTitle()) // 제목도 현재 값과 같고
-            && Objects.equals(post.getPostContent(), request.getContent()); // 내용도 현재 값과 같을 때 true다.
-}
-```
-
-### 좋아요 Transaction 핵심
-
-```java
-@Lock(LockModeType.PESSIMISTIC_WRITE) // 조회할 counter row에 DB write lock을 요청한다.
-@Query(""" // Entity와 field 이름을 사용하는 JPQL 조회를 선언한다.
-        SELECT counter
-        FROM PostCounter counter
-        WHERE counter.postId = :postId
-        """)
-Optional<PostCounter> findByPostIdForUpdate( // row가 없을 가능성을 Optional로 반환한다.
-        @Param("postId") Long postId // method 인자를 JPQL의 :postId parameter에 연결한다.
-);
-
-@Modifying(clearAutomatically = true, flushAutomatically = true) // 변경 query 전 flush하고 실행 뒤 persistence context를 비운다.
-@Query(""" // DB에서 직접 likeCount를 증가시키는 JPQL update다.
-        UPDATE PostCounter counter
-        SET counter.likeCount = counter.likeCount + 1
-        WHERE counter.postId = :postId
-        """)
-int incrementLikeCount(@Param("postId") Long postId); // 변경된 row 수를 int로 반환한다.
-```
-
-```java
-@Transactional // Like row와 counter 변경을 한 업무 단위로 묶는다.
-public LikeResponseDto likePost(Long postId, Long loginUserId) { // 게시글 ID와 로그인 사용자 ID로 좋아요를 추가한다.
-    Post post = getActivePostForInteraction(postId); // 삭제되지 않은 상호작용 대상 게시글을 조회한다.
-
-    User user = getLoginUser(loginUserId); // 삭제되지 않은 로그인 사용자를 조회한다.
-
-    getPostCounterForUpdate(postId); // 카운터 row에 비관적 write lock을 걸어 동시 counter 변경을 직렬화한다.
-    validateActivePostAfterCounterUpdate(postId); // lock을 기다리는 사이 게시글이 삭제되지 않았는지 read lock 조회로 다시 확인한다.
-
-    try { // DB unique 제약 위반을 프로젝트 오류로 바꿀 범위를 시작한다.
-        likeRepository.saveAndFlush(new Like(post, user)); // Like row를 즉시 flush해 같은 사용자 중복을 현재 위치에서 확인한다.
-    } catch (DataIntegrityViolationException e) { // post_id·user_id unique 제약 위반 등을 잡는다.
-        throw new InvalidRequestException("Already_Liked"); // 중복 좋아요용 400 업무 예외로 바꾼다.
-    }
-    validateCounterUpdate( // update query가 정확히 한 row를 바꿨는지 검사한다.
-            postCounterRepository.incrementLikeCount(postId) // DB에서 like_count를 원자적으로 1 증가시킨다.
-    );
-
-    return new LikeResponseDto(getPostCounter(postId).getLikeCount()); // 갱신된 counter를 다시 읽어 응답 DTO에 넣는다.
-}
-```
+이 절은 앞의 실제 코드 원문을 읽은 직후 확인한다. 원문과 같은 순서의 설명용 주석본이며 실제 실행 파일에는 주석이 없다.
 
 ### 신고 Transaction
 
@@ -713,6 +687,30 @@ public PostReportResponseDto reportPost( // 신고 처리 결과를 반환한다
     );
 }
 ```
+
+## 6.9 핵심 축약본
+
+```java
+Controller {
+    HTTP 값을 받아 Service 호출
+}
+
+Service {
+    조회와 검증 순서를 조합
+    Transaction 경계 설정
+    응답 DTO 생성
+}
+
+Repository {
+    필요한 Entity와 연관관계 조회
+    락과 수정 쿼리 실행
+}
+
+Entity {
+    상태와 상태 변경 규칙 보유
+}
+```
+
 
 ## 6.10 스킵할 코드
 

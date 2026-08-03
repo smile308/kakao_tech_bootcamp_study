@@ -146,6 +146,30 @@ post_view_counts
 
 테이블 생성 순서도 의미가 있다. 예를 들어 `posts.user_id` foreign key는 `users`를 참조하므로 `users`가 먼저 생성되어야 한다. 이후 자식 테이블이 `users`와 `posts`를 참조한다.
 
+### Flyway 설정
+
+```yaml
+spring:                              # Spring Boot 공통 설정 영역이다.
+  jpa:                               # JPA와 Hibernate 설정이다.
+    hibernate:                       # Hibernate schema 처리 설정이다.
+      ddl-auto: validate             # Flyway가 만든 schema와 Entity가 맞는지만 검사하고 DB 구조를 자동 수정하지 않는다.
+    properties:                      # Hibernate 세부 property 영역이다.
+      hibernate:                     # Hibernate 자체 namespace다.
+        format_sql: false            # 운영 SQL log formatting을 끈다.
+    show-sql: false                  # 운영 console에 SQL을 출력하지 않는다.
+    defer-datasource-initialization: false # JPA 초기화를 별도 SQL init 뒤로 미루지 않는다.
+
+  sql:                               # Spring 기본 SQL initialization 설정이다.
+    init:                            # schema.sql·data.sql 자동 실행 설정이다.
+      mode: never                    # 운영에서는 기본 SQL init을 실행하지 않는다.
+
+  flyway:                            # Spring Boot의 Flyway 설정 영역이다.
+    enabled: true                    # prod 실행 시 migration 기능을 켠다.
+    baseline-on-migrate: false       # 이력 없는 기존 non-empty DB를 자동 baseline으로 받아들이지 않는다.
+    locations: classpath:db/migration # 빌드된 JAR의 해당 경로에서 SQL 파일을 찾는다.
+    validate-on-migrate: true        # 기존 적용 이력의 checksum과 현재 파일을 실행 전에 비교한다.
+```
+
 ## 10.4 V1 실제 코드의 핵심 원문
 
 ```sql
@@ -188,252 +212,6 @@ posts 없음
 ```
 
 MySQL의 `IF` 결과로 DDL 문장을 직접 실행할 수 없어서 `PREPARE → EXECUTE → DEALLOCATE`를 사용한다.
-
-## 10.5 V1 데이터 이전
-
-```sql
-SET @legacy_counter_column_count = (
-    SELECT COUNT(*)
-    FROM information_schema.columns
-    WHERE table_schema = DATABASE()
-      AND table_name = 'posts'
-      AND column_name IN (
-          'like_count',
-          'report_count',
-          'reply_count',
-          'view_count'
-      )
-);
-
-SET @backfill_post_counters_sql = IF(
-    @posts_exists = 1 AND @legacy_counter_column_count = 4,
-    'INSERT INTO post_counters (
-        post_id,
-        like_count,
-        report_count,
-        reply_count,
-        view_count
-    )
-    SELECT
-        post.post_id,
-        post.like_count,
-        post.report_count,
-        post.reply_count,
-        post.view_count
-    FROM posts post
-    LEFT JOIN post_counters counter
-        ON counter.post_id = post.post_id
-    WHERE counter.post_id IS NULL',
-    'SELECT 1'
-);
-
-PREPARE backfill_post_counters_statement FROM @backfill_post_counters_sql;
-EXECUTE backfill_post_counters_statement;
-DEALLOCATE PREPARE backfill_post_counters_statement;
-```
-
-```text
-기존 posts의 카운터
-→ 새 post_counters의 같은 post_id 행으로 복사
-
-LEFT JOIN + IS NULL
-→ 아직 새 counter가 없는 게시글만 복사
-```
-
-실제 파일은 `INSERT ... SELECT`를 바로 실행하지 않는다. `posts`가 존재하고 네 legacy counter column이 모두 있을 때만 backfill 문자열을 선택한다. 하나라도 없으면 `SELECT 1`을 실행한다. 따라서 앞서 있던 축약 INSERT만 보고 “column이 없어도 무조건 실행된다”고 이해하면 안 된다.
-
-V1에서 like/report/reply/view 컬럼 존재 여부를 확인하고 기본값을 보정하는 코드가 반복된다. `like_count` 하나의 패턴을 이해한 뒤 나머지는 같은 맥락으로 스킵한다.
-
-## 10.6 V2 실제 코드
-
-```sql
-ALTER TABLE users
-    ADD COLUMN auth_version BIGINT NOT NULL DEFAULT 0;
-```
-
-`auth_version`은 기존 Access Token을 무효화하는 보안 버전이다.
-
-```text
-기존 사용자 행
-→ DEFAULT 0
-
-새로 발급하는 JWT
-→ 현재 User.authVersion claim 포함
-
-비밀번호 변경
-→ authVersion 증가
-→ 이전 JWT의 버전과 불일치
-```
-
-V2는 컬럼이 이미 있는지 검사하지 않는다. Flyway가 버전별 SQL을 한 번만 실행한다는 전제에 의존한다.
-
-이 전제는 “Flyway가 V2를 이미 성공 기록했다면 다시 실행하지 않는다”는 뜻이다. Flyway 이력 없이 과거의 `ddl-auto: update`나 사람이 먼저 같은 `auth_version` column을 만든 DB에서는 V2가 duplicate column 오류로 실패할 수 있다. 현재는 `ddl-auto: validate`와 `baseline-on-migrate: false`로 바꿔 새 자동 변경과 무검증 자동 baseline을 막았지만, 기존 RDS의 과거 상태는 배포 전에 직접 확인해야 한다.
-
-## 10.7 V3 실제 코드
-
-```sql
-CREATE TABLE IF NOT EXISTS post_view_counts (
-    post_id BIGINT NOT NULL,
-    view_count BIGINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (post_id),
-    CONSTRAINT fk_post_view_counts_post
-        FOREIGN KEY (post_id) REFERENCES posts (post_id)
-) ENGINE=InnoDB;
-
-INSERT INTO post_view_counts (
-    post_id,
-    view_count
-)
-SELECT
-    legacy_counter.post_id,
-    legacy_counter.view_count
-FROM post_counters legacy_counter
-LEFT JOIN post_view_counts view_counter
-    ON view_counter.post_id = legacy_counter.post_id
-WHERE view_counter.post_id IS NULL;
-
-UPDATE post_view_counts view_counter
-INNER JOIN post_counters legacy_counter
-    ON legacy_counter.post_id = view_counter.post_id
-SET view_counter.view_count = GREATEST(
-    view_counter.view_count,
-    legacy_counter.view_count
-);
-```
-
-위 블록은 `V3__expand_post_view_counts.sql` 전체 원문이다.
-
-- `CREATE TABLE`: 조회수를 기존 `INT` 카운터에서 별도 `BIGINT` 테이블로 확장한다.
-- `INSERT ... SELECT`: 기존 조회수를 새 테이블로 backfill한다.
-- `UPDATE ... GREATEST`: 두 위치에 값이 이미 있다면 큰 값을 선택하여 마이그레이션 과정에서 조회수가 감소하지 않게 한다.
-
-`IF NOT EXISTS`는 table 이름이 존재하는지만 확인한다. 이미 존재하는 table의 column type·foreign key가 현재 기대와 다른 경우까지 자동으로 고쳐주는 것은 아니다.
-
-## 10.8 Entity와 migration 비교
-
-migration 적용 후 DB 구조가 Java Entity가 기대하는 구조와 일치해야 한다.
-
-```text
-V1 post_counters
-↔ PostCounter Entity
-
-V2 users.auth_version
-↔ User.authVersion
-
-V3 post_view_counts
-↔ PostViewCount Entity
-```
-
-Entity만 변경하고 운영 DB migration을 만들지 않으면 애플리케이션 시작이나 쿼리 실행 중 컬럼·테이블 없음 오류가 발생할 수 있다.
-
-반대로 migration만 적용하고 코드가 새 구조를 사용하지 않으면 새 테이블은 존재하지만 기능은 바뀌지 않는다.
-
-## 10.9 RDS 연결과 migration 시점
-
-Compose가 제공하는 환경변수:
-
-```text
-DB_URL
-DB_USERNAME
-DB_PASSWORD
-SPRING_PROFILES_ACTIVE=prod
-```
-
-```text
-Spring Boot 컨테이너 시작
-→ prod profile
-→ RDS DataSource 생성
-→ Flyway가 RDS에 migration 적용·검증
-→ JPA EntityManagerFactory 생성
-→ 웹 요청 처리 준비
-```
-
-DB 계정에는 migration에 필요한 DDL 권한이 있어야 한다. 권한이 없거나 SQL이 실패하면 정상적인 애플리케이션 시작도 실패할 수 있다.
-
-### 새 빈 RDS와 기존 RDS의 서로 다른 시작 경로
-
-새 빈 RDS는 다음 경로를 따른다.
-
-```text
-flyway_schema_history도 테이블도 없는 빈 schema
-→ Flyway가 가장 최신 baseline migration인 B3 선택
-→ B3가 현재 전체 테이블·제약·인덱스 생성
-→ V1~V3는 B3보다 오래된 변경이므로 실행하지 않음
-→ Hibernate validate가 Entity와 결과 구조 비교
-→ 일치하면 애플리케이션 시작
-```
-
-기존 RDS는 다음 조건을 만족해야 한다.
-
-```text
-flyway_schema_history 존재
-→ V1, V2, V3의 성공 이력이 존재
-→ B3는 기존 환경에서 실행하지 않음
-→ Hibernate validate가 기존 구조와 Entity 비교
-```
-
-운영 배포 전에 기존 RDS에서 다음처럼 이력을 확인해야 한다.
-
-```sql
-SELECT installed_rank, version, description, type, script, success
-FROM flyway_schema_history
-ORDER BY installed_rank;
-```
-
-기존 RDS에 실제 테이블은 있지만 `flyway_schema_history`가 없다면 지금 설정은 시작을 실패시키는 것이 정상이다. 이 상태를 자동으로 정상 취급하면 구조가 정확히 어느 버전인지 검증하지 못하기 때문이다. 먼저 실제 테이블·컬럼·제약을 점검한 뒤, 별도의 통제된 1회 작업으로 Flyway 이력을 맞춰야 한다. 이를 확인하지 않고 `baseline-on-migrate`를 다시 켜서 우회하면 안 된다.
-
-또한 MySQL의 많은 DDL은 implicit commit을 일으킨다. 한 migration 파일 중간에 실패하면 앞에서 성공한 DDL까지 일반 Transaction처럼 모두 rollback된다고 가정하면 안 된다. 재실행 전 실제 schema와 `flyway_schema_history` 상태를 함께 확인하고 복구 migration 또는 수동 정리가 필요할 수 있다.
-
-## 10.10 핵심 축약본
-
-```text
-V1
-→ 게시글 카운터 별도 테이블 생성과 기존 데이터 복사
-
-V2
-→ 사용자 authVersion 추가
-
-V3
-→ BIGINT 조회수 테이블 생성과 기존 조회수 복사
-
-B3
-→ 새 빈 DB를 V3까지 반영된 현재 전체 구조로 생성
-
-Flyway
-→ 아직 실행하지 않은 버전만 순서대로 적용하고 이력 관리
-
-Hibernate validate
-→ Flyway 결과와 Entity가 다르면 자동 수정하지 않고 시작 실패
-```
-
-
-## 10.10.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### Flyway 설정
-
-```yaml
-spring:                              # Spring Boot 공통 설정 영역이다.
-  jpa:                               # JPA와 Hibernate 설정이다.
-    hibernate:                       # Hibernate schema 처리 설정이다.
-      ddl-auto: validate             # Flyway가 만든 schema와 Entity가 맞는지만 검사하고 DB 구조를 자동 수정하지 않는다.
-    properties:                      # Hibernate 세부 property 영역이다.
-      hibernate:                     # Hibernate 자체 namespace다.
-        format_sql: false            # 운영 SQL log formatting을 끈다.
-    show-sql: false                  # 운영 console에 SQL을 출력하지 않는다.
-    defer-datasource-initialization: false # JPA 초기화를 별도 SQL init 뒤로 미루지 않는다.
-
-  sql:                               # Spring 기본 SQL initialization 설정이다.
-    init:                            # schema.sql·data.sql 자동 실행 설정이다.
-      mode: never                    # 운영에서는 기본 SQL init을 실행하지 않는다.
-
-  flyway:                            # Spring Boot의 Flyway 설정 영역이다.
-    enabled: true                    # prod 실행 시 migration 기능을 켠다.
-    baseline-on-migrate: false       # 이력 없는 기존 non-empty DB를 자동 baseline으로 받아들이지 않는다.
-    locations: classpath:db/migration # 빌드된 JAR의 해당 경로에서 SQL 파일을 찾는다.
-    validate-on-migrate: true        # 기존 적용 이력의 checksum과 현재 파일을 실행 전에 비교한다.
-```
 
 ### B3 현재 전체 스키마
 
@@ -562,6 +340,61 @@ CREATE TABLE post_view_counts ( -- Redis 조회수를 주기적으로 반영할 
 ) ENGINE=InnoDB;
 ```
 
+## 10.5 V1 데이터 이전
+
+```sql
+SET @legacy_counter_column_count = (
+    SELECT COUNT(*)
+    FROM information_schema.columns
+    WHERE table_schema = DATABASE()
+      AND table_name = 'posts'
+      AND column_name IN (
+          'like_count',
+          'report_count',
+          'reply_count',
+          'view_count'
+      )
+);
+
+SET @backfill_post_counters_sql = IF(
+    @posts_exists = 1 AND @legacy_counter_column_count = 4,
+    'INSERT INTO post_counters (
+        post_id,
+        like_count,
+        report_count,
+        reply_count,
+        view_count
+    )
+    SELECT
+        post.post_id,
+        post.like_count,
+        post.report_count,
+        post.reply_count,
+        post.view_count
+    FROM posts post
+    LEFT JOIN post_counters counter
+        ON counter.post_id = post.post_id
+    WHERE counter.post_id IS NULL',
+    'SELECT 1'
+);
+
+PREPARE backfill_post_counters_statement FROM @backfill_post_counters_sql;
+EXECUTE backfill_post_counters_statement;
+DEALLOCATE PREPARE backfill_post_counters_statement;
+```
+
+```text
+기존 posts의 카운터
+→ 새 post_counters의 같은 post_id 행으로 복사
+
+LEFT JOIN + IS NULL
+→ 아직 새 counter가 없는 게시글만 복사
+```
+
+실제 파일은 `INSERT ... SELECT`를 바로 실행하지 않는다. `posts`가 존재하고 네 legacy counter column이 모두 있을 때만 backfill 문자열을 선택한다. 하나라도 없으면 `SELECT 1`을 실행한다. 따라서 앞서 있던 축약 INSERT만 보고 “column이 없어도 무조건 실행된다”고 이해하면 안 된다.
+
+V1에서 like/report/reply/view 컬럼 존재 여부를 확인하고 기본값을 보정하는 코드가 반복된다. `like_count` 하나의 패턴을 이해한 뒤 나머지는 같은 맥락으로 스킵한다.
+
 ### V1 테이블 확인과 동적 실행
 
 ```sql
@@ -591,6 +424,31 @@ PREPARE create_post_counters_statement FROM @create_post_counters_sql; -- 선택
 EXECUTE create_post_counters_statement; -- 준비한 CREATE 또는 SELECT 문을 실행한다.
 DEALLOCATE PREPARE create_post_counters_statement; -- 사용한 prepared statement 자원을 해제한다.
 ```
+
+## 10.6 V2 실제 코드
+
+```sql
+ALTER TABLE users
+    ADD COLUMN auth_version BIGINT NOT NULL DEFAULT 0;
+```
+
+`auth_version`은 기존 Access Token을 무효화하는 보안 버전이다.
+
+```text
+기존 사용자 행
+→ DEFAULT 0
+
+새로 발급하는 JWT
+→ 현재 User.authVersion claim 포함
+
+비밀번호 변경
+→ authVersion 증가
+→ 이전 JWT의 버전과 불일치
+```
+
+V2는 컬럼이 이미 있는지 검사하지 않는다. Flyway가 버전별 SQL을 한 번만 실행한다는 전제에 의존한다.
+
+이 전제는 “Flyway가 V2를 이미 성공 기록했다면 다시 실행하지 않는다”는 뜻이다. Flyway 이력 없이 과거의 `ddl-auto: update`나 사람이 먼저 같은 `auth_version` column을 만든 DB에서는 V2가 duplicate column 오류로 실패할 수 있다. 현재는 `ddl-auto: validate`와 `baseline-on-migrate: false`로 바꿔 새 자동 변경과 무검증 자동 baseline을 막았지만, 기존 RDS의 과거 상태는 배포 전에 직접 확인해야 한다.
 
 ### V1 backfill
 
@@ -635,12 +493,71 @@ EXECUTE backfill_post_counters_statement; -- INSERT 또는 SELECT 1을 실행한
 DEALLOCATE PREPARE backfill_post_counters_statement; -- prepared statement 자원을 해제한다.
 ```
 
+## 10.7 V3 실제 코드
+
+```sql
+CREATE TABLE IF NOT EXISTS post_view_counts (
+    post_id BIGINT NOT NULL,
+    view_count BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (post_id),
+    CONSTRAINT fk_post_view_counts_post
+        FOREIGN KEY (post_id) REFERENCES posts (post_id)
+) ENGINE=InnoDB;
+
+INSERT INTO post_view_counts (
+    post_id,
+    view_count
+)
+SELECT
+    legacy_counter.post_id,
+    legacy_counter.view_count
+FROM post_counters legacy_counter
+LEFT JOIN post_view_counts view_counter
+    ON view_counter.post_id = legacy_counter.post_id
+WHERE view_counter.post_id IS NULL;
+
+UPDATE post_view_counts view_counter
+INNER JOIN post_counters legacy_counter
+    ON legacy_counter.post_id = view_counter.post_id
+SET view_counter.view_count = GREATEST(
+    view_counter.view_count,
+    legacy_counter.view_count
+);
+```
+
+위 블록은 `V3__expand_post_view_counts.sql` 전체 원문이다.
+
+- `CREATE TABLE`: 조회수를 기존 `INT` 카운터에서 별도 `BIGINT` 테이블로 확장한다.
+- `INSERT ... SELECT`: 기존 조회수를 새 테이블로 backfill한다.
+- `UPDATE ... GREATEST`: 두 위치에 값이 이미 있다면 큰 값을 선택하여 마이그레이션 과정에서 조회수가 감소하지 않게 한다.
+
+`IF NOT EXISTS`는 table 이름이 존재하는지만 확인한다. 이미 존재하는 table의 column type·foreign key가 현재 기대와 다른 경우까지 자동으로 고쳐주는 것은 아니다.
+
 ### V2 인증 버전
 
 ```sql
 ALTER TABLE users -- 기존 사용자 테이블 구조를 변경한다.
     ADD COLUMN auth_version BIGINT NOT NULL DEFAULT 0; -- 기존 행은 0을 받고 앞으로 JWT 무효화 버전을 저장한다.
 ```
+
+## 10.8 Entity와 migration 비교
+
+migration 적용 후 DB 구조가 Java Entity가 기대하는 구조와 일치해야 한다.
+
+```text
+V1 post_counters
+↔ PostCounter Entity
+
+V2 users.auth_version
+↔ User.authVersion
+
+V3 post_view_counts
+↔ PostViewCount Entity
+```
+
+Entity만 변경하고 운영 DB migration을 만들지 않으면 애플리케이션 시작이나 쿼리 실행 중 컬럼·테이블 없음 오류가 발생할 수 있다.
+
+반대로 migration만 적용하고 코드가 새 구조를 사용하지 않으면 새 테이블은 존재하지만 기능은 바뀌지 않는다.
 
 ### V3 조회수 테이블
 
@@ -668,6 +585,87 @@ SET view_counter.view_count = GREATEST( -- 두 값 중 큰 값을 새 조회수�
     legacy_counter.view_count -- 이전 테이블의 영구 조회수다.
 );
 ```
+
+## 10.9 RDS 연결과 migration 시점
+
+Compose가 제공하는 환경변수:
+
+```text
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+SPRING_PROFILES_ACTIVE=prod
+```
+
+```text
+Spring Boot 컨테이너 시작
+→ prod profile
+→ RDS DataSource 생성
+→ Flyway가 RDS에 migration 적용·검증
+→ JPA EntityManagerFactory 생성
+→ 웹 요청 처리 준비
+```
+
+DB 계정에는 migration에 필요한 DDL 권한이 있어야 한다. 권한이 없거나 SQL이 실패하면 정상적인 애플리케이션 시작도 실패할 수 있다.
+
+### 새 빈 RDS와 기존 RDS의 서로 다른 시작 경로
+
+새 빈 RDS는 다음 경로를 따른다.
+
+```text
+flyway_schema_history도 테이블도 없는 빈 schema
+→ Flyway가 가장 최신 baseline migration인 B3 선택
+→ B3가 현재 전체 테이블·제약·인덱스 생성
+→ V1~V3는 B3보다 오래된 변경이므로 실행하지 않음
+→ Hibernate validate가 Entity와 결과 구조 비교
+→ 일치하면 애플리케이션 시작
+```
+
+기존 RDS는 다음 조건을 만족해야 한다.
+
+```text
+flyway_schema_history 존재
+→ V1, V2, V3의 성공 이력이 존재
+→ B3는 기존 환경에서 실행하지 않음
+→ Hibernate validate가 기존 구조와 Entity 비교
+```
+
+운영 배포 전에 기존 RDS에서 다음처럼 이력을 확인해야 한다.
+
+```sql
+SELECT installed_rank, version, description, type, script, success
+FROM flyway_schema_history
+ORDER BY installed_rank;
+```
+
+기존 RDS에 실제 테이블은 있지만 `flyway_schema_history`가 없다면 지금 설정은 시작을 실패시키는 것이 정상이다. 이 상태를 자동으로 정상 취급하면 구조가 정확히 어느 버전인지 검증하지 못하기 때문이다. 먼저 실제 테이블·컬럼·제약을 점검한 뒤, 별도의 통제된 1회 작업으로 Flyway 이력을 맞춰야 한다. 이를 확인하지 않고 `baseline-on-migrate`를 다시 켜서 우회하면 안 된다.
+
+또한 MySQL의 많은 DDL은 implicit commit을 일으킨다. 한 migration 파일 중간에 실패하면 앞에서 성공한 DDL까지 일반 Transaction처럼 모두 rollback된다고 가정하면 안 된다. 재실행 전 실제 schema와 `flyway_schema_history` 상태를 함께 확인하고 복구 migration 또는 수동 정리가 필요할 수 있다.
+
+이 절은 앞의 실제 코드 원문을 읽은 직후 확인한다. 원문과 같은 순서의 설명용 주석본이며 실제 실행 파일에는 주석이 없다.
+
+## 10.10 핵심 축약본
+
+```text
+V1
+→ 게시글 카운터 별도 테이블 생성과 기존 데이터 복사
+
+V2
+→ 사용자 authVersion 추가
+
+V3
+→ BIGINT 조회수 테이블 생성과 기존 조회수 복사
+
+B3
+→ 새 빈 DB를 V3까지 반영된 현재 전체 구조로 생성
+
+Flyway
+→ 아직 실행하지 않은 버전만 순서대로 적용하고 이력 관리
+
+Hibernate validate
+→ Flyway 결과와 Entity가 다르면 자동 수정하지 않고 시작 실패
+```
+
 
 ## 10.10.2 빈 DB baseline 검증 테스트
 

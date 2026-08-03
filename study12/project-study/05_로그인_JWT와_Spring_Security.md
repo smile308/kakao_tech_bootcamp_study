@@ -226,6 +226,146 @@ void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Ex
 
 첫 테스트가 `400`을 기대하는 이유는 허용 Origin 검사를 통과한 뒤 빈 로그인 DTO의 입력값 검증에서 실패하기 때문이다. Origin 누락 요청은 `SessionOriginInterceptor`가 JSON 본문과 함께 403으로 거부한다. 허용되지 않은 Origin은 Spring의 CORS 처리가 interceptor보다 먼저 403으로 거부할 수 있으므로 마지막 테스트는 status만 검증한다.
 
+### `SecurityFilterChain`
+
+```java
+@Bean // 메서드 반환값을 Spring SecurityFilterChain Bean으로 등록한다.
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception { // HTTP 보안 규칙 builder를 받아 Filter Chain을 만든다.
+    http // 전달받은 보안 설정 builder에 규칙을 순서대로 추가한다.
+            .cors(Customizer.withDefaults()) // WebConfig의 CORS 설정을 Security에도 적용한다.
+            .csrf(AbstractHttpConfigurer::disable) // 기본 CSRF token 검사를 끈다.
+            .sessionManagement(session -> session // 서버 HTTP Session 정책 설정을 시작한다.
+                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 로그인 상태를 Session에 저장하지 않고 매 요청 토큰을 검사한다.
+            )
+            .exceptionHandling(exception -> exception // Spring Security 인증·인가 실패 응답 설정을 시작한다.
+                    .authenticationEntryPoint((request, response, authException) -> { // 인증 객체가 없어 보호 경로에 들어갈 수 없을 때 실행한다.
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // HTTP 상태를 401로 지정한다.
+                        response.setContentType("application/json;charset=UTF-8"); // body가 UTF-8 JSON임을 명시한다.
+                        response.getWriter().write("{\"message\":\"Unauthorized\"}"); // Filter Chain에서 JSON body를 직접 작성한다.
+                    })
+                    .accessDeniedHandler((request, response, accessDeniedException) -> { // 인증됐지만 필요한 권한이 없을 때 실행한다.
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN); // HTTP 상태를 403으로 지정한다.
+                        response.setContentType("application/json;charset=UTF-8"); // body의 형식과 문자 encoding을 지정한다.
+                        response.getWriter().write("{\"message\":\"Forbidden\"}"); // Controller 없이 JSON body를 직접 작성한다.
+                    })
+            )
+            .authorizeHttpRequests(auth -> auth // URL과 HTTP method별 접근 권한 설정을 시작한다.
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // 브라우저 CORS 사전 요청은 인증 없이 허용한다.
+                    .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll() // 배포 health check는 공개한다.
+                    .requestMatchers(HttpMethod.POST, "/users").permitAll() // 로그인 전 회원가입을 허용한다.
+                    .requestMatchers(HttpMethod.POST, "/sessions", "/sessions/refresh").permitAll() // 로그인과 토큰 재발급을 공개한다.
+                    .requestMatchers(HttpMethod.DELETE, "/sessions").permitAll() // 토큰이 만료된 상태에서도 Refresh Cookie로 로그아웃할 수 있게 한다.
+                    .anyRequest().authenticated() // 위에 없는 모든 요청은 인증을 요구한다.
+            )
+            .addFilterBefore( // 사용자 정의 Filter의 실행 위치를 지정한다.
+                    jwtAuthenticationFilter, // 매 요청의 Bearer Access Token을 검사할 Filter다.
+                    UsernamePasswordAuthenticationFilter.class // 기본 사용자·비밀번호 Filter보다 앞에 둔다.
+            );
+
+    return http.build(); // 누적한 설정으로 실제 SecurityFilterChain을 완성해 반환한다.
+}
+```
+
+### `SessionOriginInterceptor`
+
+Origin 허용 판단:
+
+```java
+public boolean isAllowed(String origin) { // 요청 Origin을 이 서비스가 신뢰하는지 반환한다.
+    return origin != null && allowedOrigins.contains(origin); // header가 존재하고 설정의 허용 목록에 정확히 포함된 경우에만 true다.
+}
+```
+
+`&&`는 왼쪽부터 평가하는 논리 AND다. `origin == null`이면 왼쪽이 false이므로 `contains()`를 호출하지 않고 전체 결과가 false가 된다. 따라서 null pointer 오류 없이 Origin 누락 요청을 거부한다.
+
+`InterceptorConfig`의 연결 부분:
+
+```java
+@Override // WebMvcConfigurer의 interceptor 등록 method를 재정의한다.
+public void addInterceptors(InterceptorRegistry registry) { // Spring MVC가 실행할 interceptor들을 registry에 추가한다.
+    registry.addInterceptor(requestLogInterceptor) // 요청 log interceptor를 등록한다.
+            .addPathPatterns("/**"); // 모든 MVC path에서 실행하게 한다.
+
+    registry.addInterceptor(sessionOriginInterceptor) // 세션 Origin 검사 interceptor를 등록한다.
+            .addPathPatterns("/sessions", "/sessions/refresh"); // 로그인·로그아웃 path와 refresh path에만 연결한다.
+}
+```
+
+검사 부분:
+
+```java
+@Override // HandlerInterceptor의 Controller 전처리 method를 재정의한다.
+public boolean preHandle( // Controller method 실행을 계속할지 boolean으로 반환한다.
+        HttpServletRequest request, // 현재 HTTP 요청이다.
+        HttpServletResponse response, // 거부할 때 직접 작성할 HTTP 응답이다.
+        Object handler // 뒤에서 실행될 handler 정보이며 현재 method에서는 사용하지 않는다.
+) throws IOException { // response writer 사용 중 발생 가능한 입출력 예외를 선언한다.
+    if (!isCookieSessionRequest(request)) { // Origin 검사가 필요한 method와 path 조합이 아닌지 확인한다.
+        return true; // true이면 다음 interceptor와 Controller 실행을 계속한다.
+    }
+
+    String origin = request.getHeader("Origin"); // browser가 보낸 요청 출처 header를 읽는다.
+
+    if (corsOriginProvider.isAllowed(origin)) { // Origin이 존재하면서 설정된 허용 목록에 포함되는지 검사한다.
+        return true; // 허용되면 Controller 실행을 계속한다.
+    }
+
+    response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 허용되지 않은 Origin이면 403을 지정한다.
+    response.setContentType("application/json;charset=UTF-8"); // 직접 작성할 body가 UTF-8 JSON임을 지정한다.
+    response.getWriter().write("{\"message\":\"Forbidden_Origin\"}"); // 거부 이유를 JSON body로 쓴다.
+    return false; // Controller 호출을 중단한다.
+}
+
+private boolean isCookieSessionRequest(HttpServletRequest request) { // Origin 검사가 필요한 세션 요청인지 계산한다.
+    String method = request.getMethod(); // HTTP method를 읽는다.
+    String path = request.getRequestURI(); // MockMvc와 실제 server에서 공통으로 요청 URI인 /sessions 또는 /sessions/refresh를 읽는다.
+
+    return method.equals("POST") && path.equals("/sessions") // 로그인 POST인지 검사한다.
+            || method.equals("POST") && path.equals("/sessions/refresh") // 재발급 POST인지 검사한다.
+            || method.equals("DELETE") && path.equals("/sessions"); // 로그아웃 DELETE인지 검사한다.
+}
+```
+
+Origin 정책 테스트:
+
+```java
+private static final String ALLOWED_ORIGIN = "http://localhost:5173"; // local·test 설정에 등록된 정상 frontend Origin을 재사용한다.
+
+@Test // 아래 method를 JUnit test case로 등록한다.
+void 로그인_API는_인증_없이_접근할_수_있다() throws Exception { // 정상 Origin은 보안 단계에서 막히지 않는지 확인한다.
+    mockMvc.perform( // 가상 HTTP 요청을 Spring MVC에 보낸다.
+                    post("/sessions") // 로그인 endpoint에 POST 요청을 만든다.
+                            .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN) // 실제 browser 요청처럼 허용된 Origin header를 넣는다.
+                            .contentType(MediaType.APPLICATION_JSON) // request body 형식을 JSON으로 지정한다.
+                            .content("{}") // 입력값 검증 실패를 확인하기 위해 빈 JSON object를 보낸다.
+            )
+            .andExpect(status().isBadRequest()); // Origin 검사는 통과하고 DTO 검증에서 400이 되는지 확인한다.
+}
+
+@Test // Origin 누락 거부를 별도 case로 검증한다.
+void Origin이_없는_세션_API_요청은_거부한다() throws Exception { // header가 없는 요청의 기대 동작을 test 이름에 표현한다.
+    mockMvc.perform(
+                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
+                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
+                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
+            )
+            .andExpect(status().isForbidden()) // interceptor가 HTTP 403을 반환하는지 확인한다.
+            .andExpect(content().contentType("application/json;charset=UTF-8")) // 직접 작성한 응답의 content type을 확인한다.
+            .andExpect(jsonPath("$.message").value("Forbidden_Origin")); // JSON 오류 message가 Origin 거부 사유인지 확인한다.
+}
+
+@Test // 허용 목록 밖 Origin 거부를 별도 case로 검증한다.
+void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Exception { // 공격자 Origin을 가정한 test다.
+    mockMvc.perform(
+                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
+                            .header(HttpHeaders.ORIGIN, "http://attacker.example") // 허용 목록에 없는 Origin을 넣는다.
+                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
+                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
+            )
+            .andExpect(status().isForbidden()); // Spring CORS 또는 interceptor가 허용 목록 불일치로 HTTP 403을 반환하는지 확인한다.
+}
+```
+
 ## 5.2.1 실제 로그인 처리 흐름
 
 파일: `service/SessionService.java`
@@ -296,6 +436,68 @@ public SessionResponseDto createSession(
 
 `SessionResponseDto.refreshToken`에는 `@JsonIgnore`가 붙어 있다. Service와 Controller 사이는 원문을 전달하지만 Jackson이 JSON response body를 만들 때는 제외한다. 최종 응답은 새 Refresh Cookie와 Access Token JSON을 서로 다른 위치에 전달한다.
 
+### 로그인 Service와 Controller
+
+```java
+public SessionResponseDto createSession(SessionRequestDto request) { // 검증된 로그인 DTO로 token과 Refresh Session을 만든다.
+    try { // Spring Security 인증 실패를 프로젝트 예외로 바꿀 범위를 시작한다.
+        Authentication authentication = authenticationManager.authenticate( // 등록된 사용자 조회와 password encoder를 사용해 인증한다.
+                new UsernamePasswordAuthenticationToken( // 아직 인증되지 않은 email·password credential 객체를 만든다.
+                        request.getEmail(), // username 역할을 하는 입력 email이다.
+                        request.getPassword() // BCrypt hash와 비교할 평문 입력 password다.
+                )
+        );
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal(); // 성공한 인증의 principal을 프로젝트 사용자 type으로 변환한다.
+
+        String accessToken = jwtProvider.createAccessToken( // 짧게 사용할 서명 JWT를 만든다.
+                userDetails.getUserId(), // subject에 넣을 사용자 ID다.
+                userDetails.getAuthVersion() // 이전 token 무효화에 쓸 현재 인증 version이다.
+        );
+        String refreshToken = refreshTokenProvider.createRefreshToken(); // browser Cookie에 전달할 무작위 원문을 만든다.
+        String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken); // DB에는 원문 대신 hash를 저장한다.
+
+        AuthSession authSession = new AuthSession( // 장기 재발급 상태를 저장할 entity를 만든다.
+                userDetails.getUser(), // session 소유 User entity다.
+                refreshTokenHash, // 조회·검증용 Refresh Token hash다.
+                refreshTokenProvider.createExpirationTime() // session 만료 시각이다.
+        );
+        authSessionRepository.save(authSession); // Refresh Session row를 DB에 저장한다.
+
+        return new SessionResponseDto( // Controller로 반환할 로그인 결과 DTO를 만든다.
+                accessToken, // JSON body에 포함할 Access Token이다.
+                refreshToken, // @JsonIgnore되며 Controller의 Set-Cookie 생성에만 사용될 원문이다.
+                userDetails.getUserId() // 로그인 사용자 식별자다.
+        );
+
+    } catch (DisabledException e) { // UserDetails.isEnabled()가 false인 사용자 인증 실패를 잡는다.
+        throw new LoginFailedException("Suspended_Account"); // 정지 계정용 401 예외로 바꾼다.
+    } catch (AuthenticationException e) { // 그 밖의 email·password 인증 실패를 잡는다.
+        throw new LoginFailedException("Login_Failed"); // 일반 로그인 실패용 401 예외로 바꾼다.
+    }
+}
+```
+
+```java
+@PostMapping // POST /sessions에 연결한다.
+@ResponseStatus(HttpStatus.CREATED) // 정상 응답 상태를 201 Created로 지정한다.
+public SessionResponseDto createSession( // 로그인 JSON body와 Cookie header를 함께 만드는 Controller method다.
+        @Valid @RequestBody SessionRequestDto request, // 요청 JSON을 DTO로 바꾸고 validation annotation을 검사한다.
+        HttpServletResponse response // Set-Cookie header를 직접 추가할 servlet 응답 객체다.
+){
+    SessionResponseDto sessionResponse = sessionService.createSession(request); // 실제 인증과 token 생성을 Service에 위임한다.
+
+    response.addHeader( // HTTP response에 header 하나를 추가한다.
+            HttpHeaders.SET_COOKIE, // 표준 Set-Cookie header 이름을 사용한다.
+            refreshCookieProvider // Cookie 보안 속성을 조립하는 component다.
+                    .createRefreshTokenCookie(sessionResponse.getRefreshToken()) // DTO 내부 원문으로 ResponseCookie를 만든다.
+                    .toString() // header에 넣을 Set-Cookie 문자열로 바꾼다.
+    );
+
+    return sessionResponse; // @JsonIgnore된 refreshToken을 제외한 DTO가 JSON body로 직렬화된다.
+}
+```
+
 ## 5.3 실제 코드 발췌: Access Token 생성
 
 ```java
@@ -358,6 +560,47 @@ signWith
 ```
 
 JWT는 암호화된 비밀 저장소가 아니다. 서명은 내용 변조 여부를 검증하며, 민감한 비밀번호를 claim에 넣으면 안 된다.
+
+### Access Token 생성
+
+```java
+public String createAccessToken(Long userId, long authVersion) { // 사용자 ID와 현재 인증 버전으로 JWT를 만든다.
+    Date now = new Date(); // 발급 시각으로 사용할 현재 시간을 만든다.
+    Date expiration = new Date(now.getTime() + accessExpirationMillis); // 현재 시간에 설정된 수명을 더해 만료 시각을 만든다.
+
+    return Jwts.builder() // JWT header와 payload를 만들 builder를 시작한다.
+            .subject(String.valueOf(userId)) // subject claim에 사용자 ID 문자열을 넣는다.
+            .claim(AUTH_VERSION_CLAIM, authVersion) // 사용자 보안 상태 버전을 별도 claim에 넣는다.
+            .issuedAt(now) // 발급 시각 claim을 넣는다.
+            .expiration(expiration) // 만료 시각 claim을 넣는다.
+            .signWith(secretKey) // 서버의 SecretKey로 서명하여 변조 검증이 가능하게 한다.
+            .compact(); // 모든 내용을 점으로 구분된 JWT 문자열로 직렬화한다.
+}
+```
+
+```java
+public AccessTokenClaims getAccessTokenClaims(String token) { // JWT를 검증하고 필요한 두 claim을 project record로 반환한다.
+    try { // JWT library와 값 변환에서 발생할 오류를 인증 예외로 통일할 범위다.
+        Claims claims = Jwts.parser() // JWT parser builder를 시작한다.
+                .verifyWith(secretKey) // signature 검증에 사용할 server secret key를 설정한다.
+                .build() // 실제 parser를 만든다.
+                .parseSignedClaims(token) // 서명된 JWT의 형식·signature·만료를 검사해 parsing한다.
+                .getPayload(); // 검증된 payload claim 모음을 꺼낸다.
+
+        Object authVersionClaim = claims.get(AUTH_VERSION_CLAIM); // custom authVersion claim을 아직 확정되지 않은 Object로 읽는다.
+        if (!(authVersionClaim instanceof Number authVersion)) { // 숫자 type인지 검사하면서 맞으면 authVersion 변수에 binding한다.
+            throw new AuthException("Invalid_Token"); // 숫자가 아니거나 없으면 유효하지 않은 token으로 처리한다.
+        }
+
+        return new AccessTokenClaims( // Filter에 전달할 immutable record를 만든다.
+                Long.valueOf(claims.getSubject()), // subject 문자열을 사용자 ID Long으로 바꾼다.
+                authVersion.longValue() // Number를 primitive long 인증 version으로 바꾼다.
+        );
+    } catch (JwtException | IllegalArgumentException e) { // JWT 검증 오류와 숫자 변환·argument 오류를 함께 잡는다.
+        throw new AuthException("Invalid_Token"); // 외부에는 library 세부 오류 대신 한 프로젝트 인증 오류를 전달한다.
+    }
+}
+```
 
 ## 5.4 실제 코드 발췌: JWT Filter
 
@@ -445,6 +688,59 @@ Bearer 헤더 확인
 
 헤더가 없으면 Filter가 바로 401을 만들지 않고 다음 Filter로 넘긴다. 이후 보호된 경로라면 Security 설정의 AuthenticationEntryPoint가 401을 반환한다.
 
+### JWT Filter 핵심
+
+```java
+@Override // 부모 OncePerRequestFilter의 제외 조건 method를 재정의한다.
+protected boolean shouldNotFilter(HttpServletRequest request) { // 현재 요청에서 JWT Filter를 건너뛸지 반환한다.
+    String method = request.getMethod(); // GET·POST 같은 HTTP method를 읽는다.
+    String path = request.getServletPath(); // application 내부 요청 path를 읽는다.
+
+    return method.equals("OPTIONS") // CORS preflight 요청이면 건너뛴다.
+            || method.equals("POST") && path.equals("/users") // 회원가입 요청이면 건너뛴다.
+            || method.equals("POST") && path.equals("/sessions") // 로그인 요청이면 건너뛴다.
+            || method.equals("POST") && path.equals("/sessions/refresh") // token 재발급 요청이면 건너뛴다.
+            || method.equals("DELETE") && path.equals("/sessions"); // 로그아웃 요청이면 건너뛴다.
+}
+```
+
+```java
+String authorizationHeader = request.getHeader("Authorization"); // 요청의 Authorization 헤더를 읽는다.
+
+if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) { // 헤더가 없거나 Bearer 방식이 아닌지 확인한다.
+    filterChain.doFilter(request, response); // 이 Filter에서는 인증을 만들지 않고 다음 Filter로 넘긴다.
+    return; // 아래 JWT 파싱 코드는 실행하지 않는다.
+}
+
+try { // 토큰 파싱과 사용자 검증 중 예상한 인증 오류를 처리하기 위한 범위다.
+    String token = authorizationHeader.substring(7); // "Bearer " 일곱 글자를 제거하고 실제 JWT만 꺼낸다.
+    AccessTokenClaims tokenClaims = jwtProvider.getAccessTokenClaims(token); // 서명·만료를 검증하고 사용자 ID와 authVersion을 얻는다.
+
+    CustomUserDetails userDetails = // DB 사용자 정보를 담을 변수를 선언한다.
+            customUserDetailsService.loadUserByUserId(tokenClaims.userId()); // JWT의 사용자 ID로 현재 사용자 상태를 조회한다.
+
+    if (!userDetails.isEnabled() || userDetails.getAuthVersion() != tokenClaims.authVersion()) { // 정지·삭제 상태이거나 보안 버전이 바뀌었는지 검사한다.
+        throw new DataNullException("No_User"); // 현재 토큰으로 인증할 수 없음을 예외로 표현한다.
+    }
+
+    UsernamePasswordAuthenticationToken authentication = // Spring Security가 이해할 인증 객체를 만든다.
+            new UsernamePasswordAuthenticationToken( // 이미 검증된 사용자이므로 인증된 형태의 생성자를 사용한다.
+                    userDetails, // Controller의 principal이 될 사용자 정보다.
+                    null, // JWT 인증에서는 비밀번호 credential을 다시 보관하지 않는다.
+                    userDetails.getAuthorities() // 사용자가 가진 권한 목록을 전달한다.
+            );
+    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request)); // 현재 HTTP 요청의 IP·session 관련 세부 정보를 인증 객체에 붙인다.
+
+    SecurityContextHolder.getContext().setAuthentication(authentication); // 현재 요청 Thread의 SecurityContext에 인증을 저장한다.
+    filterChain.doFilter(request, response); // 인증된 상태로 다음 Filter와 Controller 실행을 계속한다.
+} catch (AuthException | DataNullException e) { // 잘못된 JWT나 현재 사용할 수 없는 사용자를 처리한다.
+    SecurityContextHolder.clearContext(); // 중간에 남을 수 있는 인증 정보를 제거한다.
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 응답 상태를 401로 지정한다.
+    response.setContentType("application/json;charset=UTF-8"); // 직접 작성할 body가 UTF-8 JSON임을 지정한다.
+    response.getWriter().write("{\"message\":\"Invalid_Token\"}"); // Controller까지 가지 않고 JSON 오류를 직접 작성한다.
+}
+```
+
 ## 5.5 실제 코드 발췌: Refresh Token과 쿠키
 
 ```java
@@ -492,6 +788,32 @@ return ResponseCookie.from(COOKIE_NAME, refreshToken)
 | `SameSite=Strict` | 다른 사이트에서 시작된 요청의 쿠키 전송 제한 |
 | `Path` | 쿠키를 전송할 URL 범위 제한 |
 | `Max-Age` | 쿠키 유효 시간 |
+
+### Refresh Token 생성과 해시
+
+```java
+public String createRefreshToken() { // 예측하기 어려운 Refresh Token 원문을 만든다.
+    byte[] tokenBytes = new byte[TOKEN_BYTE_LENGTH]; // 32byte 무작위 값을 담을 배열을 만든다.
+    secureRandom.nextBytes(tokenBytes); // 보안용 난수 생성기로 배열을 채운다.
+
+    return Base64.getUrlEncoder() // URL과 Cookie에 안전한 Base64 encoder를 선택한다.
+            .withoutPadding() // 값 끝의 = padding을 제거한다.
+            .encodeToString(tokenBytes); // byte 배열을 문자열 token으로 변환한다.
+}
+
+public String hashRefreshToken(String refreshToken) { // DB 저장과 조회에 사용할 token hash를 만든다.
+    try { // hash algorithm 조회에서 발생 가능한 checked exception을 처리한다.
+        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256"); // JVM에서 SHA-256 hash 구현을 얻는다.
+        byte[] tokenHash = messageDigest.digest( // token 원문을 단방향 hash한 byte 배열을 만든다.
+                refreshToken.getBytes(StandardCharsets.UTF_8) // 문자열을 UTF-8 byte로 변환한다.
+        );
+
+        return HexFormat.of().formatHex(tokenHash); // hash byte를 DB에 저장하기 쉬운 16진수 문자열로 바꾼다.
+    } catch (NoSuchAlgorithmException e) { // 실행 환경에 SHA-256 구현이 없는 비정상 상태를 잡는다.
+        throw new IllegalStateException("SHA-256 is not available", e); // 복구하기 어려운 환경 오류로 바꿔 원인 예외와 함께 전파한다.
+    }
+}
+```
 
 ### AuthSession Entity: DB에 저장되는 Refresh Session 한 건
 
@@ -701,6 +1023,69 @@ public SessionRefreshResponseDto refreshSession(String refreshToken) {
 
 따라서 현재 코드에서는 같은 기존 Refresh Token으로 들어온 동시 재발급 요청 중 정상적으로 하나만 성공한다. `refreshPromise`는 한 browser 안에서 불필요한 중복 요청을 줄이는 frontend 장치이고, DB write lock은 여러 browser·server 요청까지 포함해 backend에서 실제 회전 경쟁을 직렬화하는 장치다.
 
+### Refresh Session 회전
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE) // 조회한 AuthSession row를 Transaction이 끝날 때까지 다른 write 요청이 동시에 변경하지 못하게 잠근다.
+Optional<AuthSession> findByRefreshTokenHash( // Refresh Token hash로 session을 찾되 잠금 결과가 없을 수도 있음을 Optional로 반환한다.
+        String refreshTokenHash // browser가 보낸 원문을 SHA-256으로 바꾼 조회 조건이다.
+);
+```
+
+이 Repository method는 `SessionService`의 `@Transactional` 범위 안에서 호출된다. 따라서 method 호출이 끝났다고 바로 lock이 풀리는 것이 아니라 Service Transaction이 commit 또는 rollback될 때 풀린다.
+
+```java
+public SessionRefreshResponseDto refreshSession(String refreshToken) { // Cookie에서 받은 Refresh Token으로 새 token 쌍을 만든다.
+    if (refreshToken == null || refreshToken.isBlank()) { // Cookie가 없거나 빈 값인지 확인한다.
+        throw new AuthException("Invalid_Refresh_Token"); // 사용할 token이 없으면 401 업무 예외를 던진다.
+    }
+
+    String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken); // 원문을 DB에 저장된 형식과 같은 hash로 바꾼다.
+    AuthSession authSession = authSessionRepository // Refresh Session repository 조회를 시작한다.
+            .findByRefreshTokenHash(refreshTokenHash) // 같은 hash의 session row를 write lock과 함께 찾으며, 경쟁 요청은 여기서 기다린다.
+            .orElseThrow(() -> new AuthException("Invalid_Refresh_Token")); // 없으면 401 예외를 지연 생성해 던진다.
+
+    if (!authSession.isActive(LocalDateTime.now())) { // revoke되지 않았고 만료 전인지 검사한다.
+        throw new AuthException("Invalid_Refresh_Token"); // 비활성 session이면 재발급을 거부한다.
+    }
+
+    if (authSession.getUser().isDeleted() || authSession.getUser().isSuspended()) { // session 소유 사용자의 현재 삭제·정지 상태를 검사한다.
+        throw new AuthException("Invalid_Refresh_Token"); // 사용할 수 없는 사용자라면 재발급을 거부한다.
+    }
+
+    String newRefreshToken = refreshTokenProvider.createRefreshToken(); // browser에 보낼 새 무작위 원문 token을 만든다.
+    String newRefreshTokenHash = refreshTokenProvider.hashRefreshToken( // 새 원문을 DB 저장용 hash로 바꾼다.
+            newRefreshToken
+    );
+    authSession.rotate( // 조회한 JPA entity의 token 정보를 새 값으로 변경한다.
+            newRefreshTokenHash, // 기존 hash를 대체할 새 hash다.
+            refreshTokenProvider.createExpirationTime() // 새 token의 만료 시각이다.
+    );
+
+    String accessToken = jwtProvider.createAccessToken( // 현재 사용자 상태로 새 Access Token을 만든다.
+            authSession.getUser().getUserId(), // JWT subject에 넣을 사용자 ID다.
+            authSession.getUser().getAuthVersion() // 기존 token 무효화에 사용할 현재 인증 version이다.
+    );
+
+    return new SessionRefreshResponseDto( // Controller에 반환할 재발급 결과 DTO를 만든다.
+            accessToken, // response body로 전달할 새 Access Token이다.
+            newRefreshToken // Controller가 새 HttpOnly Cookie를 만드는 데 쓸 원문 Refresh Token이다.
+    );
+}
+```
+
+### Refresh Cookie
+
+```java
+return ResponseCookie.from(COOKIE_NAME, refreshToken) // refreshToken 이름과 원문 값으로 응답 Cookie builder를 시작한다.
+        .httpOnly(true) // JavaScript의 document.cookie로 원문을 읽지 못하게 한다.
+        .secure(secure) // 운영에서는 HTTPS 요청에서만 Cookie를 전송한다.
+        .sameSite("Strict") // 다른 사이트에서 시작된 요청에는 Cookie 전송을 강하게 제한한다.
+        .path(cookiePath) // 세션 API 경로에서만 Cookie가 전송되게 범위를 제한한다.
+        .maxAge(refreshExpiration) // 설정된 Refresh Token 수명만큼 브라우저에 보관한다.
+        .build(); // 설정을 적용한 ResponseCookie 객체를 만든다.
+```
+
 ## 5.6 실제 코드 발췌: 프론트 요청과 자동 재발급
 
 ```javascript
@@ -828,426 +1213,6 @@ if ( // 자동 재발급을 시도할 조건 검사를 시작한다.
 
 재시도 결과도 401이면 상위 `request()`의 실패 처리에서 인증 정보를 제거하고 로그인 화면으로 이동한다.
 
-## 5.7 비밀번호 변경과 `authVersion`
-
-비밀번호 변경 시 다음 두 작업을 수행한다.
-
-```text
-User.authVersion 증가
-→ 기존 Access Token claim과 DB 버전이 달라짐
-
-활성 AuthSession 전부 revoke
-→ 기존 Refresh Token 사용 불가
-```
-
-따라서 탈취된 이전 Access Token과 Refresh Token을 함께 무효화할 수 있다.
-
-## 5.8 핵심 축약본
-
-```text
-Access Token
-→ 짧은 수명
-→ localStorage
-→ Authorization 헤더
-→ 매 요청 서명·만료·authVersion 검사
-
-Refresh Token
-→ 긴 수명
-→ HttpOnly Cookie
-→ DB에는 SHA-256 해시
-→ Access Token 재발급 때 회전
-```
-
-
-## 5.8.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### `SecurityFilterChain`
-
-```java
-@Bean // 메서드 반환값을 Spring SecurityFilterChain Bean으로 등록한다.
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception { // HTTP 보안 규칙 builder를 받아 Filter Chain을 만든다.
-    http // 전달받은 보안 설정 builder에 규칙을 순서대로 추가한다.
-            .cors(Customizer.withDefaults()) // WebConfig의 CORS 설정을 Security에도 적용한다.
-            .csrf(AbstractHttpConfigurer::disable) // 기본 CSRF token 검사를 끈다.
-            .sessionManagement(session -> session // 서버 HTTP Session 정책 설정을 시작한다.
-                    .sessionCreationPolicy(SessionCreationPolicy.STATELESS) // 로그인 상태를 Session에 저장하지 않고 매 요청 토큰을 검사한다.
-            )
-            .exceptionHandling(exception -> exception // Spring Security 인증·인가 실패 응답 설정을 시작한다.
-                    .authenticationEntryPoint((request, response, authException) -> { // 인증 객체가 없어 보호 경로에 들어갈 수 없을 때 실행한다.
-                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // HTTP 상태를 401로 지정한다.
-                        response.setContentType("application/json;charset=UTF-8"); // body가 UTF-8 JSON임을 명시한다.
-                        response.getWriter().write("{\"message\":\"Unauthorized\"}"); // Filter Chain에서 JSON body를 직접 작성한다.
-                    })
-                    .accessDeniedHandler((request, response, accessDeniedException) -> { // 인증됐지만 필요한 권한이 없을 때 실행한다.
-                        response.setStatus(HttpServletResponse.SC_FORBIDDEN); // HTTP 상태를 403으로 지정한다.
-                        response.setContentType("application/json;charset=UTF-8"); // body의 형식과 문자 encoding을 지정한다.
-                        response.getWriter().write("{\"message\":\"Forbidden\"}"); // Controller 없이 JSON body를 직접 작성한다.
-                    })
-            )
-            .authorizeHttpRequests(auth -> auth // URL과 HTTP method별 접근 권한 설정을 시작한다.
-                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // 브라우저 CORS 사전 요청은 인증 없이 허용한다.
-                    .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll() // 배포 health check는 공개한다.
-                    .requestMatchers(HttpMethod.POST, "/users").permitAll() // 로그인 전 회원가입을 허용한다.
-                    .requestMatchers(HttpMethod.POST, "/sessions", "/sessions/refresh").permitAll() // 로그인과 토큰 재발급을 공개한다.
-                    .requestMatchers(HttpMethod.DELETE, "/sessions").permitAll() // 토큰이 만료된 상태에서도 Refresh Cookie로 로그아웃할 수 있게 한다.
-                    .anyRequest().authenticated() // 위에 없는 모든 요청은 인증을 요구한다.
-            )
-            .addFilterBefore( // 사용자 정의 Filter의 실행 위치를 지정한다.
-                    jwtAuthenticationFilter, // 매 요청의 Bearer Access Token을 검사할 Filter다.
-                    UsernamePasswordAuthenticationFilter.class // 기본 사용자·비밀번호 Filter보다 앞에 둔다.
-            );
-
-    return http.build(); // 누적한 설정으로 실제 SecurityFilterChain을 완성해 반환한다.
-}
-```
-
-### 로그인 Service와 Controller
-
-```java
-public SessionResponseDto createSession(SessionRequestDto request) { // 검증된 로그인 DTO로 token과 Refresh Session을 만든다.
-    try { // Spring Security 인증 실패를 프로젝트 예외로 바꿀 범위를 시작한다.
-        Authentication authentication = authenticationManager.authenticate( // 등록된 사용자 조회와 password encoder를 사용해 인증한다.
-                new UsernamePasswordAuthenticationToken( // 아직 인증되지 않은 email·password credential 객체를 만든다.
-                        request.getEmail(), // username 역할을 하는 입력 email이다.
-                        request.getPassword() // BCrypt hash와 비교할 평문 입력 password다.
-                )
-        );
-
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal(); // 성공한 인증의 principal을 프로젝트 사용자 type으로 변환한다.
-
-        String accessToken = jwtProvider.createAccessToken( // 짧게 사용할 서명 JWT를 만든다.
-                userDetails.getUserId(), // subject에 넣을 사용자 ID다.
-                userDetails.getAuthVersion() // 이전 token 무효화에 쓸 현재 인증 version이다.
-        );
-        String refreshToken = refreshTokenProvider.createRefreshToken(); // browser Cookie에 전달할 무작위 원문을 만든다.
-        String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken); // DB에는 원문 대신 hash를 저장한다.
-
-        AuthSession authSession = new AuthSession( // 장기 재발급 상태를 저장할 entity를 만든다.
-                userDetails.getUser(), // session 소유 User entity다.
-                refreshTokenHash, // 조회·검증용 Refresh Token hash다.
-                refreshTokenProvider.createExpirationTime() // session 만료 시각이다.
-        );
-        authSessionRepository.save(authSession); // Refresh Session row를 DB에 저장한다.
-
-        return new SessionResponseDto( // Controller로 반환할 로그인 결과 DTO를 만든다.
-                accessToken, // JSON body에 포함할 Access Token이다.
-                refreshToken, // @JsonIgnore되며 Controller의 Set-Cookie 생성에만 사용될 원문이다.
-                userDetails.getUserId() // 로그인 사용자 식별자다.
-        );
-
-    } catch (DisabledException e) { // UserDetails.isEnabled()가 false인 사용자 인증 실패를 잡는다.
-        throw new LoginFailedException("Suspended_Account"); // 정지 계정용 401 예외로 바꾼다.
-    } catch (AuthenticationException e) { // 그 밖의 email·password 인증 실패를 잡는다.
-        throw new LoginFailedException("Login_Failed"); // 일반 로그인 실패용 401 예외로 바꾼다.
-    }
-}
-```
-
-```java
-@PostMapping // POST /sessions에 연결한다.
-@ResponseStatus(HttpStatus.CREATED) // 정상 응답 상태를 201 Created로 지정한다.
-public SessionResponseDto createSession( // 로그인 JSON body와 Cookie header를 함께 만드는 Controller method다.
-        @Valid @RequestBody SessionRequestDto request, // 요청 JSON을 DTO로 바꾸고 validation annotation을 검사한다.
-        HttpServletResponse response // Set-Cookie header를 직접 추가할 servlet 응답 객체다.
-){
-    SessionResponseDto sessionResponse = sessionService.createSession(request); // 실제 인증과 token 생성을 Service에 위임한다.
-
-    response.addHeader( // HTTP response에 header 하나를 추가한다.
-            HttpHeaders.SET_COOKIE, // 표준 Set-Cookie header 이름을 사용한다.
-            refreshCookieProvider // Cookie 보안 속성을 조립하는 component다.
-                    .createRefreshTokenCookie(sessionResponse.getRefreshToken()) // DTO 내부 원문으로 ResponseCookie를 만든다.
-                    .toString() // header에 넣을 Set-Cookie 문자열로 바꾼다.
-    );
-
-    return sessionResponse; // @JsonIgnore된 refreshToken을 제외한 DTO가 JSON body로 직렬화된다.
-}
-```
-
-### Access Token 생성
-
-```java
-public String createAccessToken(Long userId, long authVersion) { // 사용자 ID와 현재 인증 버전으로 JWT를 만든다.
-    Date now = new Date(); // 발급 시각으로 사용할 현재 시간을 만든다.
-    Date expiration = new Date(now.getTime() + accessExpirationMillis); // 현재 시간에 설정된 수명을 더해 만료 시각을 만든다.
-
-    return Jwts.builder() // JWT header와 payload를 만들 builder를 시작한다.
-            .subject(String.valueOf(userId)) // subject claim에 사용자 ID 문자열을 넣는다.
-            .claim(AUTH_VERSION_CLAIM, authVersion) // 사용자 보안 상태 버전을 별도 claim에 넣는다.
-            .issuedAt(now) // 발급 시각 claim을 넣는다.
-            .expiration(expiration) // 만료 시각 claim을 넣는다.
-            .signWith(secretKey) // 서버의 SecretKey로 서명하여 변조 검증이 가능하게 한다.
-            .compact(); // 모든 내용을 점으로 구분된 JWT 문자열로 직렬화한다.
-}
-```
-
-```java
-public AccessTokenClaims getAccessTokenClaims(String token) { // JWT를 검증하고 필요한 두 claim을 project record로 반환한다.
-    try { // JWT library와 값 변환에서 발생할 오류를 인증 예외로 통일할 범위다.
-        Claims claims = Jwts.parser() // JWT parser builder를 시작한다.
-                .verifyWith(secretKey) // signature 검증에 사용할 server secret key를 설정한다.
-                .build() // 실제 parser를 만든다.
-                .parseSignedClaims(token) // 서명된 JWT의 형식·signature·만료를 검사해 parsing한다.
-                .getPayload(); // 검증된 payload claim 모음을 꺼낸다.
-
-        Object authVersionClaim = claims.get(AUTH_VERSION_CLAIM); // custom authVersion claim을 아직 확정되지 않은 Object로 읽는다.
-        if (!(authVersionClaim instanceof Number authVersion)) { // 숫자 type인지 검사하면서 맞으면 authVersion 변수에 binding한다.
-            throw new AuthException("Invalid_Token"); // 숫자가 아니거나 없으면 유효하지 않은 token으로 처리한다.
-        }
-
-        return new AccessTokenClaims( // Filter에 전달할 immutable record를 만든다.
-                Long.valueOf(claims.getSubject()), // subject 문자열을 사용자 ID Long으로 바꾼다.
-                authVersion.longValue() // Number를 primitive long 인증 version으로 바꾼다.
-        );
-    } catch (JwtException | IllegalArgumentException e) { // JWT 검증 오류와 숫자 변환·argument 오류를 함께 잡는다.
-        throw new AuthException("Invalid_Token"); // 외부에는 library 세부 오류 대신 한 프로젝트 인증 오류를 전달한다.
-    }
-}
-```
-
-### `SessionOriginInterceptor`
-
-Origin 허용 판단:
-
-```java
-public boolean isAllowed(String origin) { // 요청 Origin을 이 서비스가 신뢰하는지 반환한다.
-    return origin != null && allowedOrigins.contains(origin); // header가 존재하고 설정의 허용 목록에 정확히 포함된 경우에만 true다.
-}
-```
-
-`&&`는 왼쪽부터 평가하는 논리 AND다. `origin == null`이면 왼쪽이 false이므로 `contains()`를 호출하지 않고 전체 결과가 false가 된다. 따라서 null pointer 오류 없이 Origin 누락 요청을 거부한다.
-
-`InterceptorConfig`의 연결 부분:
-
-```java
-@Override // WebMvcConfigurer의 interceptor 등록 method를 재정의한다.
-public void addInterceptors(InterceptorRegistry registry) { // Spring MVC가 실행할 interceptor들을 registry에 추가한다.
-    registry.addInterceptor(requestLogInterceptor) // 요청 log interceptor를 등록한다.
-            .addPathPatterns("/**"); // 모든 MVC path에서 실행하게 한다.
-
-    registry.addInterceptor(sessionOriginInterceptor) // 세션 Origin 검사 interceptor를 등록한다.
-            .addPathPatterns("/sessions", "/sessions/refresh"); // 로그인·로그아웃 path와 refresh path에만 연결한다.
-}
-```
-
-검사 부분:
-
-```java
-@Override // HandlerInterceptor의 Controller 전처리 method를 재정의한다.
-public boolean preHandle( // Controller method 실행을 계속할지 boolean으로 반환한다.
-        HttpServletRequest request, // 현재 HTTP 요청이다.
-        HttpServletResponse response, // 거부할 때 직접 작성할 HTTP 응답이다.
-        Object handler // 뒤에서 실행될 handler 정보이며 현재 method에서는 사용하지 않는다.
-) throws IOException { // response writer 사용 중 발생 가능한 입출력 예외를 선언한다.
-    if (!isCookieSessionRequest(request)) { // Origin 검사가 필요한 method와 path 조합이 아닌지 확인한다.
-        return true; // true이면 다음 interceptor와 Controller 실행을 계속한다.
-    }
-
-    String origin = request.getHeader("Origin"); // browser가 보낸 요청 출처 header를 읽는다.
-
-    if (corsOriginProvider.isAllowed(origin)) { // Origin이 존재하면서 설정된 허용 목록에 포함되는지 검사한다.
-        return true; // 허용되면 Controller 실행을 계속한다.
-    }
-
-    response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 허용되지 않은 Origin이면 403을 지정한다.
-    response.setContentType("application/json;charset=UTF-8"); // 직접 작성할 body가 UTF-8 JSON임을 지정한다.
-    response.getWriter().write("{\"message\":\"Forbidden_Origin\"}"); // 거부 이유를 JSON body로 쓴다.
-    return false; // Controller 호출을 중단한다.
-}
-
-private boolean isCookieSessionRequest(HttpServletRequest request) { // Origin 검사가 필요한 세션 요청인지 계산한다.
-    String method = request.getMethod(); // HTTP method를 읽는다.
-    String path = request.getRequestURI(); // MockMvc와 실제 server에서 공통으로 요청 URI인 /sessions 또는 /sessions/refresh를 읽는다.
-
-    return method.equals("POST") && path.equals("/sessions") // 로그인 POST인지 검사한다.
-            || method.equals("POST") && path.equals("/sessions/refresh") // 재발급 POST인지 검사한다.
-            || method.equals("DELETE") && path.equals("/sessions"); // 로그아웃 DELETE인지 검사한다.
-}
-```
-
-Origin 정책 테스트:
-
-```java
-private static final String ALLOWED_ORIGIN = "http://localhost:5173"; // local·test 설정에 등록된 정상 frontend Origin을 재사용한다.
-
-@Test // 아래 method를 JUnit test case로 등록한다.
-void 로그인_API는_인증_없이_접근할_수_있다() throws Exception { // 정상 Origin은 보안 단계에서 막히지 않는지 확인한다.
-    mockMvc.perform( // 가상 HTTP 요청을 Spring MVC에 보낸다.
-                    post("/sessions") // 로그인 endpoint에 POST 요청을 만든다.
-                            .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN) // 실제 browser 요청처럼 허용된 Origin header를 넣는다.
-                            .contentType(MediaType.APPLICATION_JSON) // request body 형식을 JSON으로 지정한다.
-                            .content("{}") // 입력값 검증 실패를 확인하기 위해 빈 JSON object를 보낸다.
-            )
-            .andExpect(status().isBadRequest()); // Origin 검사는 통과하고 DTO 검증에서 400이 되는지 확인한다.
-}
-
-@Test // Origin 누락 거부를 별도 case로 검증한다.
-void Origin이_없는_세션_API_요청은_거부한다() throws Exception { // header가 없는 요청의 기대 동작을 test 이름에 표현한다.
-    mockMvc.perform(
-                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
-                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
-                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
-            )
-            .andExpect(status().isForbidden()) // interceptor가 HTTP 403을 반환하는지 확인한다.
-            .andExpect(content().contentType("application/json;charset=UTF-8")) // 직접 작성한 응답의 content type을 확인한다.
-            .andExpect(jsonPath("$.message").value("Forbidden_Origin")); // JSON 오류 message가 Origin 거부 사유인지 확인한다.
-}
-
-@Test // 허용 목록 밖 Origin 거부를 별도 case로 검증한다.
-void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Exception { // 공격자 Origin을 가정한 test다.
-    mockMvc.perform(
-                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
-                            .header(HttpHeaders.ORIGIN, "http://attacker.example") // 허용 목록에 없는 Origin을 넣는다.
-                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
-                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
-            )
-            .andExpect(status().isForbidden()); // Spring CORS 또는 interceptor가 허용 목록 불일치로 HTTP 403을 반환하는지 확인한다.
-}
-```
-
-### JWT Filter 핵심
-
-```java
-@Override // 부모 OncePerRequestFilter의 제외 조건 method를 재정의한다.
-protected boolean shouldNotFilter(HttpServletRequest request) { // 현재 요청에서 JWT Filter를 건너뛸지 반환한다.
-    String method = request.getMethod(); // GET·POST 같은 HTTP method를 읽는다.
-    String path = request.getServletPath(); // application 내부 요청 path를 읽는다.
-
-    return method.equals("OPTIONS") // CORS preflight 요청이면 건너뛴다.
-            || method.equals("POST") && path.equals("/users") // 회원가입 요청이면 건너뛴다.
-            || method.equals("POST") && path.equals("/sessions") // 로그인 요청이면 건너뛴다.
-            || method.equals("POST") && path.equals("/sessions/refresh") // token 재발급 요청이면 건너뛴다.
-            || method.equals("DELETE") && path.equals("/sessions"); // 로그아웃 요청이면 건너뛴다.
-}
-```
-
-```java
-String authorizationHeader = request.getHeader("Authorization"); // 요청의 Authorization 헤더를 읽는다.
-
-if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) { // 헤더가 없거나 Bearer 방식이 아닌지 확인한다.
-    filterChain.doFilter(request, response); // 이 Filter에서는 인증을 만들지 않고 다음 Filter로 넘긴다.
-    return; // 아래 JWT 파싱 코드는 실행하지 않는다.
-}
-
-try { // 토큰 파싱과 사용자 검증 중 예상한 인증 오류를 처리하기 위한 범위다.
-    String token = authorizationHeader.substring(7); // "Bearer " 일곱 글자를 제거하고 실제 JWT만 꺼낸다.
-    AccessTokenClaims tokenClaims = jwtProvider.getAccessTokenClaims(token); // 서명·만료를 검증하고 사용자 ID와 authVersion을 얻는다.
-
-    CustomUserDetails userDetails = // DB 사용자 정보를 담을 변수를 선언한다.
-            customUserDetailsService.loadUserByUserId(tokenClaims.userId()); // JWT의 사용자 ID로 현재 사용자 상태를 조회한다.
-
-    if (!userDetails.isEnabled() || userDetails.getAuthVersion() != tokenClaims.authVersion()) { // 정지·삭제 상태이거나 보안 버전이 바뀌었는지 검사한다.
-        throw new DataNullException("No_User"); // 현재 토큰으로 인증할 수 없음을 예외로 표현한다.
-    }
-
-    UsernamePasswordAuthenticationToken authentication = // Spring Security가 이해할 인증 객체를 만든다.
-            new UsernamePasswordAuthenticationToken( // 이미 검증된 사용자이므로 인증된 형태의 생성자를 사용한다.
-                    userDetails, // Controller의 principal이 될 사용자 정보다.
-                    null, // JWT 인증에서는 비밀번호 credential을 다시 보관하지 않는다.
-                    userDetails.getAuthorities() // 사용자가 가진 권한 목록을 전달한다.
-            );
-    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request)); // 현재 HTTP 요청의 IP·session 관련 세부 정보를 인증 객체에 붙인다.
-
-    SecurityContextHolder.getContext().setAuthentication(authentication); // 현재 요청 Thread의 SecurityContext에 인증을 저장한다.
-    filterChain.doFilter(request, response); // 인증된 상태로 다음 Filter와 Controller 실행을 계속한다.
-} catch (AuthException | DataNullException e) { // 잘못된 JWT나 현재 사용할 수 없는 사용자를 처리한다.
-    SecurityContextHolder.clearContext(); // 중간에 남을 수 있는 인증 정보를 제거한다.
-    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 응답 상태를 401로 지정한다.
-    response.setContentType("application/json;charset=UTF-8"); // 직접 작성할 body가 UTF-8 JSON임을 지정한다.
-    response.getWriter().write("{\"message\":\"Invalid_Token\"}"); // Controller까지 가지 않고 JSON 오류를 직접 작성한다.
-}
-```
-
-### Refresh Token 생성과 해시
-
-```java
-public String createRefreshToken() { // 예측하기 어려운 Refresh Token 원문을 만든다.
-    byte[] tokenBytes = new byte[TOKEN_BYTE_LENGTH]; // 32byte 무작위 값을 담을 배열을 만든다.
-    secureRandom.nextBytes(tokenBytes); // 보안용 난수 생성기로 배열을 채운다.
-
-    return Base64.getUrlEncoder() // URL과 Cookie에 안전한 Base64 encoder를 선택한다.
-            .withoutPadding() // 값 끝의 = padding을 제거한다.
-            .encodeToString(tokenBytes); // byte 배열을 문자열 token으로 변환한다.
-}
-
-public String hashRefreshToken(String refreshToken) { // DB 저장과 조회에 사용할 token hash를 만든다.
-    try { // hash algorithm 조회에서 발생 가능한 checked exception을 처리한다.
-        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256"); // JVM에서 SHA-256 hash 구현을 얻는다.
-        byte[] tokenHash = messageDigest.digest( // token 원문을 단방향 hash한 byte 배열을 만든다.
-                refreshToken.getBytes(StandardCharsets.UTF_8) // 문자열을 UTF-8 byte로 변환한다.
-        );
-
-        return HexFormat.of().formatHex(tokenHash); // hash byte를 DB에 저장하기 쉬운 16진수 문자열로 바꾼다.
-    } catch (NoSuchAlgorithmException e) { // 실행 환경에 SHA-256 구현이 없는 비정상 상태를 잡는다.
-        throw new IllegalStateException("SHA-256 is not available", e); // 복구하기 어려운 환경 오류로 바꿔 원인 예외와 함께 전파한다.
-    }
-}
-```
-
-### Refresh Session 회전
-
-```java
-@Lock(LockModeType.PESSIMISTIC_WRITE) // 조회한 AuthSession row를 Transaction이 끝날 때까지 다른 write 요청이 동시에 변경하지 못하게 잠근다.
-Optional<AuthSession> findByRefreshTokenHash( // Refresh Token hash로 session을 찾되 잠금 결과가 없을 수도 있음을 Optional로 반환한다.
-        String refreshTokenHash // browser가 보낸 원문을 SHA-256으로 바꾼 조회 조건이다.
-);
-```
-
-이 Repository method는 `SessionService`의 `@Transactional` 범위 안에서 호출된다. 따라서 method 호출이 끝났다고 바로 lock이 풀리는 것이 아니라 Service Transaction이 commit 또는 rollback될 때 풀린다.
-
-```java
-public SessionRefreshResponseDto refreshSession(String refreshToken) { // Cookie에서 받은 Refresh Token으로 새 token 쌍을 만든다.
-    if (refreshToken == null || refreshToken.isBlank()) { // Cookie가 없거나 빈 값인지 확인한다.
-        throw new AuthException("Invalid_Refresh_Token"); // 사용할 token이 없으면 401 업무 예외를 던진다.
-    }
-
-    String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken); // 원문을 DB에 저장된 형식과 같은 hash로 바꾼다.
-    AuthSession authSession = authSessionRepository // Refresh Session repository 조회를 시작한다.
-            .findByRefreshTokenHash(refreshTokenHash) // 같은 hash의 session row를 write lock과 함께 찾으며, 경쟁 요청은 여기서 기다린다.
-            .orElseThrow(() -> new AuthException("Invalid_Refresh_Token")); // 없으면 401 예외를 지연 생성해 던진다.
-
-    if (!authSession.isActive(LocalDateTime.now())) { // revoke되지 않았고 만료 전인지 검사한다.
-        throw new AuthException("Invalid_Refresh_Token"); // 비활성 session이면 재발급을 거부한다.
-    }
-
-    if (authSession.getUser().isDeleted() || authSession.getUser().isSuspended()) { // session 소유 사용자의 현재 삭제·정지 상태를 검사한다.
-        throw new AuthException("Invalid_Refresh_Token"); // 사용할 수 없는 사용자라면 재발급을 거부한다.
-    }
-
-    String newRefreshToken = refreshTokenProvider.createRefreshToken(); // browser에 보낼 새 무작위 원문 token을 만든다.
-    String newRefreshTokenHash = refreshTokenProvider.hashRefreshToken( // 새 원문을 DB 저장용 hash로 바꾼다.
-            newRefreshToken
-    );
-    authSession.rotate( // 조회한 JPA entity의 token 정보를 새 값으로 변경한다.
-            newRefreshTokenHash, // 기존 hash를 대체할 새 hash다.
-            refreshTokenProvider.createExpirationTime() // 새 token의 만료 시각이다.
-    );
-
-    String accessToken = jwtProvider.createAccessToken( // 현재 사용자 상태로 새 Access Token을 만든다.
-            authSession.getUser().getUserId(), // JWT subject에 넣을 사용자 ID다.
-            authSession.getUser().getAuthVersion() // 기존 token 무효화에 사용할 현재 인증 version이다.
-    );
-
-    return new SessionRefreshResponseDto( // Controller에 반환할 재발급 결과 DTO를 만든다.
-            accessToken, // response body로 전달할 새 Access Token이다.
-            newRefreshToken // Controller가 새 HttpOnly Cookie를 만드는 데 쓸 원문 Refresh Token이다.
-    );
-}
-```
-
-### Refresh Cookie
-
-```java
-return ResponseCookie.from(COOKIE_NAME, refreshToken) // refreshToken 이름과 원문 값으로 응답 Cookie builder를 시작한다.
-        .httpOnly(true) // JavaScript의 document.cookie로 원문을 읽지 못하게 한다.
-        .secure(secure) // 운영에서는 HTTPS 요청에서만 Cookie를 전송한다.
-        .sameSite("Strict") // 다른 사이트에서 시작된 요청에는 Cookie 전송을 강하게 제한한다.
-        .path(cookiePath) // 세션 API 경로에서만 Cookie가 전송되게 범위를 제한한다.
-        .maxAge(refreshExpiration) // 설정된 Refresh Token 수명만큼 브라우저에 보관한다.
-        .build(); // 설정을 적용한 ResponseCookie 객체를 만든다.
-```
-
 ### 프론트 공통 요청
 
 ```javascript
@@ -1307,6 +1272,39 @@ export function refreshAccessToken() { // 동시에 호출돼도 공유할 refre
     return refreshPromise; // 새 Promise 또는 이미 진행 중인 같은 Promise를 반환한다.
 }
 ```
+
+## 5.7 비밀번호 변경과 `authVersion`
+
+비밀번호 변경 시 다음 두 작업을 수행한다.
+
+```text
+User.authVersion 증가
+→ 기존 Access Token claim과 DB 버전이 달라짐
+
+활성 AuthSession 전부 revoke
+→ 기존 Refresh Token 사용 불가
+```
+
+따라서 탈취된 이전 Access Token과 Refresh Token을 함께 무효화할 수 있다.
+
+이 절은 앞의 실제 코드 원문을 읽은 직후 확인한다. 원문과 같은 순서의 설명용 주석본이며 실제 실행 파일에는 주석이 없다.
+
+## 5.8 핵심 축약본
+
+```text
+Access Token
+→ 짧은 수명
+→ localStorage
+→ Authorization 헤더
+→ 매 요청 서명·만료·authVersion 검사
+
+Refresh Token
+→ 긴 수명
+→ HttpOnly Cookie
+→ DB에는 SHA-256 해시
+→ Access Token 재발급 때 회전
+```
+
 
 ## 5.9 스킵할 코드
 

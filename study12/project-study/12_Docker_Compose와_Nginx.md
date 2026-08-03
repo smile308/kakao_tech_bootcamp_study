@@ -92,6 +92,29 @@ USER spring:spring
 
 멀티 스테이지 빌드는 Gradle cache와 소스 파일 같은 빌드 재료를 최종 운영 이미지에 넣지 않는다.
 
+### 백엔드 Dockerfile
+
+```dockerfile
+# syntax=docker/dockerfile:1
+# 위 syntax 지시문은 이 파일을 해석할 Dockerfile 문법 버전을 지정한다.
+FROM eclipse-temurin:26-jdk AS build # Java 컴파일 도구가 포함된 JDK image를 build 단계로 시작한다.
+WORKDIR /workspace # 이후 COPY와 RUN의 기본 작업 경로를 /workspace로 정한다.
+COPY gradlew . # Gradle Wrapper 실행 파일을 먼저 복사한다.
+COPY gradle gradle # Wrapper가 사용할 버전·JAR 디렉터리를 복사한다.
+COPY build.gradle settings.gradle ./ # dependency 정의 파일을 소스보다 먼저 복사해 Docker cache를 활용한다.
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon # Wrapper 실행 권한을 주고 dependency layer를 미리 받는다.
+COPY src src # dependency layer 뒤에 변경이 잦은 실제 소스를 복사한다.
+RUN ./gradlew clean bootJar --no-daemon # main 소스를 컴파일하고 실행 가능한 Spring Boot JAR를 만든다. 이 명령 자체는 test Task를 실행하지 않는다.
+
+FROM eclipse-temurin:26-jre AS runtime # 컴파일 도구가 없는 JRE image로 최종 실행 단계를 시작한다.
+WORKDIR /app # 운영 프로세스의 기본 경로를 /app으로 정한다.
+RUN groupadd --system spring && useradd --system --gid spring spring # root 대신 사용할 시스템 group과 user를 만든다.
+COPY --from=build --chown=spring:spring /workspace/build/libs/*.jar app.jar # build 결과 JAR만 소유권과 함께 최종 image로 복사한다.
+USER spring:spring # 이후 ENTRYPOINT를 일반 spring 사용자 권한으로 실행한다.
+EXPOSE 8080 # 이 container가 8080에서 수신한다는 메타데이터를 남긴다.
+ENTRYPOINT ["java", "-jar", "app.jar"] # container 시작 시 Spring Boot JAR를 실행한다.
+```
+
 ## 12.3 실제 코드 원문: 프론트 Dockerfile
 
 ```dockerfile
@@ -133,6 +156,27 @@ Nginx runtime 단계
 ```
 
 `VITE_API_BASE_URL`은 Vite build 시 JavaScript 번들 안에 들어간다. 이미 만들어진 이미지의 런타임 환경변수만 바꿔서는 번들 값이 자동 변경되지 않는다.
+
+### 프론트 Dockerfile
+
+```dockerfile
+# syntax=docker/dockerfile:1
+# 위 syntax 지시문은 이 파일을 해석할 Dockerfile 문법 버전을 지정한다.
+FROM node:24-alpine AS build # Vite build에 필요한 Node image를 build 단계로 시작한다.
+WORKDIR /workspace # npm과 build가 실행될 경로를 지정한다.
+COPY package.json package-lock.json ./ # dependency 목록과 잠금 파일을 소스보다 먼저 복사한다.
+RUN npm ci # lock 파일과 정확히 일치하는 dependency를 깨끗하게 설치한다.
+COPY . . # 나머지 프론트 소스와 설정을 복사한다.
+ARG VITE_API_BASE_URL=/api # image build 호출자가 바꿀 수 있는 API 기준 주소 인자를 선언한다.
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} # Vite process가 읽도록 build 인자를 환경변수로 노출한다.
+RUN npm run build # React 소스를 브라우저용 정적 dist로 묶는다.
+
+FROM nginx:1.28-alpine AS runtime # 정적 파일 제공용 Nginx를 최종 단계로 사용한다.
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf # SPA와 asset 규칙이 있는 Nginx 설정을 복사한다.
+COPY --from=build /workspace/dist /usr/share/nginx/html # build 결과 정적 파일만 Nginx document root로 복사한다.
+EXPOSE 80 # Nginx가 container 80 포트에서 수신함을 표시한다.
+CMD ["nginx", "-g", "daemon off;"] # Nginx를 foreground로 실행해 container 주 프로세스로 유지한다.
+```
 
 ## 12.4 컨테이너 내부 프론트 Nginx
 
@@ -176,6 +220,33 @@ location /assets/
 
 location = /health
 # 프론트 컨테이너가 응답 가능한지 배포 스크립트가 확인한다.
+```
+
+### 프론트 container Nginx
+
+```nginx
+server { # 하나의 HTTP 가상 서버 설정을 시작한다.
+    listen 80; # container의 80 포트에서 요청을 받는다.
+    server_name _; # 특정 도메인과 무관하게 기본 서버로 동작한다.
+    root /usr/share/nginx/html; # 정적 파일을 찾을 기준 디렉터리다.
+    index index.html; # 디렉터리 요청의 기본 문서다.
+    client_max_body_size 20m; # 이미지 요청 등을 고려해 body 최대 크기를 20MB로 제한한다.
+
+    location = /health { # 정확히 /health 요청만 처리한다.
+        access_log off; # 반복 health check를 일반 access log에 남기지 않는다.
+        default_type text/plain; # 응답 Content-Type을 text/plain으로 만든다.
+        return 200 "ok\n"; # 다른 upstream 없이 즉시 정상 응답한다.
+    }
+
+    location /assets/ { # Vite가 만든 asset 경로 요청을 처리한다.
+        try_files $uri =404; # 실제 파일이 있을 때만 제공하고 없으면 404를 반환한다.
+        add_header Cache-Control "public, max-age=31536000, immutable"; # 해시 asset을 브라우저가 1년 cache하게 한다.
+    }
+
+    location / { # health와 assets 이외의 모든 화면 URL을 처리한다.
+        try_files $uri $uri/ /index.html; # 실제 파일이 없으면 React Router 진입점 index.html을 반환한다.
+    }
+}
 ```
 
 ## 12.5 실제 Compose 원문: 백엔드
@@ -308,6 +379,35 @@ JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false}
 
 현재 repository의 Nginx 설정은 모두 `listen 80`이며 certificate와 `listen 443 ssl` 설정은 없다. 즉 TLS 종료가 load balancer 같은 외부 구성에서 이루어진다는 코드도 이 repository 안에서는 확인할 수 없다. 실제 HTTPS가 외부에서 제공되는지 확인한 뒤 Cookie Secure 값과 `X-Forwarded-Proto` 신뢰 설정을 함께 맞춰야 한다.
 
+### Compose 핵심
+
+```yaml
+backend-blue: # blue 색상 Spring container 서비스다.
+  image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}:${BACKEND_BLUE_TAG:?BACKEND_BLUE_TAG is required} # 필수 image 이름과 필수 blue tag를 조합한다.
+  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
+  environment: # Spring process에 전달할 환경변수 mapping이다.
+    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod} # 값이 없거나 비면 prod profile을 사용한다.
+    DB_URL: ${DB_URL:?DB_URL is required} # 필수 RDS JDBC URL이다.
+    DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required} # 필수 DB 계정 이름이다.
+    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required} # 필수 DB password다.
+    JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required} # JWT 서명에 쓸 필수 secret이다.
+    JWT_ACCESS_EXPIRATION_MILLIS: ${JWT_ACCESS_EXPIRATION_MILLIS:-600000} # Access Token 수명 기본값은 600000ms다.
+    JWT_REFRESH_EXPIRATION_MILLIS: ${JWT_REFRESH_EXPIRATION_MILLIS:-10800000} # Refresh Token 수명 기본값은 10800000ms다.
+    JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:-3600000} # 만료 session 정리 주기 기본값이다.
+    JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false} # Cookie Secure flag 기본값이 false인 현재 배포 변수다.
+    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required} # browser 요청을 허용할 필수 Origin 목록이다.
+    REDIS_HOST: ${REDIS_HOST:-redis} # 기본 host는 같은 network의 Redis service 이름이다.
+    REDIS_PORT: ${REDIS_PORT:-6379} # Redis port 기본값이다.
+    REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s} # 연결 수립 timeout 기본값이다.
+    REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s} # Redis command timeout 기본값이다.
+    VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true} # Redis 조회수 구현 활성 기본값이다.
+    VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s} # RDS flush 주기 기본값이다.
+  ports: # host에 publish할 port mapping이다.
+    - "127.0.0.1:${BACKEND_BLUE_PORT:-8081}:8080" # loopback host port를 container 8080에 연결한다.
+  networks: # 참여할 내부 network 목록이다.
+    - backend-network # Redis와 Nginx가 함께 속한 network다.
+```
+
 ## 12.6 실제 Nginx blue 설정
 
 ```nginx
@@ -340,6 +440,31 @@ server {
 ```
 
 green 설정은 `backend-blue`가 `backend-green`으로 바뀌는 점만 다르므로 한쪽을 이해한 뒤 중복 설명하지 않는다.
+
+### 프론트 Compose의 배포 Nginx
+
+```yaml
+nginx: # 외부 요청을 활성 frontend 또는 backend로 나누는 proxy service다.
+  image: nginx:1.28-alpine # Nginx Alpine image를 사용한다.
+  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
+  environment: # container shell과 envsubst에 전달할 값이다.
+    ACTIVE_COLOR: ${FRONTEND_ACTIVE_COLOR:-blue} # 활성 frontend 색상 기본값은 blue다.
+    BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM is required} # API를 보낼 backend 주소는 필수다.
+  command: # image 기본 command 대신 실행할 shell command를 배열로 지정한다.
+    - /bin/sh # POSIX shell을 실행한다.
+    - -c # 다음 문자열을 shell script로 해석한다.
+    - | # 여러 줄 shell script를 YAML block scalar로 시작한다.
+      envsubst '$$BACKEND_UPSTREAM' \ # template에서 backend 변수만 치환하며 Compose 단계에서 dollar를 escape한다.
+        < "/etc/nginx/bluegreen/frontend-$${ACTIVE_COLOR}.conf.template" \ # 활성 색상의 template을 standard input으로 읽는다.
+        > /etc/nginx/conf.d/default.conf # 치환 결과를 Nginx 실제 default 설정 파일로 쓴다.
+      exec nginx -g 'daemon off;' # shell을 foreground Nginx process로 교체한다.
+  ports: # host port를 publish한다.
+    - "${FRONTEND_NGINX_PORT:-80}:80" # host 기본 80을 proxy container 80에 연결한다.
+  volumes: # host의 template directory를 container에 mount한다.
+    - ./nginx:/etc/nginx/bluegreen:ro # 읽기 전용 ro mount로 template 변경 권한을 막는다.
+  networks: # 참여할 Compose network다.
+    - frontend-network # frontend-blue·green을 이름으로 찾을 network다.
+```
 
 ## 12.7 실제 Compose 원문: 프론트
 
@@ -451,6 +576,58 @@ server {
 
 현재 backend validator는 image 하나에 decoded 3 MiB를 허용하고 게시글 image를 최대 3개 받는다. Base64로 변환하면 image 하나가 약 4 MiB, 세 개가 약 12 MiB가 되므로 JSON 등 부가 데이터를 포함해도 20 MiB 안에서 처리할 여유가 있다. 20 MiB를 넘는 요청은 가장 앞의 Nginx에서 413으로 차단되고, 제한 안의 요청은 두 proxy를 통과한 뒤 Java validation을 받는다. 현재 전송 형식은 multipart가 아니라 JSON 내부 Base64 문자열이므로 `spring.servlet.multipart.max-file-size`로 해결하는 문제가 아니다.
 
+### 프론트 배포 Nginx 분기
+
+```nginx
+location = /api { # 슬래시 없는 정확한 /api 요청을 처리한다.
+    return 308 /api/; # method를 보존하는 308로 /api/ 형태로 통일한다.
+}
+
+location /api/ { # /api/ 아래의 모든 API 요청을 처리한다.
+    client_max_body_size 20m; # Base64 image JSON을 고려해 이 API proxy가 받을 body를 20MiB까지 허용한다.
+    proxy_pass http://${BACKEND_UPSTREAM}/; # /api/ prefix를 제거하고 외부 백엔드 upstream에 전달한다.
+}
+
+location / { # API가 아닌 화면 요청을 처리한다.
+    proxy_pass http://active_frontend; # 현재 blue 또는 green 프론트 container에 전달한다.
+}
+```
+
+### Compose의 나머지 서비스 라인별 주석본
+
+아래는 이미 위에서 실제 전체 원문을 확인한 뒤 중복 구조만 비교하기 위한 학습용 축약본이다. 실제 파일 원문으로 사용하지 않는다. green의 환경변수는 blue와 완전히 같은 mapping이라 개념 설명을 반복하지 않는다.
+
+```yaml
+services:                              # Compose가 함께 관리할 container 목록이다.
+  redis:                               # backend가 조회수 저장소로 사용할 Redis 서비스 이름이다.
+    image: redis:7.4-alpine            # Redis 7.4 Alpine image로 container를 만든다.
+    volumes:
+      - redis-data:/data               # Redis 저장 디렉터리를 이름 있는 volume과 연결한다.
+    networks:
+      - backend-network                # backend와 같은 내부 network에 참여한다.
+
+  backend-green:                       # blue와 교대로 새 버전을 받을 Spring 서비스다.
+    image: ${BACKEND_IMAGE}:${BACKEND_GREEN_TAG} # green 전용 tag의 backend image를 실행한다.
+    ports:
+      - "127.0.0.1:${BACKEND_GREEN_PORT:-8082}:8080" # 변수가 있으면 그 host 포트를, 없으면 8082를 green container 8080에 연결한다.
+    networks:
+      - backend-network                # Redis와 proxy가 접근할 같은 network에 참여한다.
+
+  nginx:                               # 외부 요청을 현재 활성 backend에 전달할 proxy 서비스다.
+    image: nginx:1.28-alpine           # Nginx 1.28 Alpine image를 사용한다.
+    ports:
+      - "${BACKEND_NGINX_PORT:-80}:80" # 변수가 있으면 그 host 포트를, 없으면 80을 Nginx container 80에 연결한다.
+    networks:
+      - backend-network                # blue와 green을 service 이름으로 찾을 network에 참여한다.
+
+networks:
+  backend-network:
+    driver: bridge                     # 같은 host의 container를 연결하는 bridge network를 만든다.
+
+volumes:
+  redis-data:                          # Redis가 재생성돼도 유지할 이름 있는 volume을 선언한다.
+```
+
 ## 12.8 환경변수, 포트, 네트워크, 볼륨
 
 ```text
@@ -488,207 +665,7 @@ host shell 환경변수 또는 deploy/.env
 
 `.env`가 없더라도 모든 변수가 없어지는 것은 아니다. `:-`가 있는 값은 Compose 기본값을 사용하지만, `:?`가 있는 DB credential·JWT secret·image 이름 등은 Compose가 container를 만들기 전에 오류로 중단한다.
 
-## 12.9 핵심 축약본
-
-```text
-백엔드 이미지
-→ JDK로 bootJar
-→ JRE로 실행
-
-프론트 이미지
-→ Node로 Vite build
-→ Nginx로 dist 제공
-
-Compose
-→ blue, green, proxy, Redis 연결
-
-Nginx
-→ 활성 색상으로 요청 전달
-→ 프론트 /api는 백엔드로 전달
-```
-
-
-## 12.9.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### 백엔드 Dockerfile
-
-```dockerfile
-# syntax=docker/dockerfile:1
-# 위 syntax 지시문은 이 파일을 해석할 Dockerfile 문법 버전을 지정한다.
-FROM eclipse-temurin:26-jdk AS build # Java 컴파일 도구가 포함된 JDK image를 build 단계로 시작한다.
-WORKDIR /workspace # 이후 COPY와 RUN의 기본 작업 경로를 /workspace로 정한다.
-COPY gradlew . # Gradle Wrapper 실행 파일을 먼저 복사한다.
-COPY gradle gradle # Wrapper가 사용할 버전·JAR 디렉터리를 복사한다.
-COPY build.gradle settings.gradle ./ # dependency 정의 파일을 소스보다 먼저 복사해 Docker cache를 활용한다.
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon # Wrapper 실행 권한을 주고 dependency layer를 미리 받는다.
-COPY src src # dependency layer 뒤에 변경이 잦은 실제 소스를 복사한다.
-RUN ./gradlew clean bootJar --no-daemon # main 소스를 컴파일하고 실행 가능한 Spring Boot JAR를 만든다. 이 명령 자체는 test Task를 실행하지 않는다.
-
-FROM eclipse-temurin:26-jre AS runtime # 컴파일 도구가 없는 JRE image로 최종 실행 단계를 시작한다.
-WORKDIR /app # 운영 프로세스의 기본 경로를 /app으로 정한다.
-RUN groupadd --system spring && useradd --system --gid spring spring # root 대신 사용할 시스템 group과 user를 만든다.
-COPY --from=build --chown=spring:spring /workspace/build/libs/*.jar app.jar # build 결과 JAR만 소유권과 함께 최종 image로 복사한다.
-USER spring:spring # 이후 ENTRYPOINT를 일반 spring 사용자 권한으로 실행한다.
-EXPOSE 8080 # 이 container가 8080에서 수신한다는 메타데이터를 남긴다.
-ENTRYPOINT ["java", "-jar", "app.jar"] # container 시작 시 Spring Boot JAR를 실행한다.
-```
-
-### 프론트 Dockerfile
-
-```dockerfile
-# syntax=docker/dockerfile:1
-# 위 syntax 지시문은 이 파일을 해석할 Dockerfile 문법 버전을 지정한다.
-FROM node:24-alpine AS build # Vite build에 필요한 Node image를 build 단계로 시작한다.
-WORKDIR /workspace # npm과 build가 실행될 경로를 지정한다.
-COPY package.json package-lock.json ./ # dependency 목록과 잠금 파일을 소스보다 먼저 복사한다.
-RUN npm ci # lock 파일과 정확히 일치하는 dependency를 깨끗하게 설치한다.
-COPY . . # 나머지 프론트 소스와 설정을 복사한다.
-ARG VITE_API_BASE_URL=/api # image build 호출자가 바꿀 수 있는 API 기준 주소 인자를 선언한다.
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} # Vite process가 읽도록 build 인자를 환경변수로 노출한다.
-RUN npm run build # React 소스를 브라우저용 정적 dist로 묶는다.
-
-FROM nginx:1.28-alpine AS runtime # 정적 파일 제공용 Nginx를 최종 단계로 사용한다.
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf # SPA와 asset 규칙이 있는 Nginx 설정을 복사한다.
-COPY --from=build /workspace/dist /usr/share/nginx/html # build 결과 정적 파일만 Nginx document root로 복사한다.
-EXPOSE 80 # Nginx가 container 80 포트에서 수신함을 표시한다.
-CMD ["nginx", "-g", "daemon off;"] # Nginx를 foreground로 실행해 container 주 프로세스로 유지한다.
-```
-
-### 프론트 container Nginx
-
-```nginx
-server { # 하나의 HTTP 가상 서버 설정을 시작한다.
-    listen 80; # container의 80 포트에서 요청을 받는다.
-    server_name _; # 특정 도메인과 무관하게 기본 서버로 동작한다.
-    root /usr/share/nginx/html; # 정적 파일을 찾을 기준 디렉터리다.
-    index index.html; # 디렉터리 요청의 기본 문서다.
-    client_max_body_size 20m; # 이미지 요청 등을 고려해 body 최대 크기를 20MB로 제한한다.
-
-    location = /health { # 정확히 /health 요청만 처리한다.
-        access_log off; # 반복 health check를 일반 access log에 남기지 않는다.
-        default_type text/plain; # 응답 Content-Type을 text/plain으로 만든다.
-        return 200 "ok\n"; # 다른 upstream 없이 즉시 정상 응답한다.
-    }
-
-    location /assets/ { # Vite가 만든 asset 경로 요청을 처리한다.
-        try_files $uri =404; # 실제 파일이 있을 때만 제공하고 없으면 404를 반환한다.
-        add_header Cache-Control "public, max-age=31536000, immutable"; # 해시 asset을 브라우저가 1년 cache하게 한다.
-    }
-
-    location / { # health와 assets 이외의 모든 화면 URL을 처리한다.
-        try_files $uri $uri/ /index.html; # 실제 파일이 없으면 React Router 진입점 index.html을 반환한다.
-    }
-}
-```
-
-### Compose 핵심
-
-```yaml
-backend-blue: # blue 색상 Spring container 서비스다.
-  image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}:${BACKEND_BLUE_TAG:?BACKEND_BLUE_TAG is required} # 필수 image 이름과 필수 blue tag를 조합한다.
-  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
-  environment: # Spring process에 전달할 환경변수 mapping이다.
-    SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod} # 값이 없거나 비면 prod profile을 사용한다.
-    DB_URL: ${DB_URL:?DB_URL is required} # 필수 RDS JDBC URL이다.
-    DB_USERNAME: ${DB_USERNAME:?DB_USERNAME is required} # 필수 DB 계정 이름이다.
-    DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required} # 필수 DB password다.
-    JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required} # JWT 서명에 쓸 필수 secret이다.
-    JWT_ACCESS_EXPIRATION_MILLIS: ${JWT_ACCESS_EXPIRATION_MILLIS:-600000} # Access Token 수명 기본값은 600000ms다.
-    JWT_REFRESH_EXPIRATION_MILLIS: ${JWT_REFRESH_EXPIRATION_MILLIS:-10800000} # Refresh Token 수명 기본값은 10800000ms다.
-    JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:-3600000} # 만료 session 정리 주기 기본값이다.
-    JWT_REFRESH_COOKIE_SECURE: ${JWT_REFRESH_COOKIE_SECURE:-false} # Cookie Secure flag 기본값이 false인 현재 배포 변수다.
-    CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required} # browser 요청을 허용할 필수 Origin 목록이다.
-    REDIS_HOST: ${REDIS_HOST:-redis} # 기본 host는 같은 network의 Redis service 이름이다.
-    REDIS_PORT: ${REDIS_PORT:-6379} # Redis port 기본값이다.
-    REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s} # 연결 수립 timeout 기본값이다.
-    REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s} # Redis command timeout 기본값이다.
-    VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true} # Redis 조회수 구현 활성 기본값이다.
-    VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s} # RDS flush 주기 기본값이다.
-  ports: # host에 publish할 port mapping이다.
-    - "127.0.0.1:${BACKEND_BLUE_PORT:-8081}:8080" # loopback host port를 container 8080에 연결한다.
-  networks: # 참여할 내부 network 목록이다.
-    - backend-network # Redis와 Nginx가 함께 속한 network다.
-```
-
-### 프론트 Compose의 배포 Nginx
-
-```yaml
-nginx: # 외부 요청을 활성 frontend 또는 backend로 나누는 proxy service다.
-  image: nginx:1.28-alpine # Nginx Alpine image를 사용한다.
-  restart: unless-stopped # 명시 중지가 아니면 장애·daemon 재시작 뒤 다시 실행한다.
-  environment: # container shell과 envsubst에 전달할 값이다.
-    ACTIVE_COLOR: ${FRONTEND_ACTIVE_COLOR:-blue} # 활성 frontend 색상 기본값은 blue다.
-    BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:?BACKEND_UPSTREAM is required} # API를 보낼 backend 주소는 필수다.
-  command: # image 기본 command 대신 실행할 shell command를 배열로 지정한다.
-    - /bin/sh # POSIX shell을 실행한다.
-    - -c # 다음 문자열을 shell script로 해석한다.
-    - | # 여러 줄 shell script를 YAML block scalar로 시작한다.
-      envsubst '$$BACKEND_UPSTREAM' \ # template에서 backend 변수만 치환하며 Compose 단계에서 dollar를 escape한다.
-        < "/etc/nginx/bluegreen/frontend-$${ACTIVE_COLOR}.conf.template" \ # 활성 색상의 template을 standard input으로 읽는다.
-        > /etc/nginx/conf.d/default.conf # 치환 결과를 Nginx 실제 default 설정 파일로 쓴다.
-      exec nginx -g 'daemon off;' # shell을 foreground Nginx process로 교체한다.
-  ports: # host port를 publish한다.
-    - "${FRONTEND_NGINX_PORT:-80}:80" # host 기본 80을 proxy container 80에 연결한다.
-  volumes: # host의 template directory를 container에 mount한다.
-    - ./nginx:/etc/nginx/bluegreen:ro # 읽기 전용 ro mount로 template 변경 권한을 막는다.
-  networks: # 참여할 Compose network다.
-    - frontend-network # frontend-blue·green을 이름으로 찾을 network다.
-```
-
-### 프론트 배포 Nginx 분기
-
-```nginx
-location = /api { # 슬래시 없는 정확한 /api 요청을 처리한다.
-    return 308 /api/; # method를 보존하는 308로 /api/ 형태로 통일한다.
-}
-
-location /api/ { # /api/ 아래의 모든 API 요청을 처리한다.
-    client_max_body_size 20m; # Base64 image JSON을 고려해 이 API proxy가 받을 body를 20MiB까지 허용한다.
-    proxy_pass http://${BACKEND_UPSTREAM}/; # /api/ prefix를 제거하고 외부 백엔드 upstream에 전달한다.
-}
-
-location / { # API가 아닌 화면 요청을 처리한다.
-    proxy_pass http://active_frontend; # 현재 blue 또는 green 프론트 container에 전달한다.
-}
-```
-
-
-### Compose의 나머지 서비스 라인별 주석본
-
-아래는 이미 위에서 실제 전체 원문을 확인한 뒤 중복 구조만 비교하기 위한 학습용 축약본이다. 실제 파일 원문으로 사용하지 않는다. green의 환경변수는 blue와 완전히 같은 mapping이라 개념 설명을 반복하지 않는다.
-
-```yaml
-services:                              # Compose가 함께 관리할 container 목록이다.
-  redis:                               # backend가 조회수 저장소로 사용할 Redis 서비스 이름이다.
-    image: redis:7.4-alpine            # Redis 7.4 Alpine image로 container를 만든다.
-    volumes:
-      - redis-data:/data               # Redis 저장 디렉터리를 이름 있는 volume과 연결한다.
-    networks:
-      - backend-network                # backend와 같은 내부 network에 참여한다.
-
-  backend-green:                       # blue와 교대로 새 버전을 받을 Spring 서비스다.
-    image: ${BACKEND_IMAGE}:${BACKEND_GREEN_TAG} # green 전용 tag의 backend image를 실행한다.
-    ports:
-      - "127.0.0.1:${BACKEND_GREEN_PORT:-8082}:8080" # 변수가 있으면 그 host 포트를, 없으면 8082를 green container 8080에 연결한다.
-    networks:
-      - backend-network                # Redis와 proxy가 접근할 같은 network에 참여한다.
-
-  nginx:                               # 외부 요청을 현재 활성 backend에 전달할 proxy 서비스다.
-    image: nginx:1.28-alpine           # Nginx 1.28 Alpine image를 사용한다.
-    ports:
-      - "${BACKEND_NGINX_PORT:-80}:80" # 변수가 있으면 그 host 포트를, 없으면 80을 Nginx container 80에 연결한다.
-    networks:
-      - backend-network                # blue와 green을 service 이름으로 찾을 network에 참여한다.
-
-networks:
-  backend-network:
-    driver: bridge                     # 같은 host의 container를 연결하는 bridge network를 만든다.
-
-volumes:
-  redis-data:                          # Redis가 재생성돼도 유지할 이름 있는 volume을 선언한다.
-```
+이 절은 앞의 실제 코드 원문을 읽은 직후 확인한다. 원문과 같은 순서의 설명용 주석본이며 실제 실행 파일에는 주석이 없다.
 
 ### 백엔드 blue Nginx 라인별 주석본
 
@@ -722,6 +699,26 @@ server { # 외부 HTTP 요청을 받을 Nginx 가상 서버를 선언한다.
 ```
 
 green 파일에서는 `backend-blue` 한 줄만 `backend-green`으로 바뀌고 나머지 의미는 동일하다.
+
+## 12.9 핵심 축약본
+
+```text
+백엔드 이미지
+→ JDK로 bootJar
+→ JRE로 실행
+
+프론트 이미지
+→ Node로 Vite build
+→ Nginx로 dist 제공
+
+Compose
+→ blue, green, proxy, Redis 연결
+
+Nginx
+→ 활성 색상으로 요청 전달
+→ 프론트 /api는 백엔드로 전달
+```
+
 
 ## 12.10 스킵할 코드
 

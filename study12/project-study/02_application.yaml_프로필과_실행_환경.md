@@ -92,6 +92,47 @@ REDIS_HOST라는 Spring property가 있으면 그 값을 사용
 
 콜론 뒤 기본값이 없는 `${DB_URL}` 같은 표현은 `DB_URL`이라는 Spring property가 반드시 필요하다. 이 값은 환경변수, JVM system property, 명령행 인자 같은 외부 설정으로 제공할 수 있으며, 현재 운영 배포에서는 Compose가 환경변수로 컨테이너에 전달한다.
 
+### 공통 `application.yaml`
+
+```yaml
+spring:                                      # Spring Boot가 인식하는 공통 설정의 최상위 영역이다.
+  application:                              # 애플리케이션 자체 정보를 설정한다.
+    name: springdatajpa                     # Spring이 표시하고 식별할 애플리케이션 이름이다.
+  profiles:                                 # 실행 환경별 profile 규칙을 설정한다.
+    default: local                          # 별도 지정이 없으면 local profile을 사용한다.
+    group:                                  # 하나의 profile을 여러 profile 묶음으로 정의한다.
+      test:                                 # test profile이 활성화될 때의 묶음이다.
+        - local                             # test 설정에 local 설정도 함께 합친다.
+  data:                                     # Spring Data 관련 설정 영역이다.
+    redis:                                  # Redis 연결 설정이다.
+      host: ${REDIS_HOST:localhost}         # REDIS_HOST property가 있으면 그 주소에, 없으면 기본값 localhost에 연결한다.
+      port: ${REDIS_PORT:6379}              # REDIS_PORT property가 있으면 그 포트를, 없으면 기본값 6379를 사용한다.
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s} # REDIS_CONNECT_TIMEOUT property가 있으면 그 값을, 없으면 기본값 2초를 Redis 연결 제한 시간으로 사용한다.
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}  # REDIS_COMMAND_TIMEOUT property가 있으면 그 값을, 없으면 기본값 1초를 Redis 읽기 제한 시간으로 사용한다.
+
+app:                                        # Spring 표준이 아닌 이 프로젝트 전용 설정 영역이다.
+  view-count:                               # 조회수 처리 기능 설정을 묶는다.
+    enabled: ${VIEW_COUNT_REDIS_ENABLED:true} # VIEW_COUNT_REDIS_ENABLED property가 있으면 그 값을, 없으면 기본값 true를 사용해 활성 여부를 정한다.
+    count-key-prefix: "bamboo:{post-view}:count:" # 게시글별 조회수 Redis key의 앞부분이다.
+    dirty-set-key: "bamboo:{post-view}:dirty" # RDS 반영이 필요한 게시글 ID set의 key다.
+    flush-lock-key: "bamboo:{post-view}:flush-lock" # flush Scheduler의 분산 락 key다.
+    flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s} # VIEW_COUNT_FLUSH_INTERVAL property가 있으면 그 간격을, 없으면 기본값 5초를 RDS 반영 간격으로 사용한다.
+
+jwt:                                        # 토큰 수명과 세션 정리 설정을 묶는다.
+  access-expiration-millis: ${JWT_ACCESS_EXPIRATION_MILLIS:600000} # JWT_ACCESS_EXPIRATION_MILLIS property가 있으면 그 수명을, 없으면 기본값 10분을 사용한다.
+  refresh-expiration-millis: ${JWT_REFRESH_EXPIRATION_MILLIS:10800000} # JWT_REFRESH_EXPIRATION_MILLIS property가 있으면 그 수명을, 없으면 기본값 3시간을 사용한다.
+  refresh-session-cleanup-interval-millis: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:3600000} # JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS property가 있으면 그 간격을, 없으면 기본값 1시간을 사용한다.
+
+management:                                 # Actuator 운영 endpoint 설정이다.
+  endpoints:                                # 여러 Actuator endpoint의 공개 범위를 설정한다.
+    web:                                    # HTTP로 공개할 endpoint 설정이다.
+      exposure:                             # 외부에 노출할 endpoint 목록이다.
+        include: health                     # 배포 상태 검사에 필요한 health만 공개한다.
+  endpoint:                                 # 개별 endpoint의 동작을 설정한다.
+    health:                                 # health endpoint 설정이다.
+      show-details: never                   # 내부 구성요소 상세 상태를 외부 응답에 노출하지 않는다.
+```
+
 ## 2.3 실제 코드 원문: 로컬 설정
 
 파일: `application-local.yaml`
@@ -142,6 +183,46 @@ spring.jpa.show-sql=true             # 실행된 SQL을 개발자가 볼 수 있
 spring.sql.init.mode=always          # 시작할 때 data.sql을 실행한다.
 spring.flyway.enabled=false          # 로컬 H2에서는 운영 마이그레이션을 실행하지 않는다.
 jwt.refresh-cookie-secure=false      # 로컬 HTTP에서도 쿠키를 전송할 수 있게 Secure 속성을 끄는다.
+```
+
+### `application-local.yaml`
+
+```yaml
+spring:                                     # local profile에서 덮어쓸 Spring 설정이다.
+  datasource:                               # 로컬 DB 연결 정보다.
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE # 마지막 연결이 닫힌 뒤에도 testdb를 유지하고 JVM 종료 시 H2의 자동 close를 끄는 접속 URL이다.
+    driver-class-name: org.h2.Driver        # H2 JDBC 드라이버를 사용한다.
+    username: sa                            # 로컬 H2 사용자 이름이다.
+    password:                               # 로컬 H2 비밀번호는 빈 값이다.
+
+  h2:                                       # H2 전용 기능 설정이다.
+    console:                                # 브라우저 H2 Console 설정이다.
+      enabled: true                         # 로컬에서 Console을 켠다.
+      path: /h2-console                     # Console 접속 경로를 지정한다.
+
+  jpa:                                      # JPA와 Hibernate 설정이다.
+    hibernate:                              # Hibernate의 스키마 처리 설정이다.
+      ddl-auto: create                      # 시작할 때 기존 스키마를 제거하고 Entity 기준으로 다시 만든다.
+    properties:                             # Hibernate 세부 속성이다.
+      hibernate:
+        format_sql: true                    # 로그의 SQL을 읽기 쉽게 줄바꿈한다.
+    show-sql: true                          # 실행한 SQL을 콘솔에 출력한다.
+    defer-datasource-initialization: true   # Hibernate 스키마 생성 뒤 data.sql을 실행한다.
+
+  sql:                                      # Spring SQL 초기화 설정이다.
+    init:
+      mode: always                          # local 시작 시 SQL 초기화를 활성해 data.sql을 실행한다.
+
+  flyway:                                   # Flyway migration 설정이다.
+    enabled: false                          # H2 local 환경에서는 MySQL migration을 실행하지 않는다.
+
+jwt:                                        # local 전용 JWT와 Cookie 설정이다.
+  secret: ${JWT_SECRET:default-development-jwt-secret-key-must-be-at-least-32-chars-change-me} # JWT_SECRET property가 있으면 그 값을, 없으면 개발용 비밀키를 쓴다.
+  refresh-cookie-secure: false              # HTTP localhost에서도 Cookie를 전송할 수 있게 Secure를 끈다.
+  refresh-cookie-path: /sessions            # local API에서 Refresh Cookie를 보낼 경로다.
+
+cors:                                       # 브라우저 교차 출처 요청 허용 설정이다.
+  allowed-origins: http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://127.0.0.1:5173 # 허용할 로컬 프론트 주소다.
 ```
 
 ## 2.4 실제 코드 원문: 운영 설정
@@ -204,6 +285,48 @@ ddl-auto: validate
 
 새 빈 DB에는 `B3__current_schema.sql`이 현재 전체 스키마를 생성한다. `baseline-on-migrate: false`는 이력 없는 기존 non-empty DB를 자동으로 받아들이지 않게 하며, 빈 DB에서 B3를 실행하는 동작은 막지 않는다. 자세한 migration 흐름은 10장에서 다룬다.
 
+### `application-prod.yaml`
+
+```yaml
+spring:                                     # prod profile에서 덮어쓸 Spring 설정이다.
+  datasource:                               # RDS MySQL 연결 정보다.
+    url: ${DB_URL}                          # 기본값 없는 DB_URL property가 필요하며, 운영 Compose가 환경변수로 전달한다.
+    driver-class-name: com.mysql.cj.jdbc.Driver # MySQL JDBC 드라이버를 사용한다.
+    username: ${DB_USERNAME}                # 기본값 없는 DB_USERNAME property를 운영 Compose의 환경변수에서 받는다.
+    password: ${DB_PASSWORD}                # 기본값 없는 DB_PASSWORD property를 운영 Compose의 환경변수에서 받는다.
+
+  h2:
+    console:
+      enabled: false                        # 운영에서는 H2 Console을 공개하지 않는다.
+
+  jpa:
+    hibernate:
+      ddl-auto: validate                    # Flyway 결과와 Entity가 맞는지 검사하고 DB 구조는 자동 변경하지 않는다.
+    properties:
+      hibernate:
+        format_sql: false                   # 운영 SQL 로그 포맷 기능을 끈다.
+    show-sql: false                         # 운영에서 SQL을 표준 출력에 노출하지 않는다.
+    defer-datasource-initialization: false  # data.sql 실행을 기다리는 local 동작을 사용하지 않는다.
+
+  sql:
+    init:
+      mode: never                           # 운영 RDS에는 data.sql을 자동 적용하지 않는다.
+
+  flyway:
+    enabled: true                           # 운영 시작 시 Flyway migration을 실행한다.
+    baseline-on-migrate: false              # 이력 없는 기존 non-empty DB를 자동 baseline으로 받아들이지 않는다.
+    locations: classpath:db/migration       # JAR의 db/migration 경로에서 SQL 파일을 찾는다.
+    validate-on-migrate: true               # 적용 이력과 현재 migration 파일의 일치 여부를 검사한다.
+
+jwt:
+  secret: ${JWT_SECRET}                     # 기본값 없는 JWT_SECRET property를 운영 Compose의 필수 환경변수에서 받는다.
+  refresh-cookie-secure: ${JWT_REFRESH_COOKIE_SECURE:true} # property가 있으면 그 boolean을, 없으면 YAML 기본값 true를 쓴다. 단, 현재 Compose는 별도 지정이 없으면 false를 넣는다.
+  refresh-cookie-path: /api/sessions        # 외부 프록시 경로를 포함한 세션 API에만 Cookie를 보낸다.
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}  # 기본값 없는 property를 운영 Compose의 필수 환경변수에서 받는다.
+```
+
 ## 2.5 실제 코드 원문: 테스트 설정
 
 파일: `src/test/resources/application-test.yaml`
@@ -231,6 +354,19 @@ test profile
 ```
 
 Redis가 필요한 테스트는 `redis-integration` 태그와 Testcontainers를 사용하여 별도로 Redis 연결을 직접 준비한다.
+
+### `application-test.yaml`
+
+```yaml
+spring:                                     # test profile에서 추가로 덮어쓸 Spring 설정이다.
+  autoconfigure:                            # Spring Boot 자동 설정을 제어한다.
+    exclude:                                # 자동 설정에서 제외할 클래스 목록이다.
+      - org.redisson.spring.starter.RedissonAutoConfigurationV4 # 일반 테스트에서 Redisson 연결 Bean을 만들지 않는다.
+
+app:                                        # 프로젝트 전용 설정을 덮어쓴다.
+  view-count:
+    enabled: false                          # 일반 테스트는 Redis 대신 DB 조회수 구현을 사용한다.
+```
 
 ## 2.6 설정값이 Java 코드에 들어가는 방법
 
@@ -306,146 +442,6 @@ public record ViewCountProperties(
 
 Spring은 이 어노테이션으로 `@ConfigurationProperties` 클래스를 찾아 Bean으로 등록하고, 최종 property를 생성자 인자에 변환해 넣는다. `JwtProvider`는 클래스의 `@Component`로 Bean이 되므로 Spring이 그 생성자를 호출하며 `@Value` 인자를 주입한다.
 
-
-## 2.6.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### 공통 `application.yaml`
-
-```yaml
-spring:                                      # Spring Boot가 인식하는 공통 설정의 최상위 영역이다.
-  application:                              # 애플리케이션 자체 정보를 설정한다.
-    name: springdatajpa                     # Spring이 표시하고 식별할 애플리케이션 이름이다.
-  profiles:                                 # 실행 환경별 profile 규칙을 설정한다.
-    default: local                          # 별도 지정이 없으면 local profile을 사용한다.
-    group:                                  # 하나의 profile을 여러 profile 묶음으로 정의한다.
-      test:                                 # test profile이 활성화될 때의 묶음이다.
-        - local                             # test 설정에 local 설정도 함께 합친다.
-  data:                                     # Spring Data 관련 설정 영역이다.
-    redis:                                  # Redis 연결 설정이다.
-      host: ${REDIS_HOST:localhost}         # REDIS_HOST property가 있으면 그 주소에, 없으면 기본값 localhost에 연결한다.
-      port: ${REDIS_PORT:6379}              # REDIS_PORT property가 있으면 그 포트를, 없으면 기본값 6379를 사용한다.
-      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s} # REDIS_CONNECT_TIMEOUT property가 있으면 그 값을, 없으면 기본값 2초를 Redis 연결 제한 시간으로 사용한다.
-      timeout: ${REDIS_COMMAND_TIMEOUT:1s}  # REDIS_COMMAND_TIMEOUT property가 있으면 그 값을, 없으면 기본값 1초를 Redis 읽기 제한 시간으로 사용한다.
-
-app:                                        # Spring 표준이 아닌 이 프로젝트 전용 설정 영역이다.
-  view-count:                               # 조회수 처리 기능 설정을 묶는다.
-    enabled: ${VIEW_COUNT_REDIS_ENABLED:true} # VIEW_COUNT_REDIS_ENABLED property가 있으면 그 값을, 없으면 기본값 true를 사용해 활성 여부를 정한다.
-    count-key-prefix: "bamboo:{post-view}:count:" # 게시글별 조회수 Redis key의 앞부분이다.
-    dirty-set-key: "bamboo:{post-view}:dirty" # RDS 반영이 필요한 게시글 ID set의 key다.
-    flush-lock-key: "bamboo:{post-view}:flush-lock" # flush Scheduler의 분산 락 key다.
-    flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s} # VIEW_COUNT_FLUSH_INTERVAL property가 있으면 그 간격을, 없으면 기본값 5초를 RDS 반영 간격으로 사용한다.
-
-jwt:                                        # 토큰 수명과 세션 정리 설정을 묶는다.
-  access-expiration-millis: ${JWT_ACCESS_EXPIRATION_MILLIS:600000} # JWT_ACCESS_EXPIRATION_MILLIS property가 있으면 그 수명을, 없으면 기본값 10분을 사용한다.
-  refresh-expiration-millis: ${JWT_REFRESH_EXPIRATION_MILLIS:10800000} # JWT_REFRESH_EXPIRATION_MILLIS property가 있으면 그 수명을, 없으면 기본값 3시간을 사용한다.
-  refresh-session-cleanup-interval-millis: ${JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS:3600000} # JWT_REFRESH_SESSION_CLEANUP_INTERVAL_MILLIS property가 있으면 그 간격을, 없으면 기본값 1시간을 사용한다.
-
-management:                                 # Actuator 운영 endpoint 설정이다.
-  endpoints:                                # 여러 Actuator endpoint의 공개 범위를 설정한다.
-    web:                                    # HTTP로 공개할 endpoint 설정이다.
-      exposure:                             # 외부에 노출할 endpoint 목록이다.
-        include: health                     # 배포 상태 검사에 필요한 health만 공개한다.
-  endpoint:                                 # 개별 endpoint의 동작을 설정한다.
-    health:                                 # health endpoint 설정이다.
-      show-details: never                   # 내부 구성요소 상세 상태를 외부 응답에 노출하지 않는다.
-```
-
-### `application-local.yaml`
-
-```yaml
-spring:                                     # local profile에서 덮어쓸 Spring 설정이다.
-  datasource:                               # 로컬 DB 연결 정보다.
-    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE # 마지막 연결이 닫힌 뒤에도 testdb를 유지하고 JVM 종료 시 H2의 자동 close를 끄는 접속 URL이다.
-    driver-class-name: org.h2.Driver        # H2 JDBC 드라이버를 사용한다.
-    username: sa                            # 로컬 H2 사용자 이름이다.
-    password:                               # 로컬 H2 비밀번호는 빈 값이다.
-
-  h2:                                       # H2 전용 기능 설정이다.
-    console:                                # 브라우저 H2 Console 설정이다.
-      enabled: true                         # 로컬에서 Console을 켠다.
-      path: /h2-console                     # Console 접속 경로를 지정한다.
-
-  jpa:                                      # JPA와 Hibernate 설정이다.
-    hibernate:                              # Hibernate의 스키마 처리 설정이다.
-      ddl-auto: create                      # 시작할 때 기존 스키마를 제거하고 Entity 기준으로 다시 만든다.
-    properties:                             # Hibernate 세부 속성이다.
-      hibernate:
-        format_sql: true                    # 로그의 SQL을 읽기 쉽게 줄바꿈한다.
-    show-sql: true                          # 실행한 SQL을 콘솔에 출력한다.
-    defer-datasource-initialization: true   # Hibernate 스키마 생성 뒤 data.sql을 실행한다.
-
-  sql:                                      # Spring SQL 초기화 설정이다.
-    init:
-      mode: always                          # local 시작 시 SQL 초기화를 활성해 data.sql을 실행한다.
-
-  flyway:                                   # Flyway migration 설정이다.
-    enabled: false                          # H2 local 환경에서는 MySQL migration을 실행하지 않는다.
-
-jwt:                                        # local 전용 JWT와 Cookie 설정이다.
-  secret: ${JWT_SECRET:default-development-jwt-secret-key-must-be-at-least-32-chars-change-me} # JWT_SECRET property가 있으면 그 값을, 없으면 개발용 비밀키를 쓴다.
-  refresh-cookie-secure: false              # HTTP localhost에서도 Cookie를 전송할 수 있게 Secure를 끈다.
-  refresh-cookie-path: /sessions            # local API에서 Refresh Cookie를 보낼 경로다.
-
-cors:                                       # 브라우저 교차 출처 요청 허용 설정이다.
-  allowed-origins: http://localhost:5500,http://127.0.0.1:5500,http://localhost:5173,http://127.0.0.1:5173 # 허용할 로컬 프론트 주소다.
-```
-
-### `application-prod.yaml`
-
-```yaml
-spring:                                     # prod profile에서 덮어쓸 Spring 설정이다.
-  datasource:                               # RDS MySQL 연결 정보다.
-    url: ${DB_URL}                          # 기본값 없는 DB_URL property가 필요하며, 운영 Compose가 환경변수로 전달한다.
-    driver-class-name: com.mysql.cj.jdbc.Driver # MySQL JDBC 드라이버를 사용한다.
-    username: ${DB_USERNAME}                # 기본값 없는 DB_USERNAME property를 운영 Compose의 환경변수에서 받는다.
-    password: ${DB_PASSWORD}                # 기본값 없는 DB_PASSWORD property를 운영 Compose의 환경변수에서 받는다.
-
-  h2:
-    console:
-      enabled: false                        # 운영에서는 H2 Console을 공개하지 않는다.
-
-  jpa:
-    hibernate:
-      ddl-auto: validate                    # Flyway 결과와 Entity가 맞는지 검사하고 DB 구조는 자동 변경하지 않는다.
-    properties:
-      hibernate:
-        format_sql: false                   # 운영 SQL 로그 포맷 기능을 끈다.
-    show-sql: false                         # 운영에서 SQL을 표준 출력에 노출하지 않는다.
-    defer-datasource-initialization: false  # data.sql 실행을 기다리는 local 동작을 사용하지 않는다.
-
-  sql:
-    init:
-      mode: never                           # 운영 RDS에는 data.sql을 자동 적용하지 않는다.
-
-  flyway:
-    enabled: true                           # 운영 시작 시 Flyway migration을 실행한다.
-    baseline-on-migrate: false              # 이력 없는 기존 non-empty DB를 자동 baseline으로 받아들이지 않는다.
-    locations: classpath:db/migration       # JAR의 db/migration 경로에서 SQL 파일을 찾는다.
-    validate-on-migrate: true               # 적용 이력과 현재 migration 파일의 일치 여부를 검사한다.
-
-jwt:
-  secret: ${JWT_SECRET}                     # 기본값 없는 JWT_SECRET property를 운영 Compose의 필수 환경변수에서 받는다.
-  refresh-cookie-secure: ${JWT_REFRESH_COOKIE_SECURE:true} # property가 있으면 그 boolean을, 없으면 YAML 기본값 true를 쓴다. 단, 현재 Compose는 별도 지정이 없으면 false를 넣는다.
-  refresh-cookie-path: /api/sessions        # 외부 프록시 경로를 포함한 세션 API에만 Cookie를 보낸다.
-
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}  # 기본값 없는 property를 운영 Compose의 필수 환경변수에서 받는다.
-```
-
-### `application-test.yaml`
-
-```yaml
-spring:                                     # test profile에서 추가로 덮어쓸 Spring 설정이다.
-  autoconfigure:                            # Spring Boot 자동 설정을 제어한다.
-    exclude:                                # 자동 설정에서 제외할 클래스 목록이다.
-      - org.redisson.spring.starter.RedissonAutoConfigurationV4 # 일반 테스트에서 Redisson 연결 Bean을 만들지 않는다.
-
-app:                                        # 프로젝트 전용 설정을 덮어쓴다.
-  view-count:
-    enabled: false                          # 일반 테스트는 Redis 대신 DB 조회수 구현을 사용한다.
-```
 
 ### 설정을 받는 Java 코드
 

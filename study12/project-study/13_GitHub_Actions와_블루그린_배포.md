@@ -68,6 +68,21 @@ workflow_dispatch
 → GitHub 화면에서 수동 실행
 ```
 
+### Workflow trigger
+
+```yaml
+name: Backend CI/CD              # GitHub Actions 화면에 표시할 Workflow 이름이다.
+
+on:                              # Workflow를 시작할 이벤트 조건이다.
+  push:                          # branch에 commit이 push될 때의 조건이다.
+    branches:
+      - main                     # main branch push만 대상으로 한다.
+  pull_request:                  # pull request가 생성·갱신될 때의 조건이다.
+    branches:
+      - main                     # main을 대상으로 하는 PR만 실행한다.
+  workflow_dispatch:             # GitHub 화면에서 사람이 수동 실행할 수 있게 한다.
+```
+
 ## 13.3 실제 코드 발췌: 백엔드 테스트 Job
 
 ```yaml
@@ -108,6 +123,32 @@ uses: actions/checkout@v6
 ```
 
 Redis와 MySQL Testcontainers 때문에 Runner에서도 Docker가 필요하며 GitHub의 Ubuntu Runner가 Docker 실행 환경을 제공한다. MySQL test에서는 빈 DB의 B3 migration, Hibernate validate와 실제 row lock을 검사한다.
+
+### 테스트 Job
+
+```yaml
+jobs:                            # 서로 의존하거나 병렬 실행할 Job 목록을 시작한다.
+  test:                          # 다른 Job이 needs로 참조할 내부 Job ID다.
+    name: Test backend           # GitHub 화면에 표시할 Job 이름이다.
+    runs-on: ubuntu-latest       # GitHub가 제공하는 최신 Ubuntu Runner에서 실행한다.
+
+    steps:                       # 이 Runner 안에서 순서대로 실행할 단계다.
+      - name: Check out source code # 단계의 표시 이름이다.
+        uses: actions/checkout@v6 # 현재 commit의 Repository 파일을 Runner로 내려받는다.
+
+      - name: Set up Java 26     # Java 설치 단계 이름이다.
+        uses: actions/setup-java@v5 # Java 설치와 Gradle cache를 지원하는 공식 Action을 사용한다.
+        with:                    # Action에 전달할 입력값이다.
+          distribution: temurin # Temurin JDK 배포판을 선택한다.
+          java-version: "26"     # build.gradle toolchain과 같은 Java 26을 설치한다.
+          cache: gradle          # Gradle dependency cache를 다음 실행에서도 재사용한다.
+
+      - name: Grant execute permission to Gradle Wrapper # Linux에서 Wrapper 권한을 준비하는 단계다.
+        run: chmod +x gradlew    # gradlew 파일에 실행 권한을 추가한다.
+
+      - name: Run existing tests and verification # 최종 검증 단계 이름이다.
+        run: ./gradlew clean check --no-daemon # 이전 산출물을 지우고 일반·Redis·MySQL 테스트와 커버리지 검증을 실행한다.
+```
 
 ## 13.4 실제 코드 발췌: 이미지 빌드와 push
 
@@ -171,6 +212,50 @@ GHCR
 
 Job마다 서로 다른 새 Runner를 사용하므로 build Job에도 다시 `checkout`이 필요하다. test Job의 workspace가 다음 Job에 자동 공유되는 것은 아니다.
 
+### Image build와 push
+
+```yaml
+build-and-push:                  # 검증 후 image를 만드는 Job ID다.
+  name: Build and push backend image # GitHub 화면에 표시할 Job 이름이다.
+  if: github.event_name != 'pull_request' # PR 검증에서는 image 제작과 Registry push를 하지 않는다.
+  needs:
+    - test                       # test Job이 성공해야 이 Job이 시작된다.
+  runs-on: ubuntu-latest         # test Job과 별개의 새 Ubuntu Runner에서 실행한다.
+
+  steps:
+    - name: Check out source code # 새 build Runner에 현재 commit 파일을 받는 단계다.
+      uses: actions/checkout@v6 # Job 사이 workspace가 공유되지 않으므로 다시 checkout한다.
+
+    - name: Set up Docker Buildx # Docker builder 준비 단계다.
+      uses: docker/setup-buildx-action@v4 # cache와 멀티 플랫폼 기능이 있는 Docker Buildx를 준비한다.
+
+    - name: Log in to GHCR       # Registry 인증 단계다.
+      uses: docker/login-action@v4 # GHCR에 push할 Docker 인증을 수행한다.
+      with:
+        registry: ${{ env.REGISTRY }} # Workflow env의 ghcr.io 주소를 사용한다.
+        username: ${{ github.actor }} # Workflow를 실행한 GitHub 계정을 사용자 이름으로 사용한다.
+        password: ${{ secrets.GITHUB_TOKEN }} # GitHub가 실행마다 제공하는 임시 token을 비밀번호로 쓴다.
+
+    - name: Prepare image tags and labels # tag와 OCI label 생성 단계다.
+      id: metadata               # 다음 step이 output을 참조할 수 있도록 metadata ID를 준다.
+      uses: docker/metadata-action@v6 # image tag와 label 문자열을 계산하는 Action이다.
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} # Registry와 Repository image 이름을 합친다.
+        tags: |                  # 한 image에 붙일 tag 규칙 목록이다.
+          type=sha,format=long,prefix= # 전체 commit SHA를 변경 없이 tag로 만든다.
+          type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }} # default branch ref일 때만 latest를 만든다.
+
+    - name: Build and push image # 실제 image build·push 단계다.
+      uses: docker/build-push-action@v7 # Dockerfile로 image를 만들고 Registry에 push한다.
+      with:
+        context: .               # Repository root를 Docker build context로 사용한다.
+        push: true               # build 후 로컬에만 두지 않고 GHCR로 전송한다.
+        tags: ${{ steps.metadata.outputs.tags }} # 앞 단계가 계산한 SHA와 latest tag를 모두 적용한다.
+        labels: ${{ steps.metadata.outputs.labels }} # metadata가 계산한 OCI label을 image에 넣는다.
+        cache-from: type=gha     # 이전 GitHub Actions build cache를 읽는다.
+        cache-to: type=gha,mode=max # 가능한 layer를 GitHub Actions cache에 저장한다.
+```
+
 ## 13.5 OIDC와 AWS 임시 인증
 
 실제 코드:
@@ -197,6 +282,21 @@ GitHub Workflow가 OIDC token 요청
 
 장기 AWS Access Key를 GitHub Secret에 저장하지 않고 짧은 수명의 권한을 받는 구조다.
 
+### OIDC AWS 인증
+
+```yaml
+permissions:                     # 이 Job의 GitHub token 권한을 최소 범위로 다시 지정한다.
+  id-token: write                # AWS가 검증할 OIDC ID token 발급 권한을 허용한다.
+  contents: read                 # Repository 파일은 읽기만 허용한다.
+
+steps:
+  - name: Configure temporary AWS credentials # AWS 임시 인증 준비 단계다.
+    uses: aws-actions/configure-aws-credentials@v6.1.1 # OIDC token을 AWS Role 자격 증명으로 교환하는 Action이다.
+    with:
+      role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }} # GitHub를 신뢰하도록 설정된 IAM Role ARN이다.
+      aws-region: ${{ vars.AWS_REGION }} # 이후 AWS CLI가 사용할 Region이다.
+```
+
 ## 13.6 `vars`, `secrets`, `env`
 
 ```text
@@ -217,6 +317,23 @@ ${VAR}
 ```
 
 현재 운영 DB 비밀번호와 JWT 비밀키는 GitHub Workflow가 직접 EC2로 전달하지 않는다. EC2 배포 경로의 `.env`에 미리 안전하게 준비되어 있고 Compose가 읽는다.
+
+### 배포 Job 조건
+
+```yaml
+deploy:                         # EC2 배포를 담당하는 Job ID다.
+  name: Deploy backend with Blue/Green # GitHub 화면에 표시할 이름이다.
+  if: vars.DEPLOY_ENABLED == 'true' && github.event_name != 'pull_request' # 배포 활성 변수가 true이고 PR이 아닐 때만 실행한다.
+  needs:
+    - build-and-push             # image build와 GHCR push가 성공한 뒤 실행한다.
+  runs-on: ubuntu-latest         # 앞 Job과 별개의 새 Runner를 배정받는다.
+  concurrency:                  # 같은 배포 자원을 사용하는 Job의 동시 실행 규칙이다.
+    group: backend-production-deploy # 백엔드 운영 배포끼리 같은 concurrency 그룹으로 묶는다.
+    cancel-in-progress: false    # 새 Job이 이미 실행 중인 배포를 중간 취소하지 않고 기다리게 한다.
+  permissions:
+    id-token: write              # AWS OIDC token 발급을 허용한다.
+    contents: read               # Repository 내용 읽기만 허용한다.
+```
 
 ## 13.7 SSM으로 EC2 명령 전송
 
@@ -334,6 +451,57 @@ exit 1
 
 `cancel-command`는 취소를 요청하는 명령이다. 요청 순간 이미 끝난 명령일 수도 있으므로 `|| true`로 정리 Step 자체가 원래 실패 원인을 덮어쓰지 않게 한다.
 
+### SSM 명령 전송
+
+```bash
+PARAMETERS=$(jq -n \ # 입력 파일 없이 SSM parameters JSON을 만들고 결과를 PARAMETERS에 저장한다.
+  --arg deploy_path "${DEPLOY_PATH}" \ # 배포 경로를 jq 문자열 변수로 안전하게 전달한다.
+  --arg raw_base_url "${RAW_BASE_URL}" \ # 현재 commit의 deploy 파일 raw URL을 전달한다.
+  --arg image_tag "${IMAGE_TAG}" \ # 현재 commit SHA인 image tag를 전달한다.
+  --arg execution_timeout "900" \ # 시작된 원격 shell을 최대 900초 실행할 문자열 값을 전달한다.
+  '{ # jq가 생성할 JSON object를 시작한다.
+    executionTimeout: [$execution_timeout], # AWS-RunShellScript의 실행 제한 parameter를 문자열 배열로 만든다.
+    commands: [ # SSM Agent가 EC2에서 순서대로 실행할 shell 명령 배열이다.
+      "set -Eeuo pipefail", # EC2 쪽 shell에도 엄격한 오류 처리 옵션을 켠다.
+      ("install -d -m 755 " + $deploy_path + "/nginx"), # 배포 및 Nginx 설정 디렉터리를 만든다.
+      ("curl -fsSL " + $raw_base_url + "/compose.yaml -o " + $deploy_path + "/compose.yaml"), # 해당 commit의 Compose 파일을 받는다.
+      ("curl -fsSL " + $raw_base_url + "/nginx/backend-blue.conf -o " + $deploy_path + "/nginx/backend-blue.conf"), # blue용 Nginx 설정을 받는다.
+      ("curl -fsSL " + $raw_base_url + "/nginx/backend-green.conf -o " + $deploy_path + "/nginx/backend-green.conf"), # green용 Nginx 설정을 받는다.
+      ("curl -fsSL " + $raw_base_url + "/deploy-backend.sh -o " + $deploy_path + "/deploy-backend.sh"), # 배포 스크립트를 받는다.
+      ("chmod 755 " + $deploy_path + "/deploy-backend.sh"), # 받은 스크립트에 실행 권한을 준다.
+      ("cd " + $deploy_path), # Compose와 .env가 있는 배포 경로로 이동한다.
+      ("IMAGE_TAG=" + $image_tag + " ./deploy-backend.sh") # SHA tag를 넘겨 실제 blue/green 배포를 시작한다.
+    ] # commands 배열을 닫는다.
+  }') # JSON object와 명령 치환을 닫고 결과를 PARAMETERS에 대입한다.
+```
+
+이 주석본은 줄 끝 주석 때문에 그대로 실행하는 코드가 아니다. 바로 위 13.7의 주석 없는 원문이 실행 가능한 실제 형식이다.
+
+```bash
+COMMAND_ID=$(aws ssm send-command \ # EC2에 원격 shell 명령을 보내고 결과 ID를 변수에 저장한다.
+  --instance-ids "${DEPLOY_INSTANCE_ID}" \ # 배포할 관리 대상 EC2 ID를 지정한다.
+  --document-name "AWS-RunShellScript" \ # EC2에서 Linux shell 명령을 실행하는 SSM 문서를 사용한다.
+  --comment "Deploy backend commit ${IMAGE_TAG} with Blue/Green" \ # AWS 기록에 배포 commit 설명을 남긴다.
+  --timeout-seconds 60 \ # 명령이 SSM Agent에 전달되어 실행을 시작하기까지 최대 60초 기다린다.
+  --parameters "${PARAMETERS}" \ # jq로 만든 실제 다운로드·배포 명령 목록을 전달한다.
+  --query "Command.CommandId" \ # 전체 JSON 중 추적에 필요한 CommandId만 선택한다.
+  --output text) # 선택한 ID를 plain text로 출력해 shell 변수에 담는다.
+```
+
+### 끝나지 않은 SSM 명령 취소
+
+```yaml
+- name: Cancel unfinished backend deployment # 실패하거나 취소된 run의 원격 명령을 정리하는 Step이다.
+  if: ${{ (failure() || cancelled()) && steps.send-command.outputs.command_id != '' }} # 앞 Step 실패 또는 run 취소 상태이고 CommandId가 있을 때만 실행한다.
+  env:
+    COMMAND_ID: ${{ steps.send-command.outputs.command_id }} # 전송 Step이 만든 SSM CommandId를 shell 환경변수로 넣는다.
+    DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }} # 명령을 보낸 EC2 ID를 환경변수로 넣는다.
+  run: |
+    aws ssm cancel-command \ # 해당 SSM 명령에 취소를 요청한다.
+      --command-id "${COMMAND_ID}" \ # 취소할 CommandId를 지정한다.
+      --instance-ids "${DEPLOY_INSTANCE_ID}" || true # 대상 EC2를 지정하고, 이미 끝난 명령 등의 취소 오류는 원래 실패를 덮지 않게 무시한다.
+```
+
 ## 13.8 실제 배포 스크립트 흐름
 
 배포 스크립트도 같은 EC2 배포 경로에서 두 인스턴스가 동시에 실행되는 상황을 막는다.
@@ -445,6 +613,41 @@ compose() {
 
 `get_env_value`는 마지막으로 일치한 `KEY=value`에서 `value`만 꺼내고, 키가 없으면 전달받은 기본값을 쓴다. `set_env_value`는 키가 있으면 그 줄을 바꾸고 없으면 파일 끝에 추가한다. `compose`의 `"$@"`는 함수에 전달된 모든 인자를 원래 인자 경계를 유지한 채 `docker compose` 뒤에 전달한다.
 
+### SSM 상태 조회
+
+실제 Step에는 다음 실행 제한이 있다.
+
+```yaml
+- name: Wait for backend deployment # SSM 명령이 끝날 때까지 상태를 조회하는 Step이다.
+  id: wait-deployment              # 이 Step을 식별할 ID다.
+  timeout-minutes: 18              # Step 자체는 최대 18분까지만 실행한다.
+```
+
+```bash
+for attempt in {1..200}; do # 1부터 200까지 최대 200번 상태를 조회한다.
+  STATUS=$(aws ssm get-command-invocation \ # 특정 EC2에서 실행 중인 명령 결과를 조회한다.
+    --command-id "${COMMAND_ID}" \ # 앞 Step에서 받은 SSM CommandId를 지정한다.
+    --instance-id "${DEPLOY_INSTANCE_ID}" \ # 명령을 실행한 EC2 instance를 지정한다.
+    --query "Status" \ # 전체 응답에서 Status만 선택한다.
+    --output text 2>/dev/null || true) # text로 받고, 아직 조회가 안 되는 순간의 오류는 반복을 위해 무시한다.
+
+  case "${STATUS}" in # 현재 상태 문자열에 따라 종료 여부를 결정한다.
+    Success) # EC2 명령 전체가 성공한 경우다.
+      exit 0 # Workflow Step을 성공으로 끝낸다.
+      ;;
+    Failed|Cancelled|TimedOut|Cancelling) # 재시도 대기가 의미 없는 실패·취소 상태들이다.
+      exit 1 # Workflow Step을 실패로 끝낸다.
+      ;;
+  esac
+
+  echo "Deployment status: ${STATUS:-Pending} (${attempt}/200)" # 빈 상태는 Pending으로 표시하고 진행 횟수를 출력한다.
+  sleep 5 # 다음 AWS API 조회 전 5초 기다린다.
+done
+
+echo "Backend deployment did not finish within 1000 seconds." >&2 # 200회 안에 끝나지 않았음을 표준 오류에 쓴다.
+exit 1 # Workflow 대기 Step을 실패로 끝내 다음 취소 Step이 실행되게 한다.
+```
+
 ## 13.9 rollback
 
 새 target이 실패하면:
@@ -481,315 +684,6 @@ rollback_proxy() {
 ```
 
 Nginx 재생성이나 container 중지 뒤의 `|| true`는 복구 명령이 실패해도 함수 실행을 계속하게 한다. 따라서 스크립트는 배포 실패로 종료하더라도 Nginx가 실제로 이전 상태로 돌아갔다고 보장할 수 없다. 특히 기존 backend 중지가 일부 진행된 뒤 실패하면 이전 색상으로 proxy를 돌리는 것만으로 서비스가 반드시 회복되는 것도 아니다.
-
-## 13.10 프론트 CI/CD의 차이
-
-검증:
-
-```text
-npm ci
-→ npm run lint
-→ npm run build
-```
-
-이미지 build argument:
-
-```yaml
-build-args: |
-  VITE_API_BASE_URL=/api
-```
-
-프론트 배포 Nginx에는 `BACKEND_UPSTREAM`을 `envsubst`로 넣는다.
-
-백엔드 배포 흐름을 이해하면 프론트는 다음 차이만 확인하면 된다.
-
-- Redis 준비 없음
-- Spring Actuator 대신 프론트 Nginx `/health`
-- `/api/`를 별도 백엔드 서버로 proxy
-- 기존 frontend container는 현재 스크립트에서 즉시 중지하지 않고 active proxy만 전환
-
-
-### 프론트 image 빌드 인자 라인별 주석본
-
-```yaml
-build-args:                 # Dockerfile의 ARG로 전달할 build 시점 변수 목록이다.
-  VITE_API_BASE_URL=/api    # Vite가 브라우저 bundle에 넣을 API 기준 주소를 /api로 지정한다.
-```
-
-이 값은 image가 만들어진 뒤 container를 실행할 때가 아니라 `npm run build`가 실행되는 시점에 JavaScript 코드에 포함된다.
-
-## 13.11 OIDC 확인 Workflow
-
-`aws-oidc-check.yml`은 전체 배포 전에 다음만 독립적으로 검사한다.
-
-```text
-AWS OIDC 인증 성공 여부
-→ aws sts get-caller-identity
-
-SSM 연결 성공 여부
-→ EC2에서 hostname, whoami, docker --version
-```
-
-배포 문제를 인증·연결 문제와 애플리케이션 문제로 분리해서 진단할 수 있게 한다.
-
-## 13.11.1 동시 실행과 SSM 대기 문제를 해결한 구조
-
-### 같은 종류의 동시 배포를 두 단계에서 막는다
-
-Workflow의 `concurrency`가 같은 종류의 배포 Job을 직렬화하고, EC2 배포 스크립트의 `flock`이 같은 `DEPLOY_PATH`를 사용하는 실행을 한 번 더 막는다. 따라서 두 실행이 같은 `.env`, container와 Nginx를 동시에 수정하지 않는다. GitHub Actions concurrency에서는 실행 중인 배포는 취소하지 않지만 대기 중인 run이 여러 개 쌓이면 최신 pending run만 남을 수 있으므로, 모든 중간 commit이 반드시 차례로 배포된다는 뜻은 아니다.
-
-### SSM 제한보다 Workflow가 더 오래 기다리고 실패 시 취소한다
-
-명령 전달 제한은 60초, 실제 shell 실행 제한은 900초이고 Workflow는 최대 약 1000초 동안 결과를 조회한다. 대기 실패 또는 Workflow 취소 시 `cancel-command`를 호출하여 GitHub Actions는 끝났는데 EC2 명령만 계속 실행될 가능성을 줄인다. 취소 요청과 실제 EC2 프로세스 종료 사이에는 짧은 지연이 있을 수 있다.
-
-## 13.11.2 현재 배포 구조에서 남아 있는 한계
-
-### rollback은 여전히 최선 시도다
-
-이번 변경에서는 rollback 구현을 수정하지 않았다. `rollback_proxy` 내부의 Nginx 재생성 등에 `|| true`가 있으므로 복구 명령 자체가 실패해도 함수는 그 실패를 밖으로 전달하지 않는다. 따라서 정상 배포에는 영향을 주지 않지만, **Nginx 전환 후 오류가 발생한 드문 상황에서 자동 복구가 반드시 성공한다고 보장할 수 없다.** 이 경우 container 상태와 Nginx 응답을 확인하고 수동 복구해야 한다. 보류할 수는 있지만 안전하다고 간주하여 무시할 문제는 아니다.
-
-### EC2가 GHCR image를 pull할 인증은 별도 전제다
-
-Workflow Runner는 `docker/login-action`으로 GHCR에 로그인하지만 그 인증은 EC2로 전달되지 않는다. 배포 스크립트에도 `docker login`이 없다. 따라서 package가 private이면 EC2 Docker가 미리 GHCR에 로그인되어 있어야 하며, public package라면 인증 없이 pull할 수 있다.
-
-### 배포 파일 다운로드는 인증 없는 raw URL을 사용한다
-
-SSM 명령은 `https://raw.githubusercontent.com/...`에서 `curl`로 파일을 받으며 GitHub token을 붙이지 않는다. private repository라면 이 다운로드가 실패할 수 있으므로 별도의 인증 방식이나 artifact 전달 구조가 필요하다.
-
-### Nginx 검사는 공개 인터넷 경로 검사가 아니다
-
-```bash
-wait_for_health "http://127.0.0.1:${nginx_port}/health"
-```
-
-이 요청은 EC2 자신이 host에 publish된 Nginx port로 보내는 것이다. Nginx가 새 backend로 연결되는지는 확인하지만 DNS, 외부 Load Balancer, Security Group의 inbound 경로, CDN과 실제 사용자 인터넷 경로까지 검증하지는 않는다.
-
-## 13.12 핵심 축약본
-
-```text
-CI:
-코드 checkout → 언어 환경 → test/lint/build
-
-Image:
-Docker build → SHA tag → GHCR push
-
-AWS:
-OIDC → 임시 IAM Role → SSM
-
-EC2:
-배포 파일 다운로드 → flock 획득 → 비활성 색상 실행
-→ 내부 health → Nginx 전환
-→ EC2 loopback의 Nginx 경유 health → 이전 색상 정리
-→ 실패 시 rollback
-```
-
-
-## 13.12.1 전체 원문 코드 라인별 주석본
-
-아래 주석은 학습을 위해 추가한 것이며 실제 프로젝트 파일에는 없다. 줄 끝 주석을 붙인 주석본은 의미를 따라가기 위한 설명용이므로 그대로 복사해 실행하지 않는다.
-
-### Workflow trigger
-
-```yaml
-name: Backend CI/CD              # GitHub Actions 화면에 표시할 Workflow 이름이다.
-
-on:                              # Workflow를 시작할 이벤트 조건이다.
-  push:                          # branch에 commit이 push될 때의 조건이다.
-    branches:
-      - main                     # main branch push만 대상으로 한다.
-  pull_request:                  # pull request가 생성·갱신될 때의 조건이다.
-    branches:
-      - main                     # main을 대상으로 하는 PR만 실행한다.
-  workflow_dispatch:             # GitHub 화면에서 사람이 수동 실행할 수 있게 한다.
-```
-
-### 테스트 Job
-
-```yaml
-jobs:                            # 서로 의존하거나 병렬 실행할 Job 목록을 시작한다.
-  test:                          # 다른 Job이 needs로 참조할 내부 Job ID다.
-    name: Test backend           # GitHub 화면에 표시할 Job 이름이다.
-    runs-on: ubuntu-latest       # GitHub가 제공하는 최신 Ubuntu Runner에서 실행한다.
-
-    steps:                       # 이 Runner 안에서 순서대로 실행할 단계다.
-      - name: Check out source code # 단계의 표시 이름이다.
-        uses: actions/checkout@v6 # 현재 commit의 Repository 파일을 Runner로 내려받는다.
-
-      - name: Set up Java 26     # Java 설치 단계 이름이다.
-        uses: actions/setup-java@v5 # Java 설치와 Gradle cache를 지원하는 공식 Action을 사용한다.
-        with:                    # Action에 전달할 입력값이다.
-          distribution: temurin # Temurin JDK 배포판을 선택한다.
-          java-version: "26"     # build.gradle toolchain과 같은 Java 26을 설치한다.
-          cache: gradle          # Gradle dependency cache를 다음 실행에서도 재사용한다.
-
-      - name: Grant execute permission to Gradle Wrapper # Linux에서 Wrapper 권한을 준비하는 단계다.
-        run: chmod +x gradlew    # gradlew 파일에 실행 권한을 추가한다.
-
-      - name: Run existing tests and verification # 최종 검증 단계 이름이다.
-        run: ./gradlew clean check --no-daemon # 이전 산출물을 지우고 일반·Redis·MySQL 테스트와 커버리지 검증을 실행한다.
-```
-
-### Image build와 push
-
-```yaml
-build-and-push:                  # 검증 후 image를 만드는 Job ID다.
-  name: Build and push backend image # GitHub 화면에 표시할 Job 이름이다.
-  if: github.event_name != 'pull_request' # PR 검증에서는 image 제작과 Registry push를 하지 않는다.
-  needs:
-    - test                       # test Job이 성공해야 이 Job이 시작된다.
-  runs-on: ubuntu-latest         # test Job과 별개의 새 Ubuntu Runner에서 실행한다.
-
-  steps:
-    - name: Check out source code # 새 build Runner에 현재 commit 파일을 받는 단계다.
-      uses: actions/checkout@v6 # Job 사이 workspace가 공유되지 않으므로 다시 checkout한다.
-
-    - name: Set up Docker Buildx # Docker builder 준비 단계다.
-      uses: docker/setup-buildx-action@v4 # cache와 멀티 플랫폼 기능이 있는 Docker Buildx를 준비한다.
-
-    - name: Log in to GHCR       # Registry 인증 단계다.
-      uses: docker/login-action@v4 # GHCR에 push할 Docker 인증을 수행한다.
-      with:
-        registry: ${{ env.REGISTRY }} # Workflow env의 ghcr.io 주소를 사용한다.
-        username: ${{ github.actor }} # Workflow를 실행한 GitHub 계정을 사용자 이름으로 사용한다.
-        password: ${{ secrets.GITHUB_TOKEN }} # GitHub가 실행마다 제공하는 임시 token을 비밀번호로 쓴다.
-
-    - name: Prepare image tags and labels # tag와 OCI label 생성 단계다.
-      id: metadata               # 다음 step이 output을 참조할 수 있도록 metadata ID를 준다.
-      uses: docker/metadata-action@v6 # image tag와 label 문자열을 계산하는 Action이다.
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }} # Registry와 Repository image 이름을 합친다.
-        tags: |                  # 한 image에 붙일 tag 규칙 목록이다.
-          type=sha,format=long,prefix= # 전체 commit SHA를 변경 없이 tag로 만든다.
-          type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }} # default branch ref일 때만 latest를 만든다.
-
-    - name: Build and push image # 실제 image build·push 단계다.
-      uses: docker/build-push-action@v7 # Dockerfile로 image를 만들고 Registry에 push한다.
-      with:
-        context: .               # Repository root를 Docker build context로 사용한다.
-        push: true               # build 후 로컬에만 두지 않고 GHCR로 전송한다.
-        tags: ${{ steps.metadata.outputs.tags }} # 앞 단계가 계산한 SHA와 latest tag를 모두 적용한다.
-        labels: ${{ steps.metadata.outputs.labels }} # metadata가 계산한 OCI label을 image에 넣는다.
-        cache-from: type=gha     # 이전 GitHub Actions build cache를 읽는다.
-        cache-to: type=gha,mode=max # 가능한 layer를 GitHub Actions cache에 저장한다.
-```
-
-### OIDC AWS 인증
-
-```yaml
-permissions:                     # 이 Job의 GitHub token 권한을 최소 범위로 다시 지정한다.
-  id-token: write                # AWS가 검증할 OIDC ID token 발급 권한을 허용한다.
-  contents: read                 # Repository 파일은 읽기만 허용한다.
-
-steps:
-  - name: Configure temporary AWS credentials # AWS 임시 인증 준비 단계다.
-    uses: aws-actions/configure-aws-credentials@v6.1.1 # OIDC token을 AWS Role 자격 증명으로 교환하는 Action이다.
-    with:
-      role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }} # GitHub를 신뢰하도록 설정된 IAM Role ARN이다.
-      aws-region: ${{ vars.AWS_REGION }} # 이후 AWS CLI가 사용할 Region이다.
-```
-
-### 배포 Job 조건
-
-```yaml
-deploy:                         # EC2 배포를 담당하는 Job ID다.
-  name: Deploy backend with Blue/Green # GitHub 화면에 표시할 이름이다.
-  if: vars.DEPLOY_ENABLED == 'true' && github.event_name != 'pull_request' # 배포 활성 변수가 true이고 PR이 아닐 때만 실행한다.
-  needs:
-    - build-and-push             # image build와 GHCR push가 성공한 뒤 실행한다.
-  runs-on: ubuntu-latest         # 앞 Job과 별개의 새 Runner를 배정받는다.
-  concurrency:                  # 같은 배포 자원을 사용하는 Job의 동시 실행 규칙이다.
-    group: backend-production-deploy # 백엔드 운영 배포끼리 같은 concurrency 그룹으로 묶는다.
-    cancel-in-progress: false    # 새 Job이 이미 실행 중인 배포를 중간 취소하지 않고 기다리게 한다.
-  permissions:
-    id-token: write              # AWS OIDC token 발급을 허용한다.
-    contents: read               # Repository 내용 읽기만 허용한다.
-```
-
-### SSM 명령 전송
-
-```bash
-PARAMETERS=$(jq -n \ # 입력 파일 없이 SSM parameters JSON을 만들고 결과를 PARAMETERS에 저장한다.
-  --arg deploy_path "${DEPLOY_PATH}" \ # 배포 경로를 jq 문자열 변수로 안전하게 전달한다.
-  --arg raw_base_url "${RAW_BASE_URL}" \ # 현재 commit의 deploy 파일 raw URL을 전달한다.
-  --arg image_tag "${IMAGE_TAG}" \ # 현재 commit SHA인 image tag를 전달한다.
-  --arg execution_timeout "900" \ # 시작된 원격 shell을 최대 900초 실행할 문자열 값을 전달한다.
-  '{ # jq가 생성할 JSON object를 시작한다.
-    executionTimeout: [$execution_timeout], # AWS-RunShellScript의 실행 제한 parameter를 문자열 배열로 만든다.
-    commands: [ # SSM Agent가 EC2에서 순서대로 실행할 shell 명령 배열이다.
-      "set -Eeuo pipefail", # EC2 쪽 shell에도 엄격한 오류 처리 옵션을 켠다.
-      ("install -d -m 755 " + $deploy_path + "/nginx"), # 배포 및 Nginx 설정 디렉터리를 만든다.
-      ("curl -fsSL " + $raw_base_url + "/compose.yaml -o " + $deploy_path + "/compose.yaml"), # 해당 commit의 Compose 파일을 받는다.
-      ("curl -fsSL " + $raw_base_url + "/nginx/backend-blue.conf -o " + $deploy_path + "/nginx/backend-blue.conf"), # blue용 Nginx 설정을 받는다.
-      ("curl -fsSL " + $raw_base_url + "/nginx/backend-green.conf -o " + $deploy_path + "/nginx/backend-green.conf"), # green용 Nginx 설정을 받는다.
-      ("curl -fsSL " + $raw_base_url + "/deploy-backend.sh -o " + $deploy_path + "/deploy-backend.sh"), # 배포 스크립트를 받는다.
-      ("chmod 755 " + $deploy_path + "/deploy-backend.sh"), # 받은 스크립트에 실행 권한을 준다.
-      ("cd " + $deploy_path), # Compose와 .env가 있는 배포 경로로 이동한다.
-      ("IMAGE_TAG=" + $image_tag + " ./deploy-backend.sh") # SHA tag를 넘겨 실제 blue/green 배포를 시작한다.
-    ] # commands 배열을 닫는다.
-  }') # JSON object와 명령 치환을 닫고 결과를 PARAMETERS에 대입한다.
-```
-
-이 주석본은 줄 끝 주석 때문에 그대로 실행하는 코드가 아니다. 바로 위 13.7의 주석 없는 원문이 실행 가능한 실제 형식이다.
-
-```bash
-COMMAND_ID=$(aws ssm send-command \ # EC2에 원격 shell 명령을 보내고 결과 ID를 변수에 저장한다.
-  --instance-ids "${DEPLOY_INSTANCE_ID}" \ # 배포할 관리 대상 EC2 ID를 지정한다.
-  --document-name "AWS-RunShellScript" \ # EC2에서 Linux shell 명령을 실행하는 SSM 문서를 사용한다.
-  --comment "Deploy backend commit ${IMAGE_TAG} with Blue/Green" \ # AWS 기록에 배포 commit 설명을 남긴다.
-  --timeout-seconds 60 \ # 명령이 SSM Agent에 전달되어 실행을 시작하기까지 최대 60초 기다린다.
-  --parameters "${PARAMETERS}" \ # jq로 만든 실제 다운로드·배포 명령 목록을 전달한다.
-  --query "Command.CommandId" \ # 전체 JSON 중 추적에 필요한 CommandId만 선택한다.
-  --output text) # 선택한 ID를 plain text로 출력해 shell 변수에 담는다.
-```
-
-### SSM 상태 조회
-
-실제 Step에는 다음 실행 제한이 있다.
-
-```yaml
-- name: Wait for backend deployment # SSM 명령이 끝날 때까지 상태를 조회하는 Step이다.
-  id: wait-deployment              # 이 Step을 식별할 ID다.
-  timeout-minutes: 18              # Step 자체는 최대 18분까지만 실행한다.
-```
-
-```bash
-for attempt in {1..200}; do # 1부터 200까지 최대 200번 상태를 조회한다.
-  STATUS=$(aws ssm get-command-invocation \ # 특정 EC2에서 실행 중인 명령 결과를 조회한다.
-    --command-id "${COMMAND_ID}" \ # 앞 Step에서 받은 SSM CommandId를 지정한다.
-    --instance-id "${DEPLOY_INSTANCE_ID}" \ # 명령을 실행한 EC2 instance를 지정한다.
-    --query "Status" \ # 전체 응답에서 Status만 선택한다.
-    --output text 2>/dev/null || true) # text로 받고, 아직 조회가 안 되는 순간의 오류는 반복을 위해 무시한다.
-
-  case "${STATUS}" in # 현재 상태 문자열에 따라 종료 여부를 결정한다.
-    Success) # EC2 명령 전체가 성공한 경우다.
-      exit 0 # Workflow Step을 성공으로 끝낸다.
-      ;;
-    Failed|Cancelled|TimedOut|Cancelling) # 재시도 대기가 의미 없는 실패·취소 상태들이다.
-      exit 1 # Workflow Step을 실패로 끝낸다.
-      ;;
-  esac
-
-  echo "Deployment status: ${STATUS:-Pending} (${attempt}/200)" # 빈 상태는 Pending으로 표시하고 진행 횟수를 출력한다.
-  sleep 5 # 다음 AWS API 조회 전 5초 기다린다.
-done
-
-echo "Backend deployment did not finish within 1000 seconds." >&2 # 200회 안에 끝나지 않았음을 표준 오류에 쓴다.
-exit 1 # Workflow 대기 Step을 실패로 끝내 다음 취소 Step이 실행되게 한다.
-```
-
-### 끝나지 않은 SSM 명령 취소
-
-```yaml
-- name: Cancel unfinished backend deployment # 실패하거나 취소된 run의 원격 명령을 정리하는 Step이다.
-  if: ${{ (failure() || cancelled()) && steps.send-command.outputs.command_id != '' }} # 앞 Step 실패 또는 run 취소 상태이고 CommandId가 있을 때만 실행한다.
-  env:
-    COMMAND_ID: ${{ steps.send-command.outputs.command_id }} # 전송 Step이 만든 SSM CommandId를 shell 환경변수로 넣는다.
-    DEPLOY_INSTANCE_ID: ${{ vars.DEPLOY_INSTANCE_ID }} # 명령을 보낸 EC2 ID를 환경변수로 넣는다.
-  run: |
-    aws ssm cancel-command \ # 해당 SSM 명령에 취소를 요청한다.
-      --command-id "${COMMAND_ID}" \ # 취소할 CommandId를 지정한다.
-      --instance-ids "${DEPLOY_INSTANCE_ID}" || true # 대상 EC2를 지정하고, 이미 끝난 명령 등의 취소 오류는 원래 실패를 덮지 않게 무시한다.
-```
 
 ### 배포 대상 색상 선택
 
@@ -881,6 +775,42 @@ case "${active_color}" in # 현재 색상 값에 따라 비활성 배포 대상�
 esac
 ```
 
+## 13.10 프론트 CI/CD의 차이
+
+검증:
+
+```text
+npm ci
+→ npm run lint
+→ npm run build
+```
+
+이미지 build argument:
+
+```yaml
+build-args: |
+  VITE_API_BASE_URL=/api
+```
+
+프론트 배포 Nginx에는 `BACKEND_UPSTREAM`을 `envsubst`로 넣는다.
+
+백엔드 배포 흐름을 이해하면 프론트는 다음 차이만 확인하면 된다.
+
+- Redis 준비 없음
+- Spring Actuator 대신 프론트 Nginx `/health`
+- `/api/`를 별도 백엔드 서버로 proxy
+- 기존 frontend container는 현재 스크립트에서 즉시 중지하지 않고 active proxy만 전환
+
+
+### 프론트 image 빌드 인자 라인별 주석본
+
+```yaml
+build-args:                 # Dockerfile의 ARG로 전달할 build 시점 변수 목록이다.
+  VITE_API_BASE_URL=/api    # Vite가 브라우저 bundle에 넣을 API 기준 주소를 /api로 지정한다.
+```
+
+이 값은 image가 만들어진 뒤 container를 실행할 때가 아니라 `npm run build`가 실행되는 시점에 JavaScript 코드에 포함된다.
+
 ### 핵심 배포와 health check
 
 ```bash
@@ -905,6 +835,54 @@ fi
 compose stop "${previous_service}" # 새 경로가 정상인 뒤에만 기존 backend container를 중지한다.
 ```
 
+## 13.11 OIDC 확인 Workflow
+
+`aws-oidc-check.yml`은 전체 배포 전에 다음만 독립적으로 검사한다.
+
+```text
+AWS OIDC 인증 성공 여부
+→ aws sts get-caller-identity
+
+SSM 연결 성공 여부
+→ EC2에서 hostname, whoami, docker --version
+```
+
+배포 문제를 인증·연결 문제와 애플리케이션 문제로 분리해서 진단할 수 있게 한다.
+
+## 13.11.1 동시 실행과 SSM 대기 문제를 해결한 구조
+
+### 같은 종류의 동시 배포를 두 단계에서 막는다
+
+Workflow의 `concurrency`가 같은 종류의 배포 Job을 직렬화하고, EC2 배포 스크립트의 `flock`이 같은 `DEPLOY_PATH`를 사용하는 실행을 한 번 더 막는다. 따라서 두 실행이 같은 `.env`, container와 Nginx를 동시에 수정하지 않는다. GitHub Actions concurrency에서는 실행 중인 배포는 취소하지 않지만 대기 중인 run이 여러 개 쌓이면 최신 pending run만 남을 수 있으므로, 모든 중간 commit이 반드시 차례로 배포된다는 뜻은 아니다.
+
+### SSM 제한보다 Workflow가 더 오래 기다리고 실패 시 취소한다
+
+명령 전달 제한은 60초, 실제 shell 실행 제한은 900초이고 Workflow는 최대 약 1000초 동안 결과를 조회한다. 대기 실패 또는 Workflow 취소 시 `cancel-command`를 호출하여 GitHub Actions는 끝났는데 EC2 명령만 계속 실행될 가능성을 줄인다. 취소 요청과 실제 EC2 프로세스 종료 사이에는 짧은 지연이 있을 수 있다.
+
+## 13.11.2 현재 배포 구조에서 남아 있는 한계
+
+### rollback은 여전히 최선 시도다
+
+이번 변경에서는 rollback 구현을 수정하지 않았다. `rollback_proxy` 내부의 Nginx 재생성 등에 `|| true`가 있으므로 복구 명령 자체가 실패해도 함수는 그 실패를 밖으로 전달하지 않는다. 따라서 정상 배포에는 영향을 주지 않지만, **Nginx 전환 후 오류가 발생한 드문 상황에서 자동 복구가 반드시 성공한다고 보장할 수 없다.** 이 경우 container 상태와 Nginx 응답을 확인하고 수동 복구해야 한다. 보류할 수는 있지만 안전하다고 간주하여 무시할 문제는 아니다.
+
+### EC2가 GHCR image를 pull할 인증은 별도 전제다
+
+Workflow Runner는 `docker/login-action`으로 GHCR에 로그인하지만 그 인증은 EC2로 전달되지 않는다. 배포 스크립트에도 `docker login`이 없다. 따라서 package가 private이면 EC2 Docker가 미리 GHCR에 로그인되어 있어야 하며, public package라면 인증 없이 pull할 수 있다.
+
+### 배포 파일 다운로드는 인증 없는 raw URL을 사용한다
+
+SSM 명령은 `https://raw.githubusercontent.com/...`에서 `curl`로 파일을 받으며 GitHub token을 붙이지 않는다. private repository라면 이 다운로드가 실패할 수 있으므로 별도의 인증 방식이나 artifact 전달 구조가 필요하다.
+
+### Nginx 검사는 공개 인터넷 경로 검사가 아니다
+
+```bash
+wait_for_health "http://127.0.0.1:${nginx_port}/health"
+```
+
+이 요청은 EC2 자신이 host에 publish된 Nginx port로 보내는 것이다. Nginx가 새 backend로 연결되는지는 확인하지만 DNS, 외부 Load Balancer, Security Group의 inbound 경로, CDN과 실제 사용자 인터넷 경로까지 검증하지는 않는다.
+
+이 절은 앞의 실제 코드 원문을 읽은 직후 확인한다. 원문과 같은 순서의 설명용 주석본이며 실제 실행 파일에는 주석이 없다.
+
 ### rollback 함수
 
 ```bash
@@ -916,6 +894,26 @@ rollback_proxy() { # Nginx 전환 뒤 실패했을 때 호출할 복구 절차�
 ```
 
 `|| true` 때문에 rollback 함수가 호출되었다는 사실과 실제 proxy 복구 성공은 같은 뜻이 아니다. 장애 시에는 container 상태와 Nginx 응답을 별도로 다시 확인해야 한다.
+
+## 13.12 핵심 축약본
+
+```text
+CI:
+코드 checkout → 언어 환경 → test/lint/build
+
+Image:
+Docker build → SHA tag → GHCR push
+
+AWS:
+OIDC → 임시 IAM Role → SSM
+
+EC2:
+배포 파일 다운로드 → flock 획득 → 비활성 색상 실행
+→ 내부 health → Nginx 전환
+→ EC2 loopback의 Nginx 경유 health → 이전 색상 정리
+→ 실패 시 rollback
+```
+
 
 ## 13.13 스킵할 코드
 
