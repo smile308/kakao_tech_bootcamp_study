@@ -38,7 +38,7 @@ public class SessionOriginInterceptor implements HandlerInterceptor {
 
     private boolean isCookieSessionRequest(HttpServletRequest request) {
         String method = request.getMethod();
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
 
         return method.equals("POST") && path.equals("/sessions")
                 || method.equals("POST") && path.equals("/sessions/refresh")

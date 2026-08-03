@@ -133,7 +133,7 @@ public boolean preHandle(
 
 private boolean isCookieSessionRequest(HttpServletRequest request) {
     String method = request.getMethod();
-    String path = request.getServletPath();
+    String path = request.getRequestURI();
 
     return method.equals("POST") && path.equals("/sessions")
             || method.equals("POST") && path.equals("/sessions/refresh")
@@ -141,7 +141,70 @@ private boolean isCookieSessionRequest(HttpServletRequest request) {
 }
 ```
 
-`preHandle()`이 `false`를 반환하면 Controller를 실행하지 않는다. 허용되지 않은 `Origin`이면 여기서 403 JSON을 직접 작성한다. 다만 현재 `CorsOriginProvider.isAllowed()`는 `Origin` header가 `null`인 요청도 허용한다. 따라서 이 코드를 “모든 CSRF 요청을 완전히 차단한다”고 해석하면 안 된다. browser cookie에는 `SameSite=Strict`도 적용되며, 이 interceptor는 허용되지 않은 명시적 Origin을 추가로 거부하는 방어다.
+실제 Origin 허용 판단 코드:
+
+```java
+public boolean isAllowed(String origin) {
+    return origin != null && allowedOrigins.contains(origin);
+}
+```
+
+`preHandle()`이 `false`를 반환하면 Controller를 실행하지 않는다. 현재 정책은 설정된 허용 목록과 정확히 일치하는 Origin만 통과시킨다.
+
+```text
+허용 목록에 있는 Origin
+→ Controller 실행
+
+허용 목록에 없는 Origin
+→ 403 Forbidden_Origin
+
+Origin header 없음
+→ 403 Forbidden_Origin
+```
+
+현재 React frontend의 로그인·재발급·로그아웃은 browser `fetch()`의 POST·DELETE 요청이므로 Origin을 전달한다. 반면 Origin을 넣지 않은 MockMvc, Postman과 curl 요청은 거부되며, 수동 호출이 필요하면 `cors.allowed-origins`에 등록된 Origin header를 명시해야 한다. Refresh Cookie의 `SameSite=Strict`와 이 검사는 서로 다른 방어층이다.
+
+실제 보안 테스트의 관련 원문:
+
+```java
+private static final String ALLOWED_ORIGIN = "http://localhost:5173";
+
+@Test
+void 로그인_API는_인증_없이_접근할_수_있다() throws Exception {
+    mockMvc.perform(
+                    post("/sessions")
+                            .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}")
+            )
+            .andExpect(status().isBadRequest());
+}
+
+@Test
+void Origin이_없는_세션_API_요청은_거부한다() throws Exception {
+    mockMvc.perform(
+                    post("/sessions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}")
+            )
+            .andExpect(status().isForbidden())
+            .andExpect(content().contentType("application/json;charset=UTF-8"))
+            .andExpect(jsonPath("$.message").value("Forbidden_Origin"));
+}
+
+@Test
+void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Exception {
+    mockMvc.perform(
+                    post("/sessions")
+                            .header(HttpHeaders.ORIGIN, "http://attacker.example")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}")
+            )
+            .andExpect(status().isForbidden());
+}
+```
+
+첫 테스트가 `400`을 기대하는 이유는 허용 Origin 검사를 통과한 뒤 빈 로그인 DTO의 입력값 검증에서 실패하기 때문이다. Origin 누락 요청은 `SessionOriginInterceptor`가 JSON 본문과 함께 403으로 거부한다. 허용되지 않은 Origin은 Spring의 CORS 처리가 interceptor보다 먼저 403으로 거부할 수 있으므로 마지막 테스트는 status만 검증한다.
 
 ## 5.2.1 실제 로그인 처리 흐름
 
@@ -412,6 +475,15 @@ return ResponseCookie.from(COOKIE_NAME, refreshToken)
 
 ### Refresh Session 회전의 실제 코드
 
+Repository 조회에는 실제로 비관적 write lock이 적용되어 있다.
+
+파일: `repository/AuthSessionRepository.java`
+
+```java
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+Optional<AuthSession> findByRefreshTokenHash(String refreshTokenHash);
+```
+
 파일: `service/SessionService.java`
 
 ```java
@@ -454,7 +526,20 @@ public SessionRefreshResponseDto refreshSession(String refreshToken) {
 }
 ```
 
-회전은 기존 DB row의 refresh token hash와 만료 시간을 새 값으로 교체하는 것이다. 따라서 정상 재발급이 한 번 끝나면 이전 Refresh Token 원문을 다시 hash해도 현재 row를 찾을 수 없다. 다만 이 코드만으로 동시에 들어온 두 재발급 요청을 원자적으로 한 번만 성공시킨다고 단정할 수는 없다. repository 조회에 lock이나 조건부 update가 없으므로 동시 재발급 경쟁은 별도의 보강 대상이다.
+회전은 기존 DB row의 Refresh Token hash와 만료 시간을 새 값으로 교체하는 것이다. `SessionService` class 전체에는 `@Transactional`이 적용되어 있으므로 Repository가 얻은 write lock은 회전된 hash가 commit될 때까지 유지된다.
+
+같은 기존 Refresh Token으로 요청 A와 B가 동시에 들어오면 다음 순서가 된다.
+
+```text
+요청 A가 기존 hash의 AuthSession row에 write lock 획득
+→ 요청 B는 같은 row 조회에서 대기
+→ 요청 A가 hash를 새 값으로 회전하고 commit
+→ 요청 A의 lock 해제
+→ 요청 B의 old hash 조회 결과 없음
+→ Invalid_Refresh_Token
+```
+
+따라서 현재 코드에서는 같은 기존 Refresh Token으로 들어온 동시 재발급 요청 중 정상적으로 하나만 성공한다. `refreshPromise`는 한 browser 안에서 불필요한 중복 요청을 줄이는 frontend 장치이고, DB write lock은 여러 browser·server 요청까지 포함해 backend에서 실제 회전 경쟁을 직렬화하는 장치다.
 
 ## 5.6 실제 코드 발췌: 프론트 요청과 자동 재발급
 
@@ -763,6 +848,16 @@ public AccessTokenClaims getAccessTokenClaims(String token) { // JWT를 검증�
 
 ### `SessionOriginInterceptor`
 
+Origin 허용 판단:
+
+```java
+public boolean isAllowed(String origin) { // 요청 Origin을 이 서비스가 신뢰하는지 반환한다.
+    return origin != null && allowedOrigins.contains(origin); // header가 존재하고 설정의 허용 목록에 정확히 포함된 경우에만 true다.
+}
+```
+
+`&&`는 왼쪽부터 평가하는 논리 AND다. `origin == null`이면 왼쪽이 false이므로 `contains()`를 호출하지 않고 전체 결과가 false가 된다. 따라서 null pointer 오류 없이 Origin 누락 요청을 거부한다.
+
 `InterceptorConfig`의 연결 부분:
 
 ```java
@@ -791,7 +886,7 @@ public boolean preHandle( // Controller method 실행을 계속할지 boolean으
 
     String origin = request.getHeader("Origin"); // browser가 보낸 요청 출처 header를 읽는다.
 
-    if (corsOriginProvider.isAllowed(origin)) { // 설정된 허용 Origin이거나 현재 구현상 null인지 검사한다.
+    if (corsOriginProvider.isAllowed(origin)) { // Origin이 존재하면서 설정된 허용 목록에 포함되는지 검사한다.
         return true; // 허용되면 Controller 실행을 계속한다.
     }
 
@@ -803,11 +898,51 @@ public boolean preHandle( // Controller method 실행을 계속할지 boolean으
 
 private boolean isCookieSessionRequest(HttpServletRequest request) { // Origin 검사가 필요한 세션 요청인지 계산한다.
     String method = request.getMethod(); // HTTP method를 읽는다.
-    String path = request.getServletPath(); // servlet 내부 path를 읽는다.
+    String path = request.getRequestURI(); // MockMvc와 실제 server에서 공통으로 요청 URI인 /sessions 또는 /sessions/refresh를 읽는다.
 
     return method.equals("POST") && path.equals("/sessions") // 로그인 POST인지 검사한다.
             || method.equals("POST") && path.equals("/sessions/refresh") // 재발급 POST인지 검사한다.
             || method.equals("DELETE") && path.equals("/sessions"); // 로그아웃 DELETE인지 검사한다.
+}
+```
+
+Origin 정책 테스트:
+
+```java
+private static final String ALLOWED_ORIGIN = "http://localhost:5173"; // local·test 설정에 등록된 정상 frontend Origin을 재사용한다.
+
+@Test // 아래 method를 JUnit test case로 등록한다.
+void 로그인_API는_인증_없이_접근할_수_있다() throws Exception { // 정상 Origin은 보안 단계에서 막히지 않는지 확인한다.
+    mockMvc.perform( // 가상 HTTP 요청을 Spring MVC에 보낸다.
+                    post("/sessions") // 로그인 endpoint에 POST 요청을 만든다.
+                            .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN) // 실제 browser 요청처럼 허용된 Origin header를 넣는다.
+                            .contentType(MediaType.APPLICATION_JSON) // request body 형식을 JSON으로 지정한다.
+                            .content("{}") // 입력값 검증 실패를 확인하기 위해 빈 JSON object를 보낸다.
+            )
+            .andExpect(status().isBadRequest()); // Origin 검사는 통과하고 DTO 검증에서 400이 되는지 확인한다.
+}
+
+@Test // Origin 누락 거부를 별도 case로 검증한다.
+void Origin이_없는_세션_API_요청은_거부한다() throws Exception { // header가 없는 요청의 기대 동작을 test 이름에 표현한다.
+    mockMvc.perform(
+                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
+                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
+                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
+            )
+            .andExpect(status().isForbidden()) // interceptor가 HTTP 403을 반환하는지 확인한다.
+            .andExpect(content().contentType("application/json;charset=UTF-8")) // 직접 작성한 응답의 content type을 확인한다.
+            .andExpect(jsonPath("$.message").value("Forbidden_Origin")); // JSON 오류 message가 Origin 거부 사유인지 확인한다.
+}
+
+@Test // 허용 목록 밖 Origin 거부를 별도 case로 검증한다.
+void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Exception { // 공격자 Origin을 가정한 test다.
+    mockMvc.perform(
+                    post("/sessions") // Origin 검사가 적용되는 로그인 POST를 만든다.
+                            .header(HttpHeaders.ORIGIN, "http://attacker.example") // 허용 목록에 없는 Origin을 넣는다.
+                            .contentType(MediaType.APPLICATION_JSON) // JSON body임을 지정한다.
+                            .content("{}") // Controller 검증보다 Origin 검사가 먼저 실행되는지 확인할 body다.
+            )
+            .andExpect(status().isForbidden()); // Spring CORS 또는 interceptor가 허용 목록 불일치로 HTTP 403을 반환하는지 확인한다.
 }
 ```
 
@@ -893,6 +1028,15 @@ public String hashRefreshToken(String refreshToken) { // DB 저장과 조회에 
 ### Refresh Session 회전
 
 ```java
+@Lock(LockModeType.PESSIMISTIC_WRITE) // 조회한 AuthSession row를 Transaction이 끝날 때까지 다른 write 요청이 동시에 변경하지 못하게 잠근다.
+Optional<AuthSession> findByRefreshTokenHash( // Refresh Token hash로 session을 찾되 잠금 결과가 없을 수도 있음을 Optional로 반환한다.
+        String refreshTokenHash // browser가 보낸 원문을 SHA-256으로 바꾼 조회 조건이다.
+);
+```
+
+이 Repository method는 `SessionService`의 `@Transactional` 범위 안에서 호출된다. 따라서 method 호출이 끝났다고 바로 lock이 풀리는 것이 아니라 Service Transaction이 commit 또는 rollback될 때 풀린다.
+
+```java
 public SessionRefreshResponseDto refreshSession(String refreshToken) { // Cookie에서 받은 Refresh Token으로 새 token 쌍을 만든다.
     if (refreshToken == null || refreshToken.isBlank()) { // Cookie가 없거나 빈 값인지 확인한다.
         throw new AuthException("Invalid_Refresh_Token"); // 사용할 token이 없으면 401 업무 예외를 던진다.
@@ -900,7 +1044,7 @@ public SessionRefreshResponseDto refreshSession(String refreshToken) { // Cookie
 
     String refreshTokenHash = refreshTokenProvider.hashRefreshToken(refreshToken); // 원문을 DB에 저장된 형식과 같은 hash로 바꾼다.
     AuthSession authSession = authSessionRepository // Refresh Session repository 조회를 시작한다.
-            .findByRefreshTokenHash(refreshTokenHash) // 같은 hash를 가진 session row를 찾는다.
+            .findByRefreshTokenHash(refreshTokenHash) // 같은 hash의 session row를 write lock과 함께 찾으며, 경쟁 요청은 여기서 기다린다.
             .orElseThrow(() -> new AuthException("Invalid_Refresh_Token")); // 없으면 401 예외를 지연 생성해 던진다.
 
     if (!authSession.isActive(LocalDateTime.now())) { // revoke되지 않았고 만료 전인지 검사한다.
@@ -1193,7 +1337,8 @@ if (!(authVersionClaim instanceof Number authVersion)) {
 9. CSRF를 비활성화했는데 세션 API에서 Origin을 검사하는 이유는 무엇인가?
 10. `SessionResponseDto` 안에 Refresh Token 원문이 있는데도 JSON body에는 포함되지 않는 이유는 무엇인가?
 11. `authenticationEntryPoint`, `accessDeniedHandler`, JWT Filter의 catch는 각각 어떤 상황에서 응답을 직접 만드는가?
-12. 현재 Refresh Token 회전 코드가 동시에 들어온 재발급 요청을 반드시 하나만 성공시킨다고 단정할 수 없는 이유는 무엇인가?
+12. 같은 기존 Refresh Token으로 재발급 요청 두 개가 동시에 들어와도 하나만 성공하도록 만드는 backend 장치는 무엇인가?
+13. 현재 세션 Origin 정책에서 header가 없거나 허용 목록에 없는 요청은 각각 어떻게 처리되는가?
 
 ## 5.11 오답노트
 

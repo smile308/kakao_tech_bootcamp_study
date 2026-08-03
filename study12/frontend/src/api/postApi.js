@@ -6,12 +6,12 @@ import {
 } from "./postNormalizer.js";
 
 export const postApi = {
-    async getPosts({ page = 0, size = 10 } = {}) {
+    async getPosts({ page = 0, size = 10, signal } = {}) {
         const params = new URLSearchParams({
             page: String(page),
             size: String(size),
         });
-        const result = await request(`/posts?${params.toString()}`);
+        const result = await request(`/posts?${params.toString()}`, { signal });
 
         return {
             posts: Array.isArray(result?.posts)
@@ -21,8 +21,8 @@ export const postApi = {
         };
     },
 
-    async getPost(postId) {
-        return normalizeDetailPost(await request(`/posts/${postId}`));
+    async getPost(postId, { signal } = {}) {
+        return normalizeDetailPost(await request(`/posts/${postId}`, { signal }));
     },
 
     createPost(payload) {

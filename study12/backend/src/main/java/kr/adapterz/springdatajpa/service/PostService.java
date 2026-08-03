@@ -41,6 +41,7 @@ public class PostService {
     private final EntityManager entityManager;
 
     public PostPageResponseDto getPostList(int page, int size) {
+        validatePagination(page, size);
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Post> posts = postRepository
@@ -56,6 +57,15 @@ public class PostService {
         }
 
         return PostResponseFactory.createPageResponse(result, posts.hasNext());
+    }
+
+    private void validatePagination(int page, int size) {
+        if (page < 0) {
+            throw new InvalidRequestException("Invalid_Page");
+        }
+        if (size < 1) {
+            throw new InvalidRequestException("Invalid_Page_Size");
+        }
     }
 
     @Transactional

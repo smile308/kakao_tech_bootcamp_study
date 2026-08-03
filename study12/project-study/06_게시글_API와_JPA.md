@@ -367,7 +367,20 @@ public PostReportResponseDto reportPost(
 
 작성자 User에 락을 거는 이유는 서로 다른 게시글에서 같은 작성자를 동시에 신고해도 누적 신고 수가 유실되지 않게 하기 위해서다.
 
-게시글에는 `PESSIMISTIC_WRITE`, 작성자 User에도 `PESSIMISTIC_WRITE` lock을 건다. 같은 게시글 신고 카운터와 같은 작성자의 누적 신고 수를 각각 직렬화한다. 중복 신고의 최종 방어는 `post_reports(post_id, user_id)` unique constraint다. 다만 현재 신고 method는 좋아요처럼 `saveAndFlush()`와 `DataIntegrityViolationException` 변환을 사용하지 않으므로, 완전히 동시에 들어온 중복 신고는 DB unique 제약에서 막히더라도 프로젝트의 `Already_Reported` 400이 아니라 commit 시점의 DB 예외로 나타날 가능성이 있다.
+게시글에는 `PESSIMISTIC_WRITE`, 작성자 User에도 `PESSIMISTIC_WRITE` lock을 건다. 같은 게시글 신고 카운터와 같은 작성자의 누적 신고 수를 각각 직렬화한다.
+
+같은 사용자가 같은 게시글에 동시에 두 번 신고해도 두 요청은 `getActivePostForUpdate(postId)`에서 같은 게시글 row의 write lock을 경쟁한다. 첫 요청이 Transaction을 끝낼 때까지 두 번째 요청은 기다리고, 락을 얻은 뒤 `existsByPostAndUser()`를 실행하므로 첫 요청이 저장한 신고를 확인해 `Already_Reported`로 거부된다.
+
+```text
+요청 A가 게시글 write lock 획득
+→ 요청 B는 같은 게시글 lock에서 대기
+→ 요청 A가 신고 저장 후 commit
+→ 요청 B가 lock 획득
+→ 중복 신고 조회 결과 true
+→ Already_Reported
+```
+
+`post_reports(post_id, user_id)` unique constraint도 중복 row 자체를 막는 최종 DB 제약으로 남아 있다. 하지만 현재 Service 흐름에서 동시 중복 신고를 순서대로 처리하게 만드는 핵심은 unique 예외 변환이 아니라 중복 검사보다 먼저 획득하는 게시글 write lock이다.
 
 ## 6.9 핵심 축약본
 
@@ -637,7 +650,7 @@ public PostReportResponseDto reportPost( // 신고 처리 결과를 반환한다
     }
 
     if (postReportRepository.existsByPostAndUser(post, reporter)) { // 이미 같은 사용자의 신고 row가 있는지 조회한다.
-        throw new InvalidRequestException("Already_Reported"); // 순차적인 중복 신고를 거부한다.
+        throw new InvalidRequestException("Already_Reported"); // 게시글 lock 뒤 조회하므로 기다리던 동시 중복 요청도 여기서 거부한다.
     }
 
 
@@ -794,7 +807,7 @@ Objects.equals(a, b)
 9. `validatePostVersion()`과 Entity의 `@Version`은 각각 어느 시점의 충돌을 막는가?
 10. `OPTIMISTIC_FORCE_INCREMENT`가 필요한 수정 상황은 무엇인가?
 11. `@MapsId`가 적용된 PostCounter의 `post_id`는 어떤 두 역할을 동시에 하는가?
-12. 동시에 들어온 중복 신고가 항상 `Already_Reported`로 응답된다고 보장할 수 없는 이유는 무엇인가?
+12. 같은 게시글에 동시에 들어온 중복 신고가 `Already_Reported` 검사까지 순서대로 처리되는 이유는 무엇인가?
 
 ## 6.12 오답노트
 

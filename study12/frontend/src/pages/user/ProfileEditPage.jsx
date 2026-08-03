@@ -24,7 +24,6 @@ import "../../styles/user.css";
 function ProfileEditPage() {
     const navigate = useNavigate();
     const toastTimerRef = useRef(null);
-    const profileRequestRef = useRef(null);
     const [user, setUser] = useState(null);
     const [nickname, setNickname] = useState("");
     const [newProfileImage, setNewProfileImage] = useState(null);
@@ -37,42 +36,30 @@ function ProfileEditPage() {
     const [toast, setToast] = useState({ isVisible: false, message: "" });
 
     useEffect(() => {
-        let active = true;
+        const controller = new AbortController();
+        setLoadError(null);
 
-        if (!profileRequestRef.current) {
-            setLoadError(null);
-            profileRequestRef.current = userApi.getMyInfo();
-        }
-
-        const request = profileRequestRef.current;
-
-        request
+        userApi.getMyInfo({ signal: controller.signal })
             .then((result) => {
-                if (!active) {
-                    return;
-                }
                 setUser(result);
                 setNickname(result.nickname ?? "");
                 setPreviewUrl(result.profileImage ?? null);
                 setLoadError(null);
             })
             .catch((error) => {
-                if (active) {
-                    setLoadError(error);
+                if (controller.signal.aborted || error?.name === "AbortError") {
+                    return;
                 }
-                if (profileRequestRef.current === request) {
-                    profileRequestRef.current = null;
-                }
+                setLoadError(error);
             });
 
         return () => {
-            active = false;
+            controller.abort();
             window.clearTimeout(toastTimerRef.current);
         };
     }, [retryVersion]);
 
     function retryLoadProfile() {
-        profileRequestRef.current = null;
         setLoadError(null);
         setRetryVersion((previous) => previous + 1);
     }

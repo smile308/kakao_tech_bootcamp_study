@@ -26,6 +26,6 @@ public class CorsOriginProvider {
     }
 
     public boolean isAllowed(String origin) {
-        return origin == null || allowedOrigins.contains(origin);
+        return origin != null && allowedOrigins.contains(origin);
     }
 }

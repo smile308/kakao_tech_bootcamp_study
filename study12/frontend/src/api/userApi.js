@@ -1,8 +1,8 @@
 import { request } from "./api.js";
 
 export const userApi = {
-    getMyInfo() {
-        return request("/users/me");
+    getMyInfo({ signal } = {}) {
+        return request("/users/me", { signal });
     },
 
     updateProfile(payload) {

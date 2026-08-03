@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 class SecurityConfigTest {
+
+    private static final String ALLOWED_ORIGIN = "http://localhost:5173";
 
     @Autowired
     private WebApplicationContext webApplicationContext;
@@ -49,9 +52,33 @@ class SecurityConfigTest {
     void 로그인_API는_인증_없이_접근할_수_있다() throws Exception {
         mockMvc.perform(
                         post("/sessions")
+                                .header(HttpHeaders.ORIGIN, ALLOWED_ORIGIN)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{}")
                 )
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void Origin이_없는_세션_API_요청은_거부한다() throws Exception {
+        mockMvc.perform(
+                        post("/sessions")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}")
+                )
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentType("application/json;charset=UTF-8"))
+                .andExpect(jsonPath("$.message").value("Forbidden_Origin"));
+    }
+
+    @Test
+    void 허용되지_않은_Origin의_세션_API_요청은_거부한다() throws Exception {
+        mockMvc.perform(
+                        post("/sessions")
+                                .header(HttpHeaders.ORIGIN, "http://attacker.example")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}")
+                )
+                .andExpect(status().isForbidden());
     }
 }

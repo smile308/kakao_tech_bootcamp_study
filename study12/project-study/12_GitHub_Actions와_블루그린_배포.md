@@ -480,7 +480,7 @@ SSM 연결 성공 여부
 
 ### 동시 배포를 막는 잠금이 없다
 
-백엔드와 프론트 Workflow에는 GitHub Actions의 `concurrency` 설정이 없고, 배포 스크립트에도 파일 lock이 없다. 짧은 간격으로 두 commit이 push되면 두 배포가 같은 EC2의 `.env`, container와 Nginx를 동시에 바꿀 수 있다. 현재 코드만으로는 나중에 시작한 배포가 항상 최종 상태가 된다고 보장할 수 없다.
+백엔드와 프론트 Workflow 각각에는 GitHub Actions의 `concurrency` 설정이 없고, 배포 스크립트에도 파일 lock이 없다. 같은 repository에 짧은 간격으로 두 commit이 push되어 같은 종류의 배포 run 두 개가 겹치면, 두 run이 해당 `DEPLOY_PATH`의 같은 `.env`, container와 Nginx를 동시에 바꿀 수 있다. 현재 코드만으로는 나중에 시작한 배포가 항상 최종 상태가 된다고 보장할 수 없다. 백엔드와 프론트가 서로 같은 배포 경로를 쓴다는 뜻은 아니며, 각 repository 안에서 이전 run과 다음 run이 겹치는 문제다.
 
 ### EC2가 GHCR image를 pull할 인증은 별도 전제다
 
@@ -999,7 +999,7 @@ SSM Agent가 등록된 EC2에 AWS API를 통해 명령을 전달한다. Workflow
 14. Workflow가 450초 뒤 실패해도 EC2 명령이 계속될 수 있는 이유는 무엇인가?
 15. `rollback_proxy`가 호출되어도 서비스 복구를 보장할 수 없는 이유는 무엇인가?
 16. private GHCR package를 사용한다면 EC2에 어떤 준비가 필요한가?
-17. 현재 Workflow 두 개가 동시에 배포될 때 생길 수 있는 문제는 무엇인가?
+17. 같은 backend 또는 frontend Workflow의 배포 run 두 개가 겹칠 때 생길 수 있는 문제는 무엇인가?
 
 ## 12.15 오답노트
 

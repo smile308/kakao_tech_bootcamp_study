@@ -15,7 +15,6 @@ function AppHeader({
 }) {
     const navigate = useNavigate();
     const menuRef = useRef(null);
-    const profileRequestRef = useRef(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [resolvedProfileImage, setResolvedProfileImage] = useState(
         profileImage ?? null,
@@ -31,25 +30,21 @@ function AppHeader({
             return;
         }
 
-        let active = true;
-        if (!profileRequestRef.current) {
-            profileRequestRef.current = userApi.getMyInfo();
-        }
+        const controller = new AbortController();
 
-        profileRequestRef.current
+        userApi.getMyInfo({ signal: controller.signal })
             .then((user) => {
-                if (active) {
-                    setResolvedProfileImage(user?.profileImage ?? null);
-                }
+                setResolvedProfileImage(user?.profileImage ?? null);
             })
-            .catch(() => {
-                if (active) {
-                    setResolvedProfileImage(null);
+            .catch((error) => {
+                if (controller.signal.aborted || error?.name === "AbortError") {
+                    return;
                 }
+                setResolvedProfileImage(null);
             });
 
         return () => {
-            active = false;
+            controller.abort();
         };
     }, [profileImage, showProfile]);
 

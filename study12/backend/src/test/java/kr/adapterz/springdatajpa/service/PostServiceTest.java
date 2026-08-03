@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.service;
 import jakarta.persistence.EntityManager;
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostDeleteRequestDto;
+import kr.adapterz.springdatajpa.dto.post.PostPageResponseDto;
 import kr.adapterz.springdatajpa.dto.post.PostViewResponseDto;
 import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.AuthException;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import kr.adapterz.springdatajpa.dto.post.PostReportResponseDto;
@@ -27,8 +29,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,6 +65,36 @@ class PostServiceTest {
     @Mock
     private PostReportRepository postReportRepository;
 
+    @Test
+    void 게시글_목록의_page가_음수이면_Invalid_Page_예외가_발생한다() {
+        assertThatThrownBy(() -> postService.getPostList(-1, 10))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Invalid_Page");
+
+        verifyNoInteractions(postRepository);
+    }
+
+    @Test
+    void 게시글_목록의_size가_1보다_작으면_Invalid_Page_Size_예외가_발생한다() {
+        assertThatThrownBy(() -> postService.getPostList(0, 0))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("Invalid_Page_Size");
+
+        verifyNoInteractions(postRepository);
+    }
+
+    @Test
+    void 게시글_목록의_size에는_최댓값을_적용하지_않는다() {
+        when(postRepository.findByDeletedFalseAndReportCountLessThanOrderByPostIdDesc(
+                anyInt(),
+                any()
+        )).thenReturn(Page.empty());
+
+        PostPageResponseDto response = postService.getPostList(0, 10_000);
+
+        assertThat(response.getPosts()).isEmpty();
+        assertThat(response.isHasNextPage()).isFalse();
+    }
 
     @Test
     void 게시글_상세_조회_시_게시글이_없으면_No_Post_예외가_발생한다() {

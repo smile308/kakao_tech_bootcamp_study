@@ -12,9 +12,8 @@ function PostsPage() {
     const [hasNextPage, setHasNextPage] = useState(true);
     const [loadError, setLoadError] = useState(null);
     const [failedPage, setFailedPage] = useState(null);
-    const [retryVersion, setRetryVersion] = useState(0);
     const loadingRef = useRef(false);
-    const initialRequestRef = useRef(null);
+    const requestControllerRef = useRef(null);
     const nextPageRef = useRef(0);
 
     const loadPage = useCallback(async (page) => {
@@ -22,20 +21,47 @@ function PostsPage() {
             return;
         }
 
+        const controller = new AbortController();
+        requestControllerRef.current = controller;
+        loadingRef.current = true;
+
         try {
-            loadingRef.current = true;
             setLoadError(null);
-            const result = await postApi.getPosts({ page, size: 10 });
+            const result = await postApi.getPosts({
+                page,
+                size: 10,
+                signal: controller.signal,
+            });
+
+            if (controller.signal.aborted) {
+                return;
+            }
+
             setPosts((previous) => page === 0 ? result.posts : [...previous, ...result.posts]);
             setHasNextPage(result.hasNextPage);
             nextPageRef.current = page + 1;
             setFailedPage(null);
         } catch (requestError) {
+            if (controller.signal.aborted || requestError?.name === "AbortError") {
+                return;
+            }
+            if (requestControllerRef.current !== controller) {
+                return;
+            }
             setLoadError(requestError);
             setFailedPage(page);
         } finally {
-            loadingRef.current = false;
+            if (requestControllerRef.current === controller) {
+                requestControllerRef.current = null;
+                loadingRef.current = false;
+            }
         }
+    }, []);
+
+    const cancelCurrentRequest = useCallback(() => {
+        requestControllerRef.current?.abort();
+        requestControllerRef.current = null;
+        loadingRef.current = false;
     }, []);
 
     const loadNextPage = useCallback(() => {
@@ -43,55 +69,21 @@ function PostsPage() {
     }, [loadPage]);
 
     useEffect(() => {
-        let active = true;
-
-        if (!initialRequestRef.current) {
-            loadingRef.current = true;
-            initialRequestRef.current = postApi.getPosts({ page: 0, size: 10 });
-        }
-
-        const request = initialRequestRef.current;
-
-        request
-            .then((result) => {
-                if (!active) {
-                    return;
-                }
-                setPosts(result.posts);
-                setHasNextPage(result.hasNextPage);
-                nextPageRef.current = 1;
-                setLoadError(null);
-                setFailedPage(null);
-            })
-            .catch((requestError) => {
-                if (active) {
-                    setLoadError(requestError);
-                    setFailedPage(0);
-                }
-                if (initialRequestRef.current === request) {
-                    initialRequestRef.current = null;
-                }
-            })
-            .finally(() => {
-                loadingRef.current = false;
-            });
+        void loadPage(0);
 
         return () => {
-            active = false;
+            cancelCurrentRequest();
         };
-    }, [retryVersion]);
+    }, [cancelCurrentRequest, loadPage]);
 
     function retryLoadPage() {
         const page = failedPage ?? 0;
         setLoadError(null);
 
         if (page === 0) {
-            initialRequestRef.current = null;
             nextPageRef.current = 0;
             setPosts([]);
             setHasNextPage(true);
-            setRetryVersion((previous) => previous + 1);
-            return;
         }
 
         void loadPage(page);

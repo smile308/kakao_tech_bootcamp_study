@@ -16,7 +16,6 @@ const REPORT_BLOCK_THRESHOLD = 5;
 function PostDetailPage() {
     const { postId } = useParams();
     const navigate = useNavigate();
-    const postRequestRef = useRef(null);
     const [post, setPost] = useState(null);
     const [comments, setComments] = useState([]);
     const [loadError, setLoadError] = useState(null);
@@ -26,45 +25,30 @@ function PostDetailPage() {
     const likeRequestRef = useRef(false);
 
     useEffect(() => {
-        let active = true;
+        const controller = new AbortController();
+        setPost(null);
+        setComments([]);
+        setLoadError(null);
 
-        if (postRequestRef.current?.postId !== postId) {
-            setPost(null);
-            setComments([]);
-            setLoadError(null);
-            postRequestRef.current = {
-                postId,
-                promise: postApi.getPost(postId),
-            };
-        }
-
-        const request = postRequestRef.current.promise;
-
-        request
+        postApi.getPost(postId, { signal: controller.signal })
             .then((result) => {
-                if (!active) {
-                    return;
-                }
                 setPost(result);
                 setComments(result.comments);
                 setLoadError(null);
             })
             .catch((requestError) => {
-                if (active) {
-                    setLoadError(requestError);
+                if (controller.signal.aborted || requestError?.name === "AbortError") {
+                    return;
                 }
-                if (postRequestRef.current?.promise === request) {
-                    postRequestRef.current = null;
-                }
+                setLoadError(requestError);
             });
 
         return () => {
-            active = false;
+            controller.abort();
         };
     }, [postId, retryVersion]);
 
     function retryLoadPost() {
-        postRequestRef.current = null;
         setLoadError(null);
         setRetryVersion((previous) => previous + 1);
     }

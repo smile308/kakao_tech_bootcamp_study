@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { postApi } from "../../api/postApi.js";
@@ -14,29 +14,17 @@ const REPORT_BLOCK_THRESHOLD = 5;
 function PostEditPage() {
     const { postId } = useParams();
     const navigate = useNavigate();
-    const postRequestRef = useRef(null);
     const [originalPost, setOriginalPost] = useState(null);
     const [loadError, setLoadError] = useState(null);
     const [retryVersion, setRetryVersion] = useState(0);
 
     useEffect(() => {
-        let active = true;
-        if (postRequestRef.current?.postId !== postId) {
-            setOriginalPost(null);
-            setLoadError(null);
-            postRequestRef.current = {
-                postId,
-                promise: postApi.getPost(postId),
-            };
-        }
+        const controller = new AbortController();
+        setOriginalPost(null);
+        setLoadError(null);
 
-        const request = postRequestRef.current.promise;
-
-        request
+        postApi.getPost(postId, { signal: controller.signal })
             .then((post) => {
-                if (!active) {
-                    return;
-                }
                 if (!post.isMine || post.reportCount >= REPORT_BLOCK_THRESHOLD) {
                     navigate(`/posts/${postId}`, { replace: true });
                     return;
@@ -45,21 +33,18 @@ function PostEditPage() {
                 setLoadError(null);
             })
             .catch((requestError) => {
-                if (active) {
-                    setLoadError(requestError);
+                if (controller.signal.aborted || requestError?.name === "AbortError") {
+                    return;
                 }
-                if (postRequestRef.current?.promise === request) {
-                    postRequestRef.current = null;
-                }
+                setLoadError(requestError);
             });
 
         return () => {
-            active = false;
+            controller.abort();
         };
     }, [navigate, postId, retryVersion]);
 
     function retryLoadPost() {
-        postRequestRef.current = null;
         setLoadError(null);
         setRetryVersion((previous) => previous + 1);
     }
