@@ -250,7 +250,7 @@ public class JwtProvider {
     private final SecretKey secretKey;
     private final long accessExpirationMillis;
 
-    //3,4
+    //3
     public JwtProvider(
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-expiration-millis}") long accessExpirationMillis
@@ -259,7 +259,7 @@ public class JwtProvider {
         this.accessExpirationMillis = accessExpirationMillis;
     }
 
-    //4,5
+    //4
     public String createAccessToken(Long userId, long authVersion) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + accessExpirationMillis);
@@ -273,7 +273,7 @@ public class JwtProvider {
                 .compact();
     }
 
-    //4,6
+    //4
     public AccessTokenClaims getAccessTokenClaims(String token) {
         try {
             Claims claims = Jwts.parser()
@@ -298,7 +298,53 @@ public class JwtProvider {
 }
 ```
 
-## 4. JwtProvider의 실제 호출 관계
+## 4. AccessTokenClaims — 검증 결과를 담는 record
+
+파일: `/Users/miles/Documents/GitHub/KTB4_Miles_Week12_Back/src/main/java/kr/adapterz/springdatajpa/auth/AccessTokenClaims.java`
+
+### 전체 주석본
+
+```java
+package kr.adapterz.springdatajpa.auth;
+
+public record AccessTokenClaims( // JWT에서 꺼낸 인증 정보를 하나의 불변 데이터 객체로 묶는다.
+        Long userId, // JWT subject에서 변환한 사용자 ID다.
+        long authVersion // JWT custom claim에서 꺼낸 인증 버전이다.
+) {
+}
+```
+
+### 목차 주석본
+
+```java
+package kr.adapterz.springdatajpa.auth;
+
+//4
+public record AccessTokenClaims(
+        Long userId,
+        long authVersion
+) {
+}
+```
+
+`record`는 데이터를 보관하는 간단한 객체를 선언하는 Java 문법이다. 위 선언으로 `userId()`와 `authVersion()` 접근 메서드, 생성자, `equals`, `hashCode`, `toString`이 자동으로 제공된다. `JwtProvider.getAccessTokenClaims()`가 이 객체를 반환하고, `JwtAuthenticationFilter`가 다음처럼 값을 읽는다.
+
+```java
+AccessTokenClaims tokenClaims = jwtProvider.getAccessTokenClaims(token);
+tokenClaims.userId();
+tokenClaims.authVersion();
+```
+
+### 호출·반환 흐름
+
+```text
+JwtAuthenticationFilter
+→ JwtProvider.getAccessTokenClaims(token)
+→ new AccessTokenClaims(userId, authVersion)
+→ JwtAuthenticationFilter가 두 값으로 사용자와 인증 버전을 확인
+```
+
+## 5. JwtProvider의 실제 호출 관계
 
 현재 코드에서 확인할 호출 위치는 다음과 같다.
 
@@ -308,7 +354,7 @@ public class JwtProvider {
 
 `createAccessToken`의 반환값은 문자열이며, 로그인 응답 DTO의 `accessToken` field와 인증 응답에 사용된다. `getAccessTokenClaims`의 반환값은 `JwtAuthenticationFilter`가 사용자 ID와 `authVersion`을 읽어 현재 사용자의 인증 상태를 확인하는 데 사용한다.
 
-## 5. 이 묶음에서 처음 나온 문법
+## 6. 이 묶음에서 처음 나온 문법
 
 - `@Value("${...}")`: Spring 설정 키의 값을 생성자 매개변수에 주입한다.
 - `final`: 생성 후 다른 객체로 교체하지 않을 field를 선언한다. 내부 객체의 모든 상태가 불변이라는 뜻은 아니다.
@@ -328,6 +374,6 @@ public class JwtProvider {
 
 인증 단계의 첫 번째 파일 묶음까지 완료했다.
 
-파일 기준 진행률: **21개 확인 완료 / 최소 학습 대상 213개 = 약 9.9%**
+파일 기준 진행률: **24개 확인 완료 / 최소 학습 대상 213개 = 약 11.3%**
 
 `authApi`와 `api.js`는 이번 집계에서 전체 파일을 정독하지 않았으므로 제외했다.
