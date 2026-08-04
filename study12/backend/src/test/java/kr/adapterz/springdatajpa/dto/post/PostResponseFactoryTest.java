@@ -35,6 +35,5 @@ class PostResponseFactoryTest {
                 PostResponseFactory.createListResponse(post);
 
         assertThat(response.getViewCount()).isEqualTo(150L);
-        verify(postCounter, never()).getViewCount();
     }
 }

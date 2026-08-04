@@ -25,18 +25,6 @@ public interface PostCounterRepository extends JpaRepository<PostCounter, Long> 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE PostCounter counter
-            SET counter.viewCount = counter.viewCount + 1
-            WHERE counter.postId = :postId
-              AND counter.reportCount < :reportBlockThreshold
-            """)
-    int incrementViewCount(
-            @Param("postId") Long postId,
-            @Param("reportBlockThreshold") int reportBlockThreshold
-    );
-
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-            UPDATE PostCounter counter
             SET counter.likeCount = counter.likeCount + 1
             WHERE counter.postId = :postId
             """)

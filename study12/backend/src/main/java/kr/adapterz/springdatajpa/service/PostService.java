@@ -104,10 +104,7 @@ public class PostService {
         boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
         boolean isMine = post.getUser().getUserId().equals(loginUserId);
 
-        long baselineViewCount = Math.max(
-                post.getPostCounter().getViewCount(),
-                post.getPostViewCount().getViewCount()
-        );
+        long baselineViewCount = post.getPostViewCount().getViewCount();
         long updatedViewCount = viewCountUpdater.increment(
                 postId,
                 baselineViewCount

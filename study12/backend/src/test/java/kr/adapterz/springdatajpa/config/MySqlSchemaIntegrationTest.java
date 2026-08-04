@@ -126,6 +126,14 @@ class MySqlSchemaIntegrationTest {
 
         assertThat(currentTableCount).isEqualTo(10);
         assertThat(baselineHistoryCount).isEqualTo(1);
+        Integer legacyViewColumnCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'post_counters'
+                  AND column_name = 'view_count'
+                """, Integer.class);
+        assertThat(legacyViewColumnCount).isZero();
 
         User writer = userRepository.saveAndFlush(
                 createUser("mysql-writer@test.com", "MySQL작성자")
@@ -222,4 +230,3 @@ class MySqlSchemaIntegrationTest {
         void run(Long userId);
     }
 }
-

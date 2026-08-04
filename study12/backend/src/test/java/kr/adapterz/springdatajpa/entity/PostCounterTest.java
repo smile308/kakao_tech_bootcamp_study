@@ -24,8 +24,7 @@ class PostCounterTest {
                 () -> assertThat(counter.getPost()).isEqualTo(post),
                 () -> assertThat(counter.getLikeCount()).isZero(),
                 () -> assertThat(counter.getReportCount()).isZero(),
-                () -> assertThat(counter.getReplyCount()).isZero(),
-                () -> assertThat(counter.getViewCount()).isZero()
+                () -> assertThat(counter.getReplyCount()).isZero()
         );
     }
 }

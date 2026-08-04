@@ -159,10 +159,6 @@ public class Post {
         postCounter.cancelLike();
     }
 
-    public void view(){
-        postCounter.view();
-    }
-
     public void delete(){deleted=true;}
 
     public void report() {
@@ -185,7 +181,4 @@ public class Post {
         return postCounter.getReplyCount();
     }
 
-    public int getViewCount() {
-        return postCounter.getViewCount();
-    }
 }

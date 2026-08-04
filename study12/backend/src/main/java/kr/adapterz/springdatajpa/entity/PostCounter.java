@@ -36,15 +36,11 @@ public class PostCounter {
     @Column(name = "reply_count", nullable = false)
     private int replyCount;
 
-    @Column(name = "view_count", nullable = false)
-    private int viewCount;
-
     public PostCounter(Post post) {
         this.post = post;
         this.likeCount = 0;
         this.reportCount = 0;
         this.replyCount = 0;
-        this.viewCount = 0;
     }
 
     public void addReply() {
@@ -61,10 +57,6 @@ public class PostCounter {
 
     public void cancelLike() {
         likeCount--;
-    }
-
-    public void view() {
-        viewCount++;
     }
 
     public void report() {

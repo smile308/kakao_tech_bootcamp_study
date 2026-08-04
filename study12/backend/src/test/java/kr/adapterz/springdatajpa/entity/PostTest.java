@@ -34,7 +34,6 @@ class PostTest {
                 () -> assertThat(post.getPostViewCount().getViewCount()).isZero(),
                 () -> assertThat(post.getLikeCount()).isZero(),
                 () -> assertThat(post.getReplyCount()).isZero(),
-                () -> assertThat(post.getViewCount()).isZero(),
                 () -> assertThat(post.getCreatedAt()).isNotNull(),
                 () -> assertThat(post.isDeleted()).isFalse(),
                 () -> assertThat(post.getReportCount()).isZero()
@@ -74,7 +73,6 @@ class PostTest {
         post.addReply();
         post.deleteReply();
         post.like();
-        post.view();
         post.delete();
         post.report();
 
@@ -82,7 +80,6 @@ class PostTest {
                 () -> assertThat(post.getReplyCount()).isZero(),
                 () -> assertThat(post.getLikeCount()).isEqualTo(1),
                 () -> assertThat(post.getReportCount()).isEqualTo(1),
-                () -> assertThat(post.getViewCount()).isEqualTo(1),
                 () -> assertThat(post.isDeleted()).isTrue()
         );
         post.likeCancle();

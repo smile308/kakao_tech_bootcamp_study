@@ -22,7 +22,7 @@ class FlywayBaselineMigrationTest {
 
         flyway.migrate();
 
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
 
         try (
                 Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "");
@@ -38,6 +38,7 @@ class FlywayBaselineMigrationTest {
             assertThat(tableExists(statement, "post_reports")).isTrue();
             assertThat(tableExists(statement, "post_view_counts")).isTrue();
             assertThat(tableExists(statement, "auth_sessions")).isTrue();
+            assertThat(columnExists(statement, "post_counters", "view_count")).isFalse();
 
             try (ResultSet resultSet = statement.executeQuery("""
                     SELECT COUNT(*)
@@ -52,10 +53,10 @@ class FlywayBaselineMigrationTest {
             try (ResultSet resultSet = statement.executeQuery("""
                     SELECT COUNT(*)
                     FROM flyway_schema_history
-                    WHERE script LIKE 'V%'
+                    WHERE script = 'V4__remove_legacy_post_counter_view_count.sql'
                     """)) {
                 resultSet.next();
-                assertThat(resultSet.getInt(1)).isZero();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
             }
         }
     }
@@ -67,6 +68,23 @@ class FlywayBaselineMigrationTest {
                 WHERE table_schema = CURRENT_SCHEMA()
                   AND table_name = '%s'
                 """.formatted(tableName))) {
+            resultSet.next();
+            return resultSet.getInt(1) == 1;
+        }
+    }
+
+    private boolean columnExists(
+            Statement statement,
+            String tableName,
+            String columnName
+    ) throws Exception {
+        try (ResultSet resultSet = statement.executeQuery("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = CURRENT_SCHEMA()
+                  AND table_name = '%s'
+                  AND column_name = '%s'
+                """.formatted(tableName, columnName))) {
             resultSet.next();
             return resultSet.getInt(1) == 1;
         }

@@ -93,12 +93,7 @@ class PostConcurrencyIntegrationTest {
         long separatedViewCount = postViewCountRepository.findById(postId)
                 .orElseThrow()
                 .getViewCount();
-        int legacyViewCount = postCounterRepository.findById(postId)
-                .orElseThrow()
-                .getViewCount();
-
         assertThat(separatedViewCount).isEqualTo(requestCount);
-        assertThat(legacyViewCount).isZero();
     }
 
     @Test
