@@ -81,7 +81,7 @@ function LoginPage() {
             authStorage.setAccessToken(result.accessToken);
             navigate("/posts", { replace: true });
         } catch (error) {
-            if (hasErrorCode(error, "Suspended_Account")) {
+            if (hasErrorCode(error, "SUSPENDED_ACCOUNT")) {
                 setSuspendedMessage(getErrorMessage(error));
                 setIsSuspendedModalOpen(true);
                 return;

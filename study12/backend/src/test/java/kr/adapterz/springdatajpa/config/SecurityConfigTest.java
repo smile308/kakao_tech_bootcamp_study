@@ -47,7 +47,9 @@ class SecurityConfigTest {
         mockMvc.perform(get("/posts"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json;charset=UTF-8"))
-                .andExpect(jsonPath("$.message").value("Unauthorized"));
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("로그인이 필요합니다."))
+                .andExpect(jsonPath("$.status").value(401));
     }
 
     @Test
@@ -70,7 +72,8 @@ class SecurityConfigTest {
                 )
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType("application/json;charset=UTF-8"))
-                .andExpect(jsonPath("$.message").value("Forbidden_Origin"));
+                .andExpect(jsonPath("$.code").value("FORBIDDEN_ORIGIN"))
+                .andExpect(jsonPath("$.status").value(403));
     }
 
     @Test

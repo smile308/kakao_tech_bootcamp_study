@@ -95,7 +95,7 @@ function PasswordEditPage() {
             authStorage.removeAccessToken();
             navigate("/login", { replace: true });
         } catch (error) {
-            if (hasErrorCode(error, "Invalid_Current_Password")) {
+            if (hasErrorCode(error, "INVALID_CURRENT_PASSWORD")) {
                 setErrors((previous) => ({
                     ...previous,
                     currentPassword: getErrorMessage(error),

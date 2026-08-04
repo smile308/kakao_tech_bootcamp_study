@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import kr.adapterz.springdatajpa.exception.DataNullException;
+import kr.adapterz.springdatajpa.config.ErrorResponseWriter;
+import kr.adapterz.springdatajpa.exception.ApiErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,6 +23,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailsService customUserDetailsService;
+    private final ErrorResponseWriter errorResponseWriter;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -75,9 +78,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (AuthException | DataNullException e) {
             SecurityContextHolder.clearContext();
 
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"message\":\"Invalid_Token\"}");
+            errorResponseWriter.write(response, org.springframework.http.HttpStatus.UNAUTHORIZED, ApiErrorCode.INVALID_TOKEN);
         }
     }
 }

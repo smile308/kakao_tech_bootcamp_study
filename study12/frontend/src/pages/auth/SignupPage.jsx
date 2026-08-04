@@ -113,17 +113,17 @@ function SignupPage() {
             });
             navigate("/login", { replace: true });
         } catch (error) {
-            if (hasErrorCode(error, "Suspended_Account")) {
+            if (hasErrorCode(error, "SUSPENDED_ACCOUNT")) {
                 setErrors((previous) => ({
                     ...previous,
                     email: `*${getErrorMessage(error)}`,
                 }));
-            } else if (hasErrorCode(error, "Existed_Email")) {
+            } else if (hasErrorCode(error, "EXISTED_EMAIL")) {
                 setErrors((previous) => ({
                     ...previous,
                     email: `*${getErrorMessage(error)}`,
                 }));
-            } else if (hasErrorCode(error, "Existed_Nickname")) {
+            } else if (hasErrorCode(error, "EXISTED_NICKNAME")) {
                 setErrors((previous) => ({
                     ...previous,
                     nickname: `*${getErrorMessage(error)}`,

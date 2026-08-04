@@ -3,9 +3,9 @@ package kr.adapterz.springdatajpa.auth;
 import kr.adapterz.springdatajpa.entity.User;
 import kr.adapterz.springdatajpa.exception.AuthException;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockFilterChain;
@@ -28,8 +28,16 @@ class JwtAuthenticationFilterTest {
     @Mock
     private CustomUserDetailsService customUserDetailsService;
 
-    @InjectMocks
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @BeforeEach
+    void setUp() {
+        jwtAuthenticationFilter = new JwtAuthenticationFilter(
+                jwtProvider,
+                customUserDetailsService,
+                new kr.adapterz.springdatajpa.config.ErrorResponseWriter()
+        );
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -95,7 +103,7 @@ class JwtAuthenticationFilterTest {
         jwtAuthenticationFilter.doFilter(request, response, filterChain);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("Invalid_Token");
+        assertThat(response.getContentAsString()).contains("INVALID_TOKEN");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
@@ -114,7 +122,7 @@ class JwtAuthenticationFilterTest {
 
         assertThat(response.getStatus()).isEqualTo(401);
         assertThat(response.getContentType()).isEqualTo("application/json;charset=UTF-8");
-        assertThat(response.getContentAsString()).contains("Invalid_Token");
+        assertThat(response.getContentAsString()).contains("INVALID_TOKEN");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
         verifyNoInteractions(customUserDetailsService);
     }

@@ -121,7 +121,7 @@ function ProfileEditPage() {
             setNewProfileImage(null);
             showToast("회원정보가 수정되었습니다.");
         } catch (error) {
-            if (hasErrorCode(error, "Existed_Nickname")) {
+            if (hasErrorCode(error, "EXISTED_NICKNAME")) {
                 setNicknameError(getErrorMessage(error));
             } else {
                 setNicknameError(getErrorMessage(error, "회원정보 수정에 실패했습니다."));

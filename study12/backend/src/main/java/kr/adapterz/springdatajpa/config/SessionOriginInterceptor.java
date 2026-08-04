@@ -3,6 +3,7 @@ package kr.adapterz.springdatajpa.config;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import kr.adapterz.springdatajpa.exception.ApiErrorCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 public class SessionOriginInterceptor implements HandlerInterceptor {
 
     private final CorsOriginProvider corsOriginProvider;
+    private final ErrorResponseWriter errorResponseWriter;
 
     @Override
     public boolean preHandle(
@@ -30,9 +32,7 @@ public class SessionOriginInterceptor implements HandlerInterceptor {
             return true;
         }
 
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"message\":\"Forbidden_Origin\"}");
+        errorResponseWriter.write(response, org.springframework.http.HttpStatus.FORBIDDEN, ApiErrorCode.FORBIDDEN_ORIGIN);
         return false;
     }
 

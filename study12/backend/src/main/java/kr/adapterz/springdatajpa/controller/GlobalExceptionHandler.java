@@ -14,58 +14,36 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import kr.adapterz.springdatajpa.exception.ForbiddenException;
+import kr.adapterz.springdatajpa.exception.ApiErrorCode;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(LoginFailedException.class)
     public ResponseEntity<ErrorResponseDto> handleLoginFailedException(LoginFailedException e) {
-        ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(response);
+        return error(HttpStatus.UNAUTHORIZED, e.getMessage());
     }
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<ErrorResponseDto> handleInvalidRequestException(InvalidRequestException e) {
-        ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(response);
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponseDto> handleValidationException(MethodArgumentNotValidException e) {
-        ErrorResponseDto response = new ErrorResponseDto("invalid_request");
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(response);
+        return error(HttpStatus.BAD_REQUEST, "INVALID_REQUEST");
     }
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ErrorResponseDto> handleAuthException(AuthException e){
-        ErrorResponseDto response = new ErrorResponseDto(e.getMessage());
-        return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body(response);
+        return error(HttpStatus.UNAUTHORIZED, e.getMessage());
     }
     @ExceptionHandler(DataNullException.class)
     public ResponseEntity<ErrorResponseDto> handleDataNullException(DataNullException e){
-        ErrorResponseDto response = new ErrorResponseDto((e.getMessage()));
-        return ResponseEntity
-                .status(HttpStatus.NOT_FOUND)
-                .body(response);
+        return error(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponseDto> handleForbiddenException(
             ForbiddenException e
     ) {
-        ErrorResponseDto response =
-                new ErrorResponseDto(e.getMessage());
-
-        return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body(response);
+        return error(HttpStatus.FORBIDDEN, e.getMessage());
     }
 
     @ExceptionHandler({
@@ -75,23 +53,20 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDto> handlePostVersionConflict(
             RuntimeException e
     ) {
-        ErrorResponseDto response =
-                new ErrorResponseDto("Post_Version_Conflict");
-
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(response);
+        return error(HttpStatus.CONFLICT, "POST_VERSION_CONFLICT");
     }
 
     @ExceptionHandler(CounterUpdateException.class)
     public ResponseEntity<ErrorResponseDto> handleCounterUpdateException(
             CounterUpdateException e
     ) {
-        ErrorResponseDto response =
-                new ErrorResponseDto(e.getMessage());
+        return error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
 
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(response);
+    private ResponseEntity<ErrorResponseDto> error(HttpStatus status, String rawCode) {
+        ApiErrorCode errorCode = ApiErrorCode.from(rawCode);
+        return ResponseEntity.status(status).body(new ErrorResponseDto(
+                errorCode.getCode(), errorCode.getMessage(), status.value()
+        ));
     }
 }
