@@ -128,10 +128,18 @@ public class PostService {
 
         validatePostModificationPermission(post, loginUserId);
         validatePostVersion(post, request.getVersion());
-        if (requiresForcedVersionIncrement(post, request)) {
+        ImageDataUrlValidator.validatePostImages(request.getImageFiles());
+
+        boolean sameTitleAndContent = hasSameTitleAndContent(post, request);
+        boolean sameImageFiles = hasSameImageFiles(post, request);
+
+        if (sameTitleAndContent && sameImageFiles) {
+            return postFixResponseDto;
+        }
+
+        if (sameTitleAndContent) {
             entityManager.lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
         }
-        ImageDataUrlValidator.validatePostImages(request.getImageFiles());
 
         post.update(
                 request.getTitle(),
@@ -300,12 +308,28 @@ public class PostService {
         }
     }
 
-    private boolean requiresForcedVersionIncrement(
+    private boolean hasSameTitleAndContent(
             Post post,
             PostFixRequestDto request
     ) {
-        return post.isFixed()
-                && Objects.equals(post.getPostTitle(), request.getTitle())
+        return Objects.equals(post.getPostTitle(), request.getTitle())
                 && Objects.equals(post.getPostContent(), request.getContent());
+    }
+
+    private boolean hasSameImageFiles(
+            Post post,
+            PostFixRequestDto request
+    ) {
+        List<String> currentImageFiles = post.getPostImages().stream()
+                .map(PostImage::getImageFile)
+                .toList();
+
+        List<String> requestedImageFiles = request.getImageFiles() == null
+                ? List.of()
+                : request.getImageFiles().stream()
+                .filter(imageFile -> imageFile != null && !imageFile.isBlank())
+                .toList();
+
+        return Objects.equals(currentImageFiles, requestedImageFiles);
     }
 }

@@ -22,7 +22,7 @@ class FlywayBaselineMigrationTest {
 
         flyway.migrate();
 
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
 
         try (
                 Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "");
@@ -39,6 +39,7 @@ class FlywayBaselineMigrationTest {
             assertThat(tableExists(statement, "post_view_counts")).isTrue();
             assertThat(tableExists(statement, "auth_sessions")).isTrue();
             assertThat(columnExists(statement, "post_counters", "view_count")).isFalse();
+            assertThat(columnExists(statement, "posts", "is_fixed")).isFalse();
 
             try (ResultSet resultSet = statement.executeQuery("""
                     SELECT COUNT(*)
@@ -54,6 +55,15 @@ class FlywayBaselineMigrationTest {
                     SELECT COUNT(*)
                     FROM flyway_schema_history
                     WHERE script = 'V4__remove_legacy_post_counter_view_count.sql'
+                    """)) {
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'V5__remove_post_is_fixed.sql'
                     """)) {
                 resultSet.next();
                 assertThat(resultSet.getInt(1)).isEqualTo(1);

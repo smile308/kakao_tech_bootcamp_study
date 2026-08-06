@@ -134,6 +134,14 @@ class MySqlSchemaIntegrationTest {
                   AND column_name = 'view_count'
                 """, Integer.class);
         assertThat(legacyViewColumnCount).isZero();
+        Integer postFixedColumnCount = jdbcTemplate.queryForObject("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = DATABASE()
+                  AND table_name = 'posts'
+                  AND column_name = 'is_fixed'
+                """, Integer.class);
+        assertThat(postFixedColumnCount).isZero();
 
         User writer = userRepository.saveAndFlush(
                 createUser("mysql-writer@test.com", "MySQL작성자")

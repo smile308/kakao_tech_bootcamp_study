@@ -488,6 +488,108 @@ registry.addMapping("/**")
 코드는 `SessionOriginInterceptor`입니다. 따라서 WebConfig만으로 CSRF 방어가 완성되는 것은
 아니며, 다음 Interceptor가 별도로 Origin을 검사합니다.
 
+### WebConfig를 호출하는 주체와 호출이 연결되는 위치
+
+`WebConfig`를 직접 호출하는 Controller나 Service는 현재 코드에 없습니다. 호출 경로는
+애플리케이션 시작 코드와 Spring Boot·Spring MVC의 자동 설정을 통해 연결됩니다.
+
+```text
+SpringdatajpaApplication.main
+→ SpringApplication.run(SpringdatajpaApplication.class, args)
+→ @SpringBootApplication의 component scan
+→ config.WebConfig 발견
+→ @Configuration Bean 등록
+→ @Bean corsConfigurer() 실행
+→ WebMvcConfigurer Bean 등록
+→ Spring Boot MVC 자동 설정이 WebMvcConfigurer 목록에 포함
+→ Spring MVC 설정 단계에서 addCorsMappings(CorsRegistry) 호출
+```
+
+프로젝트에서 이 연결의 시작점은 다음 두 곳입니다.
+
+```java
+// SpringdatajpaApplication.java
+@SpringBootApplication
+public class SpringdatajpaApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(SpringdatajpaApplication.class, args);
+    }
+}
+```
+
+`@SpringBootApplication`에는 component scan 기능이 포함되어 있습니다. 기본 scan 기준
+package는 이 annotation이 붙은 `kr.adapterz.springdatajpa`이고, `WebConfig`의 package인
+`kr.adapterz.springdatajpa.config`는 그 하위 package입니다. 그래서 개발자가
+`new WebConfig(...)`를 작성하거나 `webConfig.corsConfigurer()`를 직접 호출하지 않아도
+Spring이 `WebConfig`를 발견합니다.
+
+```java
+// WebConfig.java
+@Configuration
+public class WebConfig {
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                // CORS 규칙 등록
+            }
+        };
+    }
+}
+```
+
+`@Configuration`은 이 클래스를 Spring 설정 Bean으로 등록하라는 표시이고, `@Bean`은
+`corsConfigurer()`의 반환 객체를 ApplicationContext의 Bean으로 등록하라는 표시입니다.
+따라서 `corsConfigurer()` 자체는 HTTP 요청마다 호출되는 업무 method가 아니라 Bean 생성
+과정에서 실행됩니다. 반환된 익명 객체의 실제 타입은 `WebMvcConfigurer`입니다.
+
+프로젝트의 `build.gradle`에는 `spring-boot-starter-web`이 선언되어 있습니다. 이 의존성으로
+Spring MVC와 Spring Boot의 MVC 자동 설정이 포함됩니다. 자동 설정은 ApplicationContext에서
+`WebMvcConfigurer` 타입의 Bean들을 찾아 MVC 설정 callback에 연결합니다. 내부 동작을
+단순화하면 다음과 같은 의미입니다.
+
+```java
+List<WebMvcConfigurer> configurers = applicationContext
+        .getBeansOfType(WebMvcConfigurer.class);
+
+for (WebMvcConfigurer configurer : configurers) {
+    configurer.addCorsMappings(registry);
+}
+```
+
+위 코드는 프로젝트에 직접 작성된 코드가 아니라 Spring MVC 내부 동작을 이해하기 위한
+축약 표현입니다. Spring Boot의 MVC 자동 설정과 Spring MVC의 `WebMvcConfigurer` 위임
+구조가 이 역할을 담당합니다. 그러므로 “호출을 어디에 명시했는가?”에 대한 답은
+`WebConfig`를 호출하는 한 줄이 application source에 있는 것이 아니라,
+`@SpringBootApplication`의 component scan, `@Configuration`·`@Bean`, 그리고
+`spring-boot-starter-web`이 제공하는 자동 설정에 선언적으로 연결되어 있다는 것입니다.
+
+실행 시점도 세 단계로 나누어야 합니다.
+
+1. `main()`의 `SpringApplication.run()`이 ApplicationContext 생성을 시작합니다.
+2. Spring이 `WebConfig`를 발견하고 `corsConfigurer()`를 실행해
+   `WebMvcConfigurer` Bean을 준비합니다.
+3. Spring MVC 설정 단계에서 `addCorsMappings()`를 한 번 호출해
+   `CorsRegistry`에 `/**`, 허용 Origin, method, header, credential 규칙을 등록합니다.
+
+그 뒤 실제 HTTP 요청이 들어오면 `addCorsMappings()`를 다시 호출하는 것이 아닙니다.
+시작 시 등록된 CORS 설정을 Spring MVC의 요청 처리 인프라가 사용해 Origin과 preflight를
+판단하고 response header를 구성합니다. 반면 `SessionOriginInterceptor.preHandle()`은
+요청마다 실행되어 Cookie 세션 endpoint의 Origin을 별도로 검사합니다. 즉 다음 두 경로는
+같은 `CorsOriginProvider` 목록을 사용하지만 실행 시점과 책임이 다릅니다.
+
+```text
+애플리케이션 시작
+→ WebConfig.addCorsMappings
+→ Spring MVC CORS 규칙 준비
+
+각 HTTP 요청
+→ 준비된 CORS 규칙 적용
+→ SessionOriginInterceptor.preHandle
+→ 필요하면 Controller 실행 또는 403 직접 응답
+```
+
 ---
 
 ## SessionOriginInterceptor.java
@@ -501,6 +603,88 @@ registry.addMapping("/**")
 - 외부 입력: `HttpServletRequest`의 HTTP method, request URI, `Origin` header.
 - 반환값: `preHandle`의 `true`는 다음 Interceptor/Controller로 진행, `false`는 현재 요청을 Controller로 보내지 않음을 뜻한다.
 - 예외: `ErrorResponseWriter.write`가 Servlet response에 쓰는 과정에서 `IOException`이 발생할 수 있어 `preHandle`이 `throws IOException`을 선언한다.
+
+### `preHandle` 호출·인자·반환값의 실제 연결
+
+`SessionOriginInterceptor`의 `preHandle()`을 프로젝트의 Controller나 Service가 직접 호출하지는
+않습니다. 먼저 `InterceptorConfig`가 이 Interceptor Bean을 Spring MVC의 registry에 등록합니다.
+
+```java
+// InterceptorConfig.java
+registry.addInterceptor(sessionOriginInterceptor)
+        .addPathPatterns("/sessions", "/sessions/refresh");
+```
+
+`sessionOriginInterceptor` field에는 `@Component`로 등록된
+`SessionOriginInterceptor` Bean이 생성자 주입됩니다. `addPathPatterns`는 URL 경로를 기준으로
+등록하므로 `DELETE /sessions`도 `/sessions`에 해당합니다. 다만 실제 method까지 세밀하게
+제한하는 것은 `SessionOriginInterceptor.isCookieSessionRequest()`입니다.
+
+HTTP 요청이 들어오면 Spring MVC의 `DispatcherServlet`이 URL에 대응하는 Controller handler를
+찾고, 내부 요청 처리 체인에 등록된 `HandlerInterceptor`들의 `preHandle()`을 실행합니다.
+개념적인 호출 형태는 다음과 같습니다.
+
+```java
+boolean proceed = sessionOriginInterceptor.preHandle(
+        request,
+        response,
+        handler
+);
+```
+
+위 호출 코드는 프로젝트에 직접 작성된 것이 아니라 Spring MVC 내부의 요청 처리 흐름을
+나타낸 축약 표현입니다. 실제로는 Spring MVC가 `HandlerExecutionChain`에 등록된
+Interceptor를 순서대로 실행합니다.
+
+세 매개변수의 값은 다음 주체가 제공합니다.
+
+- `request`: Servlet container가 현재 HTTP 요청마다 만든 `HttpServletRequest`입니다. Spring MVC가 같은 객체를 전달하며, Interceptor는 `getMethod()`, `getRequestURI()`, `getHeader("Origin")`으로 method·경로·Origin header를 읽습니다.
+- `response`: Servlet container가 만든 현재 `HttpServletResponse`입니다. Interceptor가 거부할 때 status·content type·JSON body를 직접 기록할 수 있도록 Spring MVC가 전달합니다.
+- `handler`: 현재 URL에 매핑된 Controller method 정보입니다. 보통 Spring MVC의 `HandlerMethod`가 들어오지만, 현재 구현에서는 실제로 사용하지 않습니다.
+
+현재 요청에서 값이 전달되는 순서는 다음과 같습니다.
+
+```text
+HTTP 요청
+→ Servlet container가 request·response 생성
+→ DispatcherServlet이 Controller handler 탐색
+→ Spring MVC가 preHandle(request, response, handler) 호출
+→ isCookieSessionRequest(request)
+→ request.getHeader("Origin")
+→ corsOriginProvider.isAllowed(origin)
+```
+
+`preHandle()`의 반환값은 호출한 Controller가 받는 반환값이 아닙니다. Spring MVC의 요청 처리
+체인이 이 boolean을 읽어 다음 진행 여부를 결정합니다.
+
+```text
+true
+→ 다음 Interceptor 또는 Controller 실행
+
+false
+→ 현재 Interceptor chain 중단
+→ Controller 호출하지 않음
+```
+
+허용되지 않은 Origin일 때는 `false`만 반환하는 것이 아니라, 먼저 다음 코드가 응답을 완성합니다.
+
+```java
+errorResponseWriter.write(
+        response,
+        HttpStatus.FORBIDDEN,
+        ApiErrorCode.FORBIDDEN_ORIGIN
+);
+return false;
+```
+
+`ErrorResponseWriter.write()`는 전달받은 `response`에 403 status, JSON content type, error
+body를 기록합니다. 그 다음 `false`는 Spring MVC에 Controller를 호출하지 말라고 알립니다.
+따라서 반환값의 사용 주체는 `SessionController`가 아니라 Spring MVC입니다.
+
+허용 Origin이거나 Cookie 세션 대상이 아닌 요청이면 `true`가 반환됩니다. 이 `true`는
+“사용자 인증 성공”을 의미하지 않고, “이 Interceptor가 요청을 차단하지 않으므로 다음 단계로
+진행하라”는 뜻입니다. 세션 endpoint는 이후 Controller로 가서 `SessionService`를 호출하고,
+보호된 다른 endpoint는 별도의 Security 인가 규칙도 통과해야 합니다.
 
 ### SessionOriginInterceptor.java 전체 코드와 줄별 주석
 
@@ -723,9 +907,111 @@ public class InterceptorConfig implements WebMvcConfigurer {
     private final SessionOriginInterceptor sessionOriginInterceptor;
 ```
 
+### 두 `private final` field의 의미와 값의 출처
+
+```java
+private final RequestLogInterceptor requestLogInterceptor;
+private final SessionOriginInterceptor sessionOriginInterceptor;
+```
+
+두 줄은 메서드를 호출하는 코드가 아니라 `InterceptorConfig` 객체가 사용할 의존성을
+저장하는 instance field 선언입니다.
+
+- `RequestLogInterceptor`: field의 타입입니다. 요청 시작·완료 로그를 기록하는 객체를 담습니다.
+- `requestLogInterceptor`: 그 객체를 가리키는 field 이름입니다.
+- `SessionOriginInterceptor`: Cookie 세션 요청의 Origin을 검사하는 객체 타입입니다.
+- `sessionOriginInterceptor`: 그 객체를 가리키는 field 이름입니다.
+- `private`: `InterceptorConfig` 내부에서만 이 field를 직접 사용할 수 있습니다.
+- `final`: 생성자에서 한 번 참조를 대입한 뒤 다른 Interceptor 객체로 바꿀 수 없습니다. `final`이 객체 내부의 모든 상태를 불변으로 만든다는 뜻은 아닙니다.
+
+현재 클래스에는 이 field에 값을 대입하는 생성자가 직접 보이지 않습니다. 위의
+`@RequiredArgsConstructor`가 Lombok을 통해 다음과 같은 생성자를 컴파일 시 만들어 줍니다.
+
+```java
+public InterceptorConfig(
+        RequestLogInterceptor requestLogInterceptor,
+        SessionOriginInterceptor sessionOriginInterceptor
+) {
+    this.requestLogInterceptor = requestLogInterceptor;
+    this.sessionOriginInterceptor = sessionOriginInterceptor;
+}
+```
+
+Spring은 `@Configuration`인 `InterceptorConfig`를 Bean으로 만들 때 이 생성자를 사용합니다.
+`RequestLogInterceptor`와 `SessionOriginInterceptor`는 각각 `@Component`로 등록되어 있으므로,
+Spring이 이미 만든 두 Bean을 생성자 매개변수에 넣어 줍니다. 따라서 이 클래스에서 직접
+`new RequestLogInterceptor()` 또는 `new SessionOriginInterceptor()`를 작성하지 않습니다.
+
+두 field에 주입된 객체는 다음 코드에서 실제로 사용됩니다.
+
+```java
+registry.addInterceptor(requestLogInterceptor)
+        .addPathPatterns("/**");
+
+registry.addInterceptor(sessionOriginInterceptor)
+        .addPathPatterns("/sessions", "/sessions/refresh");
+```
+
+여기서 두 객체의 `preHandle()`을 직접 호출하는 것이 아닙니다. `InterceptorRegistry`에
+“어떤 Interceptor Bean을 어떤 URL pattern에 등록할지”를 전달합니다. 이후 HTTP 요청이
+들어오면 Spring MVC가 registry에 등록된 객체를 꺼내 `RequestLogInterceptor.preHandle()`과
+`SessionOriginInterceptor.preHandle()`을 실행합니다.
+
 이 설정 클래스는 Interceptor 객체를 직접 `new`하지 않습니다. 두 field를 생성자 매개변수로
 받아 Spring이 이미 관리 중인 Bean을 사용합니다. 실제 실행 객체의 method는 요청이 들어올
 때 실행되고, 이 클래스의 `addInterceptors`는 그 실행 규칙을 등록할 때만 실행됩니다.
+
+### `implements WebMvcConfigurer`의 의미
+
+```java
+public class InterceptorConfig implements WebMvcConfigurer {
+```
+
+`WebMvcConfigurer`는 Spring MVC가 제공하는 설정용 interface입니다. `implements`는
+`InterceptorConfig`가 이 interface를 구현하겠다는 뜻이며, 이 타입으로 사용할 수 있는
+메서드들을 재정의할 수 있다는 약속입니다.
+
+여기서는 `addInterceptors(InterceptorRegistry registry)`를 `@Override`로 재정의했습니다.
+그래서 Spring MVC가 `InterceptorConfig` Bean을 `WebMvcConfigurer`로 인식하고, 애플리케이션
+시작 중 MVC 설정을 만들 때 이 callback을 호출할 수 있습니다.
+
+```text
+@Configuration으로 InterceptorConfig Bean 등록
+→ WebMvcConfigurer 타입의 설정 객체로 인식
+→ Spring MVC가 addInterceptors(registry) 호출
+→ registry에 두 Interceptor와 URL pattern 등록
+→ 이후 요청마다 등록된 pattern에 맞는 preHandle 실행
+```
+
+`implements` 자체가 메서드를 자동 실행하는 것은 아닙니다. interface를 구현하지 않으면
+`InterceptorConfig`가 `WebMvcConfigurer`의 설정 callback으로 전달될 수 없고, Spring MVC가
+이 클래스의 `addInterceptors()`를 설정 callback으로 사용할 근거도 없어집니다.
+
+`WebConfig`와 비교하면 차이가 더 분명합니다. `WebConfig` 클래스 자체는
+`implements WebMvcConfigurer`를 적지 않고, `@Bean` 메서드가 `WebMvcConfigurer`를 구현한
+익명 객체를 반환합니다. 반면 `InterceptorConfig`는 클래스 자체가 interface를 구현하므로
+클래스의 `addInterceptors()`가 callback이 됩니다.
+
+```java
+// InterceptorConfig: 클래스 자체가 interface 구현
+public class InterceptorConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        // Spring MVC가 설정 시 호출
+    }
+}
+
+// WebConfig: @Bean이 interface 구현 객체 반환
+@Bean
+public WebMvcConfigurer corsConfigurer() {
+    return new WebMvcConfigurer() {
+        @Override
+        public void addCorsMappings(CorsRegistry registry) {
+            // Spring MVC가 설정 시 호출
+        }
+    };
+}
+```
 
 ### 코드 일부
 
@@ -752,4 +1038,3 @@ Controller에는 도달하지 않지만, 이미 실행된 로그 Interceptor의 
 최종 403 응답을 기록할 수 있습니다.
 
 ---
-

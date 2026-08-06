@@ -27,7 +27,7 @@ application-prod.yaml의 DataSource
 → 일치하면 Repository 사용 가능
 ```
 
-`B3`는 새 DB를 현재 구조로 곧바로 만드는 시작점이고, `V1~V3`는 과거 구조에서 여기까지 발전시킨 변경 이력이다. 이미 운영 RDS에 적용된 SQL도 새 환경 재현과 변경 근거 때문에 파일로 남는다. SQL 문법을 먼저 외우기보다 각 migration의 `변경 전 구조 → 데이터 보정 → 제약 추가 → 변경 후 Entity` 순서로 읽는다.
+`B3`는 새 DB를 V1~V3의 과거 변경이 반영된 구조로 곧바로 만드는 시작점이고, `V4~V5`는 B3 이후에도 적용하는 변경 이력이다. 이미 운영 RDS에 적용된 SQL도 새 환경 재현과 변경 근거 때문에 파일로 남는다. SQL 문법을 먼저 외우기보다 각 migration의 `변경 전 구조 → 데이터 보정 → 제약 추가 → 변경 후 Entity` 순서로 읽는다.
 
 ## 10.2 마이그레이션 파일 규칙
 
@@ -38,6 +38,8 @@ B3__current_schema.sql
 V1__migrate_post_counters.sql
 V2__add_user_auth_version.sql
 V3__expand_post_view_counts.sql
+V4__remove_legacy_post_counter_view_count.sql
+V5__remove_post_is_fixed.sql
 ```
 
 두 형식을 구분한다.
@@ -55,13 +57,15 @@ V{버전}__{설명}.sql
 ```text
 새 빈 DB
 → B3 실행
-→ V1, V2, V3는 실행하지 않음
+→ V1, V2, V3는 B3에 이미 포함된 과거 변경이므로 실행하지 않음
+→ V4, V5 실행
 
 이미 V1~V3까지 적용된 기존 RDS
 → B3를 실행하지 않음
+→ V4, V5 실행
 
-앞으로 V4가 추가된 경우
-→ 두 DB 모두 V4 실행
+이미 V4까지 적용된 기존 RDS
+→ V5만 실행
 ```
 
 한 번 운영에 적용된 기존 migration 파일을 수정하면 checksum 검증이 실패하거나 환경별 이력이 달라질 수 있다. 새로운 변경은 다음 `V` 버전 파일로 추가한다. `B3`도 배포되어 사용된 뒤에는 수정하지 않고, 나중에 baseline을 압축할 필요가 생기면 더 높은 버전의 새 `B` 파일을 추가한다.
@@ -125,9 +129,9 @@ Flyway migration 실행·검증
 
 ### 10.3.1 B3가 추가된 이유
 
-기존 `V1~V3`는 처음부터 전체 DB를 만드는 파일이 아니다. 이미 Hibernate가 만들어 둔 `users`, `posts` 등을 전제로 일부 구조만 변경한다. 따라서 빈 RDS에서는 `V2`의 `ALTER TABLE users`부터 실패할 수 있었다.
+기존 `V1~V3`는 처음부터 전체 DB를 만드는 파일이 아니다. 이미 Hibernate가 만들어 둔 `users`, `posts` 등을 전제로 일부 구조만 변경한다. 따라서 빈 RDS에서는 `V2`의 `ALTER TABLE users`부터 실패할 수 있었다. `V4`와 `V5`는 B3 이후 schema에서 legacy column을 제거하는 후속 migration이다.
 
-`B3__current_schema.sql`은 현재 모든 Entity와 `V1~V3`의 최종 결과를 대조하여 다음을 한 번에 만든다.
+`B3__current_schema.sql`은 현재 모든 Entity와 `V1~V3`의 최종 결과를 대조하여 다음을 한 번에 만든다. B3 자체에는 과거 호환 column이 남아 있고, V4·V5가 이를 후속으로 제거한다.
 
 ```text
 users
@@ -236,7 +240,7 @@ CREATE TABLE posts ( -- 게시글 본문과 작성자 연결을 저장한다.
     user_id BIGINT NOT NULL, -- 작성자 users 행의 ID다.
     post_title VARCHAR(26) NOT NULL, -- 제목을 최대 26자로 저장한다.
     post_content VARCHAR(255) NOT NULL, -- 본문을 현재 Entity 기본 길이인 255자로 저장한다.
-    is_fixed BIT NOT NULL, -- 게시글 수정 여부 boolean 값이다.
+    is_fixed BIT NOT NULL, -- B3 baseline에 남아 있는 legacy column이며 V5가 최종 schema에서 제거한다.
     created_at DATETIME(6) NOT NULL, -- microsecond 정밀도의 생성 시각이다.
     deleted BIT NOT NULL, -- soft delete 여부 boolean 값이다.
     PRIMARY KEY (post_id), -- 게시글 ID를 PK로 정한다.
@@ -540,6 +544,24 @@ ALTER TABLE users -- 기존 사용자 테이블 구조를 변경한다.
     ADD COLUMN auth_version BIGINT NOT NULL DEFAULT 0; -- 기존 행은 0을 받고 앞으로 JWT 무효화 버전을 저장한다.
 ```
 
+### V4·V5: 현재 코드에서 제거된 legacy column
+
+현재 migration 폴더에는 V4와 V5가 B3 이후 버전으로 존재합니다.
+
+```sql
+-- V4__remove_legacy_post_counter_view_count.sql
+ALTER TABLE post_counters
+    DROP COLUMN view_count;
+
+-- V5__remove_post_is_fixed.sql
+ALTER TABLE posts
+    DROP COLUMN is_fixed;
+```
+
+`B3__current_schema.sql`에는 과거 기준의 `posts.is_fixed`와 `post_counters.view_count`가 남아 있습니다. 새 빈 DB에서 Flyway는 B3로 전체 schema를 만든 뒤 V4와 V5를 순서대로 실행하므로 최종 schema에는 두 column이 없습니다. 이미 V4까지 적용된 RDS에서는 V5만 실행됩니다. 따라서 B3 원문에 column이 보인다는 사실과 현재 Entity가 그 column을 사용하지 않는다는 사실은 충돌이 아닙니다. `FlywayBaselineMigrationTest`와 `MySqlSchemaIntegrationTest`는 최종 schema에서 두 column이 없는지 확인합니다.
+
+`V5`는 기존 migration 파일을 수정하지 않고 별도 version으로 삭제 이력을 남깁니다. Flyway가 이미 B3를 실행한 DB에도 V5만 추가 적용할 수 있기 때문에, 운영 RDS의 실제 상태와 `flyway_schema_history`를 함께 확인해야 합니다.
+
 ## 10.8 Entity와 migration 비교
 
 migration 적용 후 DB 구조가 Java Entity가 기대하는 구조와 일치해야 한다.
@@ -553,6 +575,12 @@ V2 users.auth_version
 
 V3 post_view_counts
 ↔ PostViewCount Entity
+
+V4 post_counters.view_count 제거
+↔ PostCounter Entity에 해당 field 없음
+
+V5 posts.is_fixed 제거
+↔ Post Entity·PostViewResponseDto에 해당 field 없음
 ```
 
 Entity만 변경하고 운영 DB migration을 만들지 않으면 애플리케이션 시작이나 쿼리 실행 중 컬럼·테이블 없음 오류가 발생할 수 있다.
@@ -617,6 +645,7 @@ flyway_schema_history도 테이블도 없는 빈 schema
 → Flyway가 가장 최신 baseline migration인 B3 선택
 → B3가 현재 전체 테이블·제약·인덱스 생성
 → V1~V3는 B3보다 오래된 변경이므로 실행하지 않음
+→ V4와 V5가 순서대로 실행되어 legacy column을 제거
 → Hibernate validate가 Entity와 결과 구조 비교
 → 일치하면 애플리케이션 시작
 ```
@@ -627,6 +656,7 @@ flyway_schema_history도 테이블도 없는 빈 schema
 flyway_schema_history 존재
 → V1, V2, V3의 성공 이력이 존재
 → B3는 기존 환경에서 실행하지 않음
+→ 아직 V4 또는 V5가 없으면 해당 migration만 순서대로 실행
 → Hibernate validate가 기존 구조와 Entity 비교
 ```
 
@@ -656,6 +686,12 @@ V2
 V3
 → BIGINT 조회수 테이블 생성과 기존 조회수 복사
 
+V4
+→ post_counters.view_count 제거
+
+V5
+→ posts.is_fixed 제거
+
 B3
 → 새 빈 DB를 V3까지 반영된 현재 전체 구조로 생성
 
@@ -671,82 +707,110 @@ Hibernate validate
 
 파일: `FlywayBaselineMigrationTest.java`
 
-이 테스트는 MySQL 호환 모드의 빈 H2 DB에 실제 migration 폴더를 적용한다. 운영 MySQL 자체를 완전히 대체하는 테스트는 아니지만, `B3` SQL이 빈 DB를 만들 수 있는지와 Flyway가 `V1~V3` 대신 `B3`를 선택하는지는 빠르게 검증한다.
+이 테스트는 MySQL 호환 모드의 빈 H2 DB에 실제 migration 폴더를 적용한다. 운영 MySQL 자체를 완전히 대체하는 테스트는 아니지만, `B3` 이후 `V4`, `V5`까지 적용해 현재 version 5가 되는지와 최종 schema에서 legacy column이 사라지는지를 빠르게 검증한다.
 
 H2 호환 모드의 한계는 11장의 `MySqlSchemaIntegrationTest`가 보완한다. CI의 `mysqlTest`는 실제 `mysql:8.4` container를 시작해 B3를 적용하고, Hibernate `ddl-auto: validate`로 Entity mapping을 검사한 뒤 실제 MySQL row lock에서 동시 좋아요가 유실되지 않는지 확인한다.
 
 ```java
-package kr.adapterz.springdatajpa.config; // migration 설정 테스트가 속한 package다.
+package kr.adapterz.springdatajpa.config;
 
-import org.flywaydb.core.Flyway; // 코드에서 직접 Flyway 실행 객체를 만들기 위한 class다.
-import org.junit.jupiter.api.Test; // method를 JUnit test로 표시하는 annotation이다.
+import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Test;
 
-import java.sql.Connection; // 생성된 DB를 JDBC로 확인할 연결 type이다.
-import java.sql.DriverManager; // H2 JDBC 연결을 여는 class다.
-import java.sql.ResultSet; // SELECT 결과 행을 읽는 type이다.
-import java.sql.Statement; // 확인용 SQL을 실행하는 type이다.
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 
-import static org.assertj.core.api.Assertions.assertThat; // 실제 값과 기대값을 읽기 쉽게 비교한다.
+import static org.assertj.core.api.Assertions.assertThat;
 
-class FlywayBaselineMigrationTest { // 빈 DB baseline 동작만 검증하는 test class다.
+class FlywayBaselineMigrationTest {
 
-    @Test // 아래 method를 독립 test case로 실행한다.
-    void emptyDatabaseIsCreatedFromCurrentBaseline() throws Exception { // 빈 DB가 현재 baseline으로 생성되는지 검증한다.
-        String jdbcUrl = "jdbc:h2:mem:flyway-baseline;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1"; // 메모리 H2를 MySQL 호환·소문자 table mode로 열고 연결 종료 뒤에도 유지한다.
-        Flyway flyway = Flyway.configure() // Flyway 설정 builder를 시작한다.
-                .dataSource(jdbcUrl, "sa", "") // 방금 정의한 빈 H2를 migration 대상으로 지정한다.
-                .locations("classpath:db/migration") // 운영과 같은 migration classpath 폴더를 읽는다.
-                .load(); // 설정을 실행 가능한 Flyway 객체로 만든다.
+    @Test
+    void emptyDatabaseIsCreatedFromCurrentBaseline() throws Exception {
+        String jdbcUrl = "jdbc:h2:mem:flyway-baseline;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
+        Flyway flyway = Flyway.configure()
+                .dataSource(jdbcUrl, "sa", "")
+                .locations("classpath:db/migration")
+                .load();
 
-        flyway.migrate(); // 빈 DB에서 발견한 migration을 실제 실행한다.
+        flyway.migrate();
 
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3"); // 실행 후 현재 schema version이 B3의 3인지 확인한다.
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
 
-        try ( // 확인이 끝나면 Connection과 Statement를 자동으로 닫는다.
-                Connection connection = DriverManager.getConnection(jdbcUrl, "sa", ""); // migration이 끝난 같은 H2에 연결한다.
-                Statement statement = connection.createStatement() // metadata 확인 SQL을 실행할 Statement를 만든다.
+        try (
+                Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "");
+                Statement statement = connection.createStatement()
         ) {
-            assertThat(tableExists(statement, "users")).isTrue(); // 핵심 사용자 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "posts")).isTrue(); // 핵심 게시글 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "comments")).isTrue(); // 댓글 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_counters")).isTrue(); // counter table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_images")).isTrue(); // 게시글 이미지 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_likes")).isTrue(); // 좋아요 기록 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_likes_seq")).isTrue(); // 좋아요 ID 공급 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_reports")).isTrue(); // 신고 기록 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "post_view_counts")).isTrue(); // BIGINT 조회수 table이 생성됐는지 확인한다.
-            assertThat(tableExists(statement, "auth_sessions")).isTrue(); // refresh 인증 세션 table이 생성됐는지 확인한다.
+            assertThat(tableExists(statement, "users")).isTrue();
+            assertThat(tableExists(statement, "posts")).isTrue();
+            assertThat(tableExists(statement, "comments")).isTrue();
+            assertThat(tableExists(statement, "post_counters")).isTrue();
+            assertThat(tableExists(statement, "post_images")).isTrue();
+            assertThat(tableExists(statement, "post_likes")).isTrue();
+            assertThat(tableExists(statement, "post_likes_seq")).isTrue();
+            assertThat(tableExists(statement, "post_reports")).isTrue();
+            assertThat(tableExists(statement, "post_view_counts")).isTrue();
+            assertThat(tableExists(statement, "auth_sessions")).isTrue();
+            assertThat(columnExists(statement, "post_counters", "view_count")).isFalse();
+            assertThat(columnExists(statement, "posts", "is_fixed")).isFalse();
 
-            try (ResultSet resultSet = statement.executeQuery(""" // Flyway 이력에서 B3 성공 행을 조회하고 결과를 자동으로 닫는다.
-                    SELECT COUNT(*) // 조건에 맞는 이력 행 수를 센다.
-                    FROM flyway_schema_history // Flyway가 실행 결과를 기록한 table이다.
-                    WHERE script = 'B3__current_schema.sql' // B3 파일의 이력만 선택한다.
-                      AND success = TRUE // 성공으로 기록된 행만 선택한다.
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'B3__current_schema.sql'
+                      AND success = TRUE
                     """)) {
-                resultSet.next(); // COUNT 결과의 첫 행으로 cursor를 이동한다.
-                assertThat(resultSet.getInt(1)).isEqualTo(1); // B3 성공 이력이 정확히 한 행인지 확인한다.
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
             }
 
-            try (ResultSet resultSet = statement.executeQuery(""" // V migration 실행 이력을 조회한다.
-                    SELECT COUNT(*) // V 파일 이력 수를 센다.
-                    FROM flyway_schema_history // 같은 Flyway 이력 table을 조회한다.
-                    WHERE script LIKE 'V%' // 파일 이름이 V로 시작하는 이력만 고른다.
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'V4__remove_legacy_post_counter_view_count.sql'
                     """)) {
-                resultSet.next(); // COUNT 결과 행으로 이동한다.
-                assertThat(resultSet.getInt(1)).isZero(); // 새 DB에서는 V1~V3를 실행하지 않았는지 확인한다.
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'V5__remove_post_is_fixed.sql'
+                    """)) {
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
             }
         }
     }
 
-    private boolean tableExists(Statement statement, String tableName) throws Exception { // 지정 table 존재 여부를 재사용해 확인한다.
-        try (ResultSet resultSet = statement.executeQuery(""" // information_schema 조회 결과를 자동으로 닫는다.
-                SELECT COUNT(*) // 이름이 일치하는 table 개수를 센다.
-                FROM information_schema.tables // DB가 제공하는 table metadata를 조회한다.
-                WHERE table_schema = CURRENT_SCHEMA() // 현재 test schema로 범위를 제한한다.
-                  AND table_name = '%s' // method로 받은 table 이름을 조건에 넣는다.
+    private boolean tableExists(Statement statement, String tableName) throws Exception {
+        try (ResultSet resultSet = statement.executeQuery("""
+                SELECT COUNT(*)
+                FROM information_schema.tables
+                WHERE table_schema = CURRENT_SCHEMA()
+                  AND table_name = '%s'
                 """.formatted(tableName))) {
-            resultSet.next(); // COUNT 결과 행으로 이동한다.
-            return resultSet.getInt(1) == 1; // 정확히 한 table이 있으면 true를 반환한다.
+            resultSet.next();
+            return resultSet.getInt(1) == 1;
+        }
+    }
+
+    private boolean columnExists(
+            Statement statement,
+            String tableName,
+            String columnName
+    ) throws Exception {
+        try (ResultSet resultSet = statement.executeQuery("""
+                SELECT COUNT(*)
+                FROM information_schema.columns
+                WHERE table_schema = CURRENT_SCHEMA()
+                  AND table_name = '%s'
+                  AND column_name = '%s'
+                """.formatted(tableName, columnName))) {
+            resultSet.next();
+            return resultSet.getInt(1) == 1;
         }
     }
 }
@@ -754,6 +818,7 @@ class FlywayBaselineMigrationTest { // 빈 DB baseline 동작만 검증하는 te
 
 ## 10.11 스킵할 코드
 
+`FlywayBaselineMigrationTest`의 현재 핵심은 B3 → V4 → V5가 실행되어 version 5가 되고, `post_counters.view_count`와 `posts.is_fixed`가 최종 schema에서 사라지며, 각 migration script가 `flyway_schema_history`에 한 번씩 기록되는지 확인하는 것입니다. `MySqlSchemaIntegrationTest`는 같은 column 부재를 실제 MySQL `information_schema`에서 확인하므로 H2 baseline 테스트를 대체하지 않고 보완합니다.
 - V1의 네 카운터 컬럼별 동일한 존재 확인과 `ALTER` 반복
 - `information_schema` 조회문의 컬럼 이름 반복
 - `PREPARE` 문장의 이름 차이

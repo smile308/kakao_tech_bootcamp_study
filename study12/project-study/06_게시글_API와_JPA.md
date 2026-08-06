@@ -75,8 +75,6 @@ private String postContent;
 @OrderBy("imageOrder ASC")
 private List<PostImage> postImages = new ArrayList<>();
 
-@Column(name = "is_fixed", nullable = false)
-private boolean isFixed;
 
 @OneToOne(
         mappedBy = "post",
@@ -133,8 +131,7 @@ private String postContent; // 게시글 본문이다.
 @OrderBy("imageOrder ASC") // collection을 읽을 때 imageOrder field 오름차순으로 정렬한다.
 private List<PostImage> postImages = new ArrayList<>(); // 게시글 image Entity 목록을 빈 mutable list로 초기화한다.
 
-@Column(name = "is_fixed", nullable = false) // 한 번 수정됐는지 기록하는 column이다.
-private boolean isFixed; // version 강제 증가 판단에도 사용한다.
+// 현재 Post Entity에는 isFixed field가 없다. 수정 여부는 PostService의 값 비교와 @Version으로 처리한다.
 
 @OneToOne( // Post 하나와 PostCounter 하나의 1:1 관계다.
         mappedBy = "post", // FK는 PostCounter.post field가 관리한다.
@@ -420,26 +417,43 @@ private void validatePostVersion(Post post, Long requestVersion) {
 }
 ```
 
-수정 method에는 같은 값으로 수정해도 version을 올려야 하는 경우를 위한 다음 실제 코드도 있다.
+현재 코드에는 `requiresForcedVersionIncrement()`나 `post.isFixed()` 호출이 없습니다. `PostService.fixPost()`는 먼저 제목·내용과 이미지 목록을 각각 비교합니다.
 
 ```java
-if (requiresForcedVersionIncrement(post, request)) {
+boolean sameTitleAndContent = hasSameTitleAndContent(post, request);
+boolean sameImageFiles = hasSameImageFiles(post, request);
+
+if (sameTitleAndContent && sameImageFiles) {
+    return postFixResponseDto;
+}
+
+if (sameTitleAndContent) {
     entityManager.lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
 }
+
+post.update(request.getTitle(), request.getContent(), request.getImageFiles());
 ```
+
+세 값이 모두 같으면 실제 Entity 변경과 강제 version 증가를 하지 않고 응답합니다. 제목·내용이 같은데 이미지가 다르면 이미지 collection만 바뀌는 경우에도 실제 수정으로 취급해 `OPTIMISTIC_FORCE_INCREMENT`를 요청합니다. 제목이나 내용이 다르면 일반 `post.update()`와 `@Version` 검사가 적용됩니다. 최종 기준은 별도 `isFixed` boolean이 아니라 현재 Entity와 요청값의 비교입니다.
 
 ```java
-private boolean requiresForcedVersionIncrement(
-        Post post,
-        PostFixRequestDto request
-) {
-    return post.isFixed()
-            && Objects.equals(post.getPostTitle(), request.getTitle())
-            && Objects.equals(post.getPostContent(), request.getContent());
+private boolean hasSameTitleAndContent(Post post, PostFixRequestDto request) { // 서버의 현재 제목·내용과 요청값이 모두 같은지 확인한다.
+    return Objects.equals(post.getPostTitle(), request.getTitle()) // 제목을 null 안전하게 비교한다.
+            && Objects.equals(post.getPostContent(), request.getContent()); // 본문도 같아야 true다.
+}
+
+private boolean hasSameImageFiles(Post post, PostFixRequestDto request) { // 현재 이미지 순서와 요청 이미지 목록이 같은지 확인한다.
+    List<String> currentImageFiles = post.getPostImages().stream() // Entity image collection을 문자열 목록으로 변환한다.
+            .map(PostImage::getImageFile) // 각 PostImage에서 저장 문자열만 꺼낸다.
+            .toList();
+    List<String> requestedImageFiles = request.getImageFiles() == null // 요청 image list가 null인지 먼저 확인한다.
+            ? List.of() // null이면 이미지 없음으로 취급한다.
+            : request.getImageFiles().stream() // 요청 목록을 순회한다.
+            .filter(imageFile -> imageFile != null && !imageFile.isBlank()) // null·공백 항목은 Entity 저장 규칙과 맞춰 제외한다.
+            .toList();
+    return Objects.equals(currentImageFiles, requestedImageFiles); // 순서와 값이 모두 같은지 비교한다.
 }
 ```
-
-JPA는 `Post` 자체의 column 값이 바뀌지 않으면 Post UPDATE가 필요 없다고 판단할 수 있다. 하지만 image collection만 교체되거나 이미 같은 제목·내용으로 다시 수정하는 요청도 성공한 수정으로 version을 진행시켜야 이후 오래된 요청을 구분할 수 있다. `OPTIMISTIC_FORCE_INCREMENT`는 해당 Post의 version 증가를 강제한다. 조건에 `post.isFixed()`가 있으므로 최초 수정에서는 `update()`가 `isFixed`를 false에서 true로 바꾸며 자연스럽게 Post가 dirty 상태가 된다.
 
 ```text
 사용자 A와 B가 version 3 게시글을 함께 열음
@@ -463,22 +477,6 @@ private void validatePostVersion(Post post, Long requestVersion) { // DB Entity�
 }
 ```
 
-```java
-if (requiresForcedVersionIncrement(post, request)) { // Post 자체 column 변경이 없을 수 있는 후속 수정인지 검사한다.
-    entityManager.lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT); // commit 때 Post version을 강제로 증가시킨다.
-}
-```
-
-```java
-private boolean requiresForcedVersionIncrement( // 강제 version 증가가 필요한지 계산한다.
-        Post post, // 현재 영속 Post다.
-        PostFixRequestDto request // client가 보낸 수정 값이다.
-) {
-    return post.isFixed() // 이미 한 번 수정되어 update()의 isFixed 변경이 더는 일어나지 않고
-            && Objects.equals(post.getPostTitle(), request.getTitle()) // 제목도 현재 값과 같고
-            && Objects.equals(post.getPostContent(), request.getContent()); // 내용도 현재 값과 같을 때 true다.
-}
-```
 
 ## 6.7 좋아요와 비관적 락
 

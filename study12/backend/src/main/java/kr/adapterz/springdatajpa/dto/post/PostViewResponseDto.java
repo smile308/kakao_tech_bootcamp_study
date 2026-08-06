@@ -17,7 +17,6 @@ public class PostViewResponseDto {
 
     private Long postId;
     private Long version;
-    private boolean isFixed;
     private String title;
     private String content;
     private List<String> imageUrls;
@@ -44,7 +43,6 @@ public class PostViewResponseDto {
     ) {
         this.postId = post.getPostId();
         this.version = post.getVersion();
-        this.isFixed = post.isFixed();
         this.title = post.getPostTitle();
         this.content = post.getPostContent();
         this.imageUrls = getImageUrls(post);

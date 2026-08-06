@@ -1,6 +1,7 @@
 package kr.adapterz.springdatajpa.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostDeleteRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostPageResponseDto;
@@ -37,6 +38,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
+
+    private static final String SAME_IMAGE = "data:image/png;base64,iVBORw0KGgo=";
+    private static final String NEW_IMAGE = "data:image/png;base64,iVBORw0KGgoA";
 
     @Mock
     private PostRepository postRepository;
@@ -361,6 +365,50 @@ class PostServiceTest {
     }
 
     @Test
+    void 게시글의_제목_내용_이미지가_모두_같으면_버전을_증가시키지_않는다() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        post.replaceImages(List.of(SAME_IMAGE));
+        PostFixRequestDto request = createPostFixRequest(
+                "title",
+                "content",
+                List.of(SAME_IMAGE)
+        );
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        postService.fixPost(postId, writerId, request);
+
+        verify(entityManager, never()).lock(any(Post.class), any(LockModeType.class));
+        assertThat(post.getPostTitle()).isEqualTo("title");
+        assertThat(post.getPostContent()).isEqualTo("content");
+        assertThat(post.getPostImages().get(0).getImageFile()).isEqualTo(SAME_IMAGE);
+    }
+
+    @Test
+    void 제목과_내용이_같아도_이미지가_다르면_실제_수정으로_처리한다() {
+        Long postId = 1L;
+        Long writerId = 1L;
+        Post post = createPost(postId, createUser(writerId));
+        post.replaceImages(List.of(SAME_IMAGE));
+        PostFixRequestDto request = createPostFixRequest(
+                "title",
+                "content",
+                List.of(NEW_IMAGE)
+        );
+
+        when(postRepository.findByPostIdAndDeletedFalse(postId))
+                .thenReturn(Optional.of(post));
+
+        postService.fixPost(postId, writerId, request);
+
+        verify(entityManager).lock(post, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        assertThat(post.getPostImages().get(0).getImageFile()).isEqualTo(NEW_IMAGE);
+    }
+
+    @Test
     void 게시글_삭제_시_게시글이_없으면_No_Post_예외가_발생한다() {
         Long postId = 1L;
         Long loginUserId = 1L;
@@ -630,6 +678,16 @@ class PostServiceTest {
         ReflectionTestUtils.setField(request, "version", null);
         ReflectionTestUtils.setField(request, "title", title);
         ReflectionTestUtils.setField(request, "content", content);
+        return request;
+    }
+
+    private PostFixRequestDto createPostFixRequest(
+            String title,
+            String content,
+            List<String> imageFiles
+    ) {
+        PostFixRequestDto request = createPostFixRequest(title, content);
+        ReflectionTestUtils.setField(request, "imageFiles", imageFiles);
         return request;
     }
 
