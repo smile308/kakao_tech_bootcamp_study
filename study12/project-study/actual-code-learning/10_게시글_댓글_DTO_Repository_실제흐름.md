@@ -1379,7 +1379,7 @@ CommentDeleteRequestDto.commentId
 
 ## 진행 상태
 
-- 공식 파일 진행도: **90/213개 = 약 42.3%**
+- 공식 파일 진행도: **90/214개 = 약 42.1%**
 - 이번 문서 보완에서 전체 원문을 추가·확인한 파일: `PostViewResponseDto.java`
 - 이미 다른 문서의 조회수 흐름에서 확인된 파일: `PostViewResponseDto.java`는 중복 집계하지 않음
 - 현재 흐름 이해 checkpoint: 진행 중

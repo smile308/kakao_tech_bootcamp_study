@@ -4,12 +4,12 @@
 
 ## 진행률과 공식 집계
 
-- 18장까지 완료한 공식 파일: 199/213개, 약 93.4%
+- 18장까지 완료한 공식 파일: 200/214개, 약 93.5%
 - 이번 장에서 새로 정독하는 공식 파일: 14개
-- 19장 완료 후 공식 진행률: **213/213개, 100.0%**
+- 19장 완료 후 공식 진행률: **214/214개, 100.0%**
 - 공식 14개: backend 7개 + frontend 7개
 - 추가로 확인한 지원 파일: frontend/nginx/default.conf
-- frontend/nginx/default.conf는 frontend Dockerfile이 COPY하는 실제 파일이지만, 기존 00번의 공식 213개 목록에는 포함되어 있지 않습니다. 문서에는 역할을 기록하되 공식 진행률에는 중복 집계하지 않습니다.
+- frontend/nginx/default.conf는 frontend Dockerfile이 COPY하는 실제 파일이지만, 기존 00번의 공식 214개 목록에는 포함되어 있지 않습니다. 문서에는 역할을 기록하되 공식 진행률에는 중복 집계하지 않습니다.
 
 이번 장은 실제 운영 성공을 증명하는 장이 아닙니다. 저장소에서 확인되는 선언·명령·분기와 실제 AWS/RDS/EC2/GHCR/도메인에서 실행되어야 하는 부분을 분리합니다.
 
@@ -974,7 +974,7 @@ server {
 - /health는 200 ok를 직접 반환하므로 frontend container health endpoint입니다.
 - /assets/는 파일이 없으면 404이고 1년 immutable cache header를 붙입니다.
 - location /의 try_files는 React Router route가 서버에 직접 들어와도 index.html로 fallback합니다.
-- 이 파일은 official 213 목록 밖이지만 Dockerfile의 실제 COPY 입력이므로 문서에서 별도 표시했습니다.
+- 이 파일은 official 214 목록 밖이지만 Dockerfile의 실제 COPY 입력이므로 문서에서 별도 표시했습니다.
 
 ---
 
@@ -1814,5 +1814,4 @@ GitHub Actions 검증
 
 backend는 Redis 준비와 Spring Actuator health가 추가되고, frontend는 Vite build-time API base와 SPA fallback 및 /api proxy가 추가됩니다. 두 영역 모두 blue/green container와 edge Nginx를 사용하지만 실행 대상과 health 경로가 다릅니다.
 
-19장까지 공식 파일 진행률은 **213/213개, 100.0%**입니다. 실제 운영 성공, AWS/RDS/EC2/GHCR/SSM/TLS 상태는 repository source만으로 확인할 수 없으며 이번 장에서도 runtime 검증은 실행하지 않았습니다.
-
+19장까지 공식 파일 진행률은 **214/214개, 100.0%**입니다. 실제 운영 성공, AWS/RDS/EC2/GHCR/SSM/TLS 상태는 repository source만으로 확인할 수 없으며 이번 장에서도 runtime 검증은 실행하지 않았습니다.

@@ -1289,7 +1289,7 @@ Cookie·hash·rotation·동시 요청을 처음부터 끝까지 설명합니다.
 
 ## 진행 상태
 
-- 공식 파일 진행도: **52/213 (약 24.4%)**
+- 공식 파일 진행도: **52/214 (약 24.3%)**
 - 산정 근거: 새 04·05장에서 기존 인증 범위의 52개 파일까지 확인한 기준을 유지합니다. `AccessTokenClaims.java`, `JwtProvider.java`, `JwtAuthenticationFilter.java`, `SecurityConfig.java`를 이 문서에서 다시 정독했지만, 이미 확인된 파일을 중복 집계하지 않았습니다.
 - 이 장에서 전체 원문 또는 정확한 흐름 발췌로 확인한 파일: `authStorage.js`, `api.js`의 보호 요청 구간, `ProtectedRoute.jsx`, `AppRoutes.jsx`의 보호 route 구간, `PostDetailPage.jsx`의 상세 조회 effect, `postApi.js`의 `getPost`, `AccessTokenClaims.java`, `JwtProvider.java`, `SecurityConfig.java`의 관련 설정, `JwtAuthenticationFilter.java`, `CustomUserDetailsService.java`, `CustomUserDetails.java`, `User.java`의 인증 상태 method, `PostController.java`, `JwtProviderTest.java`, `JwtAuthenticationFilterTest.java`, `CustomUserDetailsServiceTest.java`, `SecurityConfigTest.java`.
 - 문서 작성 상태: Access Token 정상·실패·Controller 전달·테스트 범위 작성 완료.

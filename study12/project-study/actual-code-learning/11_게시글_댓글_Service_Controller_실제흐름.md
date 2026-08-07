@@ -1411,7 +1411,7 @@ counter row 수 이상
 
 ## 11.11 진행 상태
 
-- 공식 파일 진행도: `96/213(약 45.1%)`
+- 공식 파일 진행도: `96/214(약 44.9%)`
 - 이번 문서에서 확인한 파일: `ViewCountUpdater.java`, `DatabaseViewCountUpdater.java`, `PostService.java`, `CommentService.java`, `PostController.java`, `CommentController.java`
 - 문서 작성 상태: 완료
 - 사용자 이해 checkpoint: 진행 중

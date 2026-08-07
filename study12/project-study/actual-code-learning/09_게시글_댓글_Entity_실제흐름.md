@@ -737,7 +737,7 @@ import lombok.NoArgsConstructor;
 public class Like {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "post_like_id")
     private Long postLikeId;
 
@@ -766,6 +766,21 @@ public class Like {
 `@UniqueConstraint`는 “좋아요 수가 중복되지 않는다”가 아니라 “같은 사용자가 같은
 게시글을 나타내는 Like row를 두 개 만들 수 없다”를 보장합니다. 좋아요 숫자는 별도
 `PostCounter.likeCount` column이고, row와 숫자를 Service transaction이 함께 갱신합니다.
+
+현재 모든 독립 식별자 Entity의 생성 전략은 `GenerationType.IDENTITY`입니다.
+`Like`만 과거에 `AUTO`였지만 현재 source에서는 다른 Entity와 동일하게
+`IDENTITY`로 통일되었습니다.
+
+- `IDENTITY`: MySQL의 `AUTO_INCREMENT`가 INSERT 시 ID를 만들고, Hibernate가 DB가
+  반환한 생성 ID를 Entity에 반영합니다.
+- `AUTO`: JPA provider와 DB dialect가 선택한 생성 전략을 사용합니다. 이 프로젝트의
+  과거 `Like` 구조에서는 B3 baseline의 `post_likes_seq` 보조 table과 연결된 방식으로
+  동작할 수 있었습니다.
+
+따라서 이 변경은 Java annotation 한 줄만 바꾼 것이 아닙니다. 기존 RDS의
+`post_likes.post_like_id`가 `AUTO_INCREMENT`가 아니고 `post_likes_seq`가 존재할 수
+있으므로, 이미 적용된 migration을 수정하지 않고 V6 migration을 추가해 DB 구조도
+현재 Entity와 맞춥니다. V6의 실제 SQL과 기존·신규 RDS 적용 순서는 17장에서 확인합니다.
 
 ```java
 public Like(Post post, User user) {
@@ -1241,5 +1256,5 @@ title/content가 바뀌면 dirty checking과 version 증가를 사용하며, col
 - 실행하지 않은 검증: 전체 `./gradlew test` 실행 중 Gradle이 클래스 이름 뒤에 ` 2`를
   붙인 class를 실행하려다 실패했으며, H2/MySQL, Redis, Docker 배포
 - 이번 변경은 새 파일을 추가하지 않아 공식 파일 진행도에는 영향을 주지 않음
-- 공식 파일 진행도: `59/213 (약 27.7%)`
+- 공식 파일 진행도: `59/214 (약 27.6%)`
 - 다음 학습 시작점: `10_게시글_댓글_DTO_Repository_실제흐름.md`

@@ -138,6 +138,7 @@ base YAML의 profile group에서 test는 local을 포함하므로 일반 ActiveP
 - backend/src/main/resources/db/migration/V3__expand_post_view_counts.sql
 - backend/src/main/resources/db/migration/V4__remove_legacy_post_counter_view_count.sql
 - backend/src/main/resources/db/migration/V5__remove_post_is_fixed.sql
+- backend/src/main/resources/db/migration/V6__use_identity_for_post_likes.sql
 
 일반적인 versioned migration 이름은 다음 구조입니다.
 
@@ -145,7 +146,9 @@ base YAML의 profile group에서 test는 local을 포함하므로 일반 ActiveP
 V<version>__<description>.sql
 ```
 
-B3__current_schema.sql은 Baseline migration입니다. 빈 DB에 현재 schema의 출발점을 만들고, 뒤의 V4와 V5가 legacy column을 제거해 최종 구조를 완성합니다.
+B3__current_schema.sql은 Baseline migration입니다. 빈 DB에 schema의 출발점을 만들고,
+뒤의 V4·V5가 legacy column을 제거한 뒤 V6가 좋아요 ID 생성 구조를 현재 Entity와
+맞춰 최종 구조를 완성합니다.
 
 flyway_schema_history는 어떤 파일을 언제 성공적으로 적용했는지를 기록합니다. 실제 table 변경과 별도로 이 history가 있어야 다음 시작 때 성공한 SQL을 다시 실행하지 않습니다.
 
@@ -156,6 +159,7 @@ flyway_schema_history는 어떤 파일을 언제 성공적으로 적용했는지
 → B3 current baseline 적용
 → V4 적용
 → V5 적용
+→ V6 적용
 → 현재 schema 완성
 
 기존 RDS
@@ -164,7 +168,10 @@ flyway_schema_history는 어떤 파일을 언제 성공적으로 적용했는지
 → 아직 없는 다음 migration만 적용
 ```
 
-빈 DB에서 B3가 current schema를 만들고 V4·V5가 뒤처리를 하는 경로는 FlywayBaselineMigrationTest가 검증합니다. V1~V3은 과거 schema를 이미 사용하는 DB가 새 구조로 이동할 때 필요한 역사적 migration입니다. 새 DB에서 V1~V3을 B3와 같은 방식으로 다시 실행하는 흐름으로 이해하면 안 됩니다.
+빈 DB에서 B3가 schema 출발점을 만들고 V4·V5·V6가 뒤처리를 하는 경로는
+FlywayBaselineMigrationTest가 검증합니다. V1~V3은 과거 schema를 이미 사용하는 DB가
+새 구조로 이동할 때 필요한 역사적 migration입니다. 새 DB에서 V1~V3을 B3와 같은
+방식으로 다시 실행하는 흐름으로 이해하면 안 됩니다.
 
 이미 운영 DB에 적용된 migration 파일을 수정하면 Flyway checksum이 달라져 validate 단계에서 실패할 수 있습니다. 기존 파일을 고치지 않고 다음 변경을 새 V6__... 파일로 추가하는 이유입니다.
 
@@ -297,7 +304,11 @@ CREATE TABLE post_view_counts (
 ) ENGINE=InnoDB;
 ```
 
-이 파일은 current schema를 한 번에 만드는 baseline 원문입니다. 실제 source에 post_counters.view_count와 posts.is_fixed가 포함되어 있지만, 새 빈 DB의 최종 migration 흐름에서는 뒤의 V4와 V5가 이 두 legacy column을 제거합니다.
+이 파일은 schema 출발점을 한 번에 만드는 baseline 원문입니다. `post_likes.post_like_id`
+가 아직 `AUTO_INCREMENT`가 아니고 `post_likes_seq` 보조 table을 생성하는 이유는
+과거 `Like`의 `GenerationType.AUTO` 구조가 남아 있기 때문입니다. 실제 source에
+`post_counters.view_count`와 `posts.is_fixed`도 포함되어 있지만, 새 빈 DB의 최종
+migration 흐름에서는 V4·V5·V6가 legacy 구조를 현재 Entity와 맞춥니다.
 
 ### 17.3.2 B3 table 생성 순서
 
@@ -310,7 +321,7 @@ CREATE TABLE post_view_counts (
 | post_counters | like/report/reply/legacy view counter | posts shared key |
 | post_images | 이미지와 순서 | posts FK |
 | post_likes | 사용자별 좋아요 | post_id,user_id unique |
-| post_likes_seq | post_likes ID 생성 보조 table | sequence-style ID |
+| post_likes_seq | V6에서 제거되는 과거 post_likes ID 생성 보조 table | B3에만 존재 |
 | post_reports | 사용자별 신고 | post_id,user_id unique |
 | post_view_counts | 분리된 영구 조회수 | posts shared key |
 
@@ -690,7 +701,7 @@ SET view_counter.view_count = GREATEST(
 
 두 table에 값이 모두 있을 수 있으므로 GREATEST로 큰 값을 보존합니다. 그 뒤 V4가 legacy column을 제거합니다.
 
-## 17.7 V4·V5 legacy column 제거
+## 17.7 V4·V5·V6 legacy 구조 정리
 
 ### 17.7.1 V4
 
@@ -714,7 +725,32 @@ ALTER TABLE posts
 
 V5는 현재 Entity와 API에서 제거된 posts.is_fixed column을 삭제합니다. Entity가 아직 field를 읽는데 V5를 먼저 적용하면 Hibernate validation이나 SQL 실행이 실패할 수 있습니다.
 
-### 17.7.3 B3와 최종 schema
+### 17.7.3 V6 — Like IDENTITY 전략으로 통일
+
+파일: backend/src/main/resources/db/migration/V6__use_identity_for_post_likes.sql
+
+```
+ALTER TABLE post_likes
+    MODIFY COLUMN post_like_id BIGINT NOT NULL AUTO_INCREMENT;
+
+DROP TABLE IF EXISTS post_likes_seq;
+```
+
+현재 `Like.java`는 `@GeneratedValue(strategy = GenerationType.IDENTITY)`를 사용합니다.
+따라서 MySQL의 `post_likes.post_like_id`도 `AUTO_INCREMENT`여야 Hibernate가 INSERT
+시 DB가 발급한 ID를 받을 수 있습니다. `MODIFY COLUMN`은 기존 column의 자료형·필수
+조건은 유지하면서 auto-increment 속성을 추가합니다.
+
+`post_likes_seq`는 B3가 만든 과거 `AUTO` 전략용 보조 table입니다. V6는 더 이상 이
+table을 사용하지 않으므로 `DROP TABLE IF EXISTS`로 제거합니다. 이미 좋아요 row가
+있는 RDS에서는 table을 삭제해도 row 자체는 삭제하지 않고, ID column의 생성 방식만
+현재 Entity와 맞춥니다.
+
+이 변경은 이미 적용된 V5 파일을 수정하지 않고 새 V6로 추가되었습니다. Flyway는
+성공한 V1~V5의 checksum을 다시 계산해 바꾸는 대신, history에 V6를 새 이력으로
+기록합니다.
+
+### 17.7.4 B3와 최종 schema
 
 ```text
 B3 CREATE
@@ -722,10 +758,13 @@ B3 CREATE
 → posts.is_fixed 존재
 → V4 DROP post_counters.view_count
 → V5 DROP posts.is_fixed
+→ V6 MODIFY post_likes.post_like_id AUTO_INCREMENT
+→ V6 DROP post_likes_seq
 → 현재 Entity와 맞는 최종 schema
 ```
 
-B3 파일만 보고 최종 DB column을 판단하면 안 됩니다. Flyway history와 뒤의 V4·V5 적용 결과까지 봐야 합니다.
+B3 파일만 보고 최종 DB 구조를 판단하면 안 됩니다. Flyway history와 뒤의 V4·V5·V6
+적용 결과까지 봐야 합니다.
 
 ## 17.8 Entity·Repository와 RDS schema 연결
 
@@ -784,7 +823,7 @@ class FlywayBaselineMigrationTest {
 
         flyway.migrate();
 
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
 
         try (
                 Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "");
@@ -796,7 +835,7 @@ class FlywayBaselineMigrationTest {
             assertThat(tableExists(statement, "post_counters")).isTrue();
             assertThat(tableExists(statement, "post_images")).isTrue();
             assertThat(tableExists(statement, "post_likes")).isTrue();
-            assertThat(tableExists(statement, "post_likes_seq")).isTrue();
+            assertThat(tableExists(statement, "post_likes_seq")).isFalse();
             assertThat(tableExists(statement, "post_reports")).isTrue();
             assertThat(tableExists(statement, "post_view_counts")).isTrue();
             assertThat(tableExists(statement, "auth_sessions")).isTrue();
@@ -826,6 +865,15 @@ class FlywayBaselineMigrationTest {
                     SELECT COUNT(*)
                     FROM flyway_schema_history
                     WHERE script = 'V5__remove_post_is_fixed.sql'
+                    """)) {
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'V6__use_identity_for_post_likes.sql'
                     """)) {
                 resultSet.next();
                 assertThat(resultSet.getInt(1)).isEqualTo(1);
@@ -871,19 +919,21 @@ jdbc:h2:mem:flyway-baseline;MODE=MySQL
 → Flyway.configure()
 → classpath:db/migration 위치 지정
 → flyway.migrate()
-→ current version == 5 확인
-→ 10개 table 존재 확인
+→ current version == 6 확인
+→ 최종 table 9개 존재 확인
+→ post_likes_seq 없음 확인
 → post_counters.view_count 없음 확인
 → posts.is_fixed 없음 확인
-→ flyway_schema_history에서 B3·V4·V5 성공 기록 확인
+→ flyway_schema_history에서 B3·V4·V5·V6 성공 기록 확인
 ```
 
 이 테스트가 증명하는 것:
 
 - 빈 DB에서 current baseline 경로가 실행됨
-- 최종 schema에 필요한 table이 있음
-- V4·V5 destructive drop이 적용됨
-- B3·V4·V5가 history에 성공으로 기록됨
+- 최종 schema에 필요한 9개 table이 있음
+- V4·V5·V6 변경이 적용됨
+- B3·V4·V5·V6가 history에 성공으로 기록됨
+- post_likes_seq가 제거되어 현재 Like의 IDENTITY mapping과 맞음
 
 증명하지 않는 것:
 
@@ -963,16 +1013,19 @@ Integer currentTableCount = jdbcTemplate.queryForObject("""
               'post_counters',
               'post_images',
               'post_likes',
-              'post_likes_seq',
               'post_reports',
               'post_view_counts'
           )
         """, Integer.class);
 
-assertThat(currentTableCount).isEqualTo(10);
+        assertThat(currentTableCount).isEqualTo(9);
 ```
 
-이후 post_counters.view_count와 posts.is_fixed의 column count가 0인지 확인하므로 V4·V5 결과도 검증합니다. 그 다음 5개 thread가 같은 게시글에 좋아요를 생성하고 PostCounter.likeCount와 post_likes row 수가 모두 5인지 확인합니다. 이는 migration 후 실제 Entity·Repository·Service가 schema와 호환되는지도 확인하는 단계입니다.
+이후 post_counters.view_count와 posts.is_fixed의 column count가 0인지 확인하고,
+post_likes_seq가 없는 최종 구조도 사용하므로 V4·V5·V6 결과를 검증합니다. 그 다음
+5개 thread가 같은 게시글에 좋아요를 생성하고 PostCounter.likeCount와 post_likes row
+수가 모두 5인지 확인합니다. 이는 migration 후 실제 Entity·Repository·Service가
+schema와 호환되는지도 확인하는 단계입니다.
 
 ## 17.11 migration task와 테스트 범위
 
@@ -1011,7 +1064,8 @@ check.dependsOn tasks.named('mysqlTest')
 → mysqlTest
 ```
 
-이 문서에서는 build.gradle과 테스트 소스를 확인했으며, 실제 Gradle 명령을 실행했다고 주장하지 않습니다.
+이번 문서 갱신에서는 `./gradlew test --tests kr.adapterz.springdatajpa.config.FlywayBaselineMigrationTest`
+를 실행했고 통과했습니다. `mysqlTest`와 실제 RDS 연결은 실행하지 않았습니다.
 
 ## 17.12 새 RDS·기존 RDS·새 migration
 
@@ -1020,8 +1074,9 @@ check.dependsOn tasks.named('mysqlTest')
 ```text
 prod datasource가 새 RDS를 가리킴
 → flyway_schema_history 없음
-→ B3 baseline이 current schema 생성
+→ B3 baseline이 schema 출발점 생성
 → V4·V5가 legacy column 제거
+→ V6가 post_likes IDENTITY와 AUTO_INCREMENT를 맞추고 sequence table 제거
 → history에 성공 버전 기록
 → Hibernate validate
 → 애플리케이션 기동
@@ -1036,7 +1091,7 @@ history의 성공 version 확인
 → 기존 file checksum이 바뀌면 validate 실패 가능
 ```
 
-이미 적용된 V1~V5를 수정하거나 RDS table을 수동 수정한 뒤 history만 맞추는 방식은 현재 코드의 검증 흐름에 포함되어 있지 않습니다. 새 구조 변경은 새 V6__... 파일과 migration test로 추가해야 합니다.
+이미 적용된 V1~V6를 수정하거나 RDS table을 수동 수정한 뒤 history만 맞추는 방식은 현재 코드의 검증 흐름에 포함되어 있지 않습니다. 다음 구조 변경은 새 버전 migration과 migration test로 추가해야 합니다.
 
 ## 17.13 장애·실패 지점
 
@@ -1071,7 +1126,7 @@ history의 성공 version 확인
 - B3 table·FK·unique·index 구조
 - V1 information_schema·동적 SQL
 - V3 data backfill와 GREATEST
-- V4·V5 destructive 변경 순서
+- V4·V5·V6 destructive 변경 순서
 - Flyway baseline test와 MySQL integration test의 profile·tag 설정
 
 ## 17.15 전체 흐름
@@ -1094,6 +1149,7 @@ prod 실행
 → V3 post_view_counts 생성·조회수 이관
 → V4 post_counters.view_count 제거
 → V5 posts.is_fixed 제거
+→ V6 post_likes.post_like_id AUTO_INCREMENT 변경·post_likes_seq 제거
 ```
 
 ## 17.16 이해 확인
@@ -1101,12 +1157,12 @@ prod 실행
 1. local에서는 왜 Flyway가 아니라 Hibernate ddl-auto: create가 schema를 만드는가?
 2. prod의 ddl-auto: validate는 schema를 생성하는가, 검증하는가?
 3. flyway_schema_history가 필요한 이유는 무엇인가?
-4. 빈 DB에서 B3와 V1~V5가 같은 방식으로 모두 실행된다고 보면 안 되는 이유는 무엇인가?
+4. 빈 DB에서 B3와 V1~V6가 같은 방식으로 모두 실행된다고 보면 안 되는 이유는 무엇인가?
 5. V1이 information_schema와 PREPARE를 사용하는 이유는 무엇인가?
 6. V3에서 LEFT JOIN이 하는 역할은 무엇인가?
 7. V3와 Repository query에서 GREATEST를 사용하는 이유는 무엇인가?
 8. V4를 V3보다 먼저 실행하면 어떤 데이터가 사라질 수 있는가?
-9. 이미 적용된 migration 파일을 수정하지 않고 V6을 추가해야 하는 이유는 무엇인가?
+9. Like의 ID 생성 전략을 IDENTITY로 바꾸면서 기존 migration을 수정하지 않고 V6를 추가한 이유는 무엇인가?
 10. FlywayBaselineMigrationTest와 MySqlSchemaIntegrationTest는 각각 무엇을 검증하는가?
 11. ./gradlew test와 ./gradlew mysqlTest의 차이는 무엇인가?
 12. Testcontainers MySQL 테스트가 실제 AWS RDS에 대해 증명하지 못하는 것은 무엇인가?
@@ -1123,7 +1179,8 @@ prod 실행
 
 ## 17.18 진행률
 
-- 이 문서까지 확인한 고유 파일: **168/213개**
-- 진행률: **78.9%**
-- 이번 문서에서 새로 집계한 migration 파일: B3, V1, V2, V3, V4, V5 6개
-- `application-test.yaml`과 migration 테스트 Java 파일은 각각 01번과 18번에서 집계합니다.
+- 이 문서까지 확인한 고유 파일: **169/214개**
+- 진행률: **79.0%**
+- 이번 문서에서 새로 집계한 migration 파일: B3, V1, V2, V3, V4, V5, V6 7개
+- 실행한 검증: `FlywayBaselineMigrationTest` 통과
+- 실행하지 않은 검증: 실제 MySQL Testcontainers, AWS RDS, Docker 배포

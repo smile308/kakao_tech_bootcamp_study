@@ -2040,7 +2040,7 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 
 ## 16.19 진행률
 
-- 이 문서까지 확인한 고유 파일: **162/213개**
+- 이 문서까지 확인한 고유 파일: **162/214개**
 - 진행률: **76.1%**
 - 이번 문서에서 새로 집계한 구현 파일: `ViewCountProperties.java`, `RedisViewCountStore.java`, `RedisViewCountFlushScheduler.java`, `ViewCountPersistenceService.java`
 - `Post`, `PostService`, `PostViewCountRepository`와 Redis 테스트 파일은 이미 다른 단계에서 집계했거나 18번 테스트 문서에서 집계하므로 중복하지 않습니다.
