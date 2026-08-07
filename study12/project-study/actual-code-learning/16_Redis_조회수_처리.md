@@ -1,6 +1,206 @@
-# 9장. Redis 조회수 처리
+# 16장. Redis 조회수 처리
 
-## 9.1 학습 목표
+## 16.0 Redis를 처음 배우기 전에
+
+이 절은 프로젝트 코드를 읽기 전에 알아야 하는 Redis의 기본 개념을 설명합니다. 뒤의 절부터는 이 개념이 실제 코드의 어느 줄에서 사용되는지 연결해서 확인합니다.
+
+### 16.0.1 Redis는 무엇인가
+
+Redis는 애플리케이션 안에 들어 있는 Java 자료구조가 아니라, 별도로 실행되는 Redis 서버입니다. Spring 백엔드는 Redis 명령을 네트워크로 보내고, Redis 서버가 key와 value를 저장·조회·변경한 뒤 결과를 돌려줍니다.
+
+```text
+Spring 백엔드 JVM
+  └─ StringRedisTemplate ── 네트워크 명령 ──> Redis 서버
+                                               ├─ key
+                                               └─ value
+```
+
+따라서 다음 세 저장 공간은 서로 다릅니다.
+
+| 저장 공간 | 프로젝트에서의 예 | 프로세스가 종료되면 | 주된 책임 |
+|---|---|---|---|
+| Spring/JVM 메모리 | Java 지역 변수, 객체, `SecurityContext` | 사라짐 | 현재 요청을 처리하는 동안의 값 |
+| Redis 서버 | 조회수 count key, dirty set | 설정에 따라 메모리에서 사라질 수 있음. AOF/RDB를 켜면 Redis 재시작 후 복구 가능 | 빠른 임시 누적·공유 상태 |
+| MySQL/RDS | `PostViewCount.viewCount` | 데이터베이스에 남음 | 최종 영구 데이터 |
+
+Redis가 빠르다는 말은 단순히 “Java 변수보다 빠르다”는 뜻이 아닙니다. Redis는 데이터를 주로 메모리에 두고, 조회수처럼 단순한 key-value 연산을 전용 명령으로 처리합니다. 다만 Redis도 별도 서버이므로 네트워크 왕복이 필요하며, Redis가 RDS보다 빠르다는 이유만으로 영구 데이터베이스를 대체하는 것은 아닙니다.
+
+### 16.0.2 Redis의 key와 자료형
+
+Redis의 기본 접근 방식은 `key`를 이름으로 사용해 `value`를 읽거나 바꾸는 것입니다. value는 하나의 문자열만 뜻하지 않고 String·Set·List·Hash 같은 Redis 자료형이 될 수 있습니다. 이 프로젝트는 다음 두 자료형을 핵심적으로 사용합니다.
+
+```text
+String
+  key   = bamboo:{post-view}:count:42
+  value = "101"
+  의미  = 42번 게시글의 현재 조회수
+
+Set
+  key   = bamboo:{post-view}:dirty
+  value = {"42", "77", "101"}
+  의미  = RDS에 아직 반영할 게시글 ID의 중복 없는 모음
+```
+
+조회수 `101`은 Redis가 숫자 타입으로 따로 보관한다는 뜻이 아니라, Redis String으로 저장된 문자열을 `INCR` 명령이 정수처럼 증가시킨다는 뜻입니다. dirty set은 같은 게시글 ID를 여러 요청이 `SADD`해도 한 번만 보관하므로 반영 목록에 중복이 쌓이지 않습니다.
+
+| 명령 | 자료형 | 이 프로젝트의 의미 |
+|---|---|---|
+| `GET key` | String | 게시글별 Redis 조회수 읽기 |
+| `SET key value` | String | Redis 값이 없거나 DB 기준보다 작을 때 기준값 쓰기 |
+| `INCR key` | String(정수 문자열) | 조회수 1 증가 후 증가한 값 반환 |
+| `SADD key member` | Set | dirty set에 게시글 ID 추가 |
+| `SMEMBERS key` | Set | flush 대상 ID 목록 읽기 |
+| `SREM key member` | Set | RDS 반영이 끝난 ID를 dirty set에서 제거 |
+| `TYPE key` | 모든 key | count key가 String인지, dirty key가 Set인지 확인 |
+| `EXISTS key` | 모든 key | count key가 아직 존재하는지 확인 |
+
+뒤의 `RedisViewCountStore`는 이 명령을 Java에서 따로 보내지 않고, 증가·dirty 등록처럼 함께 처리되어야 하는 작업을 Lua 스크립트로 묶어 Redis 서버에서 실행합니다.
+
+### 16.0.3 Redis와 RDS의 책임을 나눈 이유
+
+이 프로젝트의 조회수에는 “빠르게 늘어나는 값”과 “잃어버리면 안 되는 최종 값”이라는 두 요구가 동시에 있습니다.
+
+```text
+사용자 조회 요청이 매우 자주 들어옴
+        │
+        ├─ 매 요청을 RDS row UPDATE로 처리하면 DB 쓰기와 row 경합이 증가
+        │
+        └─ Redis에서 먼저 누적하고, 주기적으로 RDS에 반영
+```
+
+역할은 다음처럼 나뉩니다.
+
+1. Redis의 count key는 여러 조회 요청의 최신 누적값을 빠르게 보관합니다.
+2. Redis의 dirty set은 어떤 게시글을 RDS에 반영해야 하는지 표시합니다.
+3. Scheduler가 dirty set을 읽어 Redis snapshot을 얻습니다.
+4. `ViewCountPersistenceService`가 snapshot을 RDS의 `PostViewCount`에 반영합니다.
+5. 저장 중 새로운 조회가 없었을 때만 dirty ID를 제거합니다.
+
+현재 코드의 영구 기준은 `PostViewCount.viewCount`이고 Redis는 빠르게 누적하는 보조 저장소입니다. Redis count가 사라졌을 때도 `PostService`가 전달한 RDS 기준값을 먼저 사용해 조회수가 0이나 1로 갑자기 내려가지 않도록 합니다.
+
+### 16.0.4 왜 이 프로젝트가 Redis를 사용했는가
+
+현재 코드 기준 Redis의 목적은 게시글 조회수 증가입니다.
+
+- 읽기 요청마다 증가할 수 있어 쓰기 빈도가 높습니다.
+- 여러 사용자가 동시에 같은 게시글을 조회할 수 있습니다.
+- 상세 화면에는 방금 증가한 값이 빠르게 보이는 편이 자연스럽습니다.
+- 최종 조회수는 RDS에 남아야 합니다.
+
+RDS만 사용하는 구현도 남아 있습니다. `app.view-count.enabled=false`이면 Spring이 `DatabaseViewCountUpdater`를 Bean으로 선택하고 매 요청에서 RDS를 직접 증가시킵니다. Redis를 켠 환경에서는 `RedisViewCountStore`가 선택됩니다.
+
+다음 두 상황은 다릅니다.
+
+```text
+설정으로 Redis 기능을 끔
+→ DatabaseViewCountUpdater가 선택됨
+→ 조회마다 RDS를 직접 증가
+
+RedisViewCountStore가 선택된 뒤 Redis 통신에 실패
+→ 구현체가 DatabaseViewCountUpdater로 자동 교체되지 않음
+→ 마지막 RDS baseline을 응답하고 요청을 계속 처리함
+→ 장애 구간의 증가분은 현재 코드만으로 RDS에 보존되지 않음
+```
+
+따라서 현재 코드의 Redis 오류 처리를 “DB fallback으로 조회수까지 보존한다”고 이해하면 안 됩니다. 정확히는 Redis 장애 때 요청 자체를 실패시키지 않고 마지막 영구 조회수를 응답하는 것입니다.
+
+### 16.0.5 Redis를 사용하면 값이 두 군데에 존재한다
+
+Redis를 도입하면 같은 게시글의 조회수가 잠시 두 곳에 존재합니다.
+
+```text
+RDS PostViewCount.viewCount = 100   ← 마지막으로 영구 반영된 값
+Redis count key             = 103   ← 아직 RDS에 flush되지 않은 최신 누적값
+```
+
+이 차이는 현재 설계가 허용하는 지연입니다. 상세 조회 흐름은 Redis의 증가 결과를 `PostViewResponseDto.viewCount`에 사용하므로 103을 보여줄 수 있습니다. 반면 게시글 목록의 `PostListResponseDto`는 `PostViewCount` Entity 값을 읽으므로 flush 전까지 100을 보여줄 수 있습니다.
+
+Scheduler가 103을 RDS에 저장하고 dirty set에서 해당 ID를 제거하면 두 값이 다시 같아집니다. 저장 중 새로운 조회가 발생해 Redis가 104가 되면 snapshot 103을 저장한 뒤 dirty ID를 제거하지 않고 다음 주기에 104를 다시 반영합니다.
+
+### 16.0.6 분산 락은 무엇이며 왜 필요한가
+
+분산 락은 여러 서버 인스턴스가 공유 자원에 동시에 들어가지 않도록 Redis 같은 외부 저장소에 잠금 상태를 기록하는 장치입니다.
+
+운영 환경의 blue와 green backend가 동시에 Scheduler를 실행한다고 가정합니다.
+
+```text
+blue backend  ─┐
+               ├─ 같은 Redis dirty set을 읽고 같은 RDS에 flush하려고 함
+green backend ─┘
+```
+
+두 Scheduler가 동시에 flush하면 같은 snapshot을 중복 저장하거나 저장과 dirty 제거 순서가 얽힐 수 있습니다. 그래서 `RedisViewCountFlushScheduler`는 `bamboo:{post-view}:flush-lock`이라는 공용 lock 이름을 사용합니다.
+
+`synchronized`만으로는 해결되지 않습니다. `synchronized`는 하나의 JVM 안에서만 Java 객체 진입을 막습니다. blue와 green은 서로 다른 JVM이므로 각자의 `synchronized`는 서로 보지 못합니다. Redisson의 `RLock`은 두 JVM이 함께 접근하는 Redis에 잠금 상태를 기록하므로 인스턴스 간에도 같은 락을 공유할 수 있습니다.
+
+분산 락이 필요한 범위는 Scheduler flush입니다. 모든 조회 요청에 분산 락을 거는 구현은 아닙니다.
+
+```text
+조회 요청 동시성      → Lua script의 원자성
+Scheduler 인스턴스 동시성 → Redisson RLock
+```
+
+Lua는 `GET → 기준값 보정 → INCR → SADD`를 Redis에서 하나의 원자 작업으로 실행하고, RLock은 여러 backend 중 한 인스턴스만 flush하도록 합니다.
+
+### 16.0.7 분산 락의 실행 흐름
+
+```text
+@Scheduled 주기 도달
+→ flushLockKey로 RLock 객체를 얻음
+→ tryLock()으로 락 획득 시도
+→ 실패하면 이번 주기 종료
+→ 성공하면 dirty postId 목록 조회
+→ 각 게시글의 Redis snapshot 조회
+→ RDS에 snapshot 이상으로 반영
+→ 저장 후 Redis 값이 snapshot과 같은지 확인
+→ 같으면 dirty 제거, 달라졌으면 dirty 유지
+→ finally에서 현재 스레드가 소유한 경우에만 unlock
+```
+
+락을 얻지 못한 backend가 이번 주기 작업을 건너뛰어도 dirty set은 남아 있습니다. 다른 backend가 처리하거나 다음 주기에 다시 처리할 수 있기 때문입니다. 락을 얻은 뒤 RDS 저장에 실패하면 현재 코드는 dirty ID를 유지해 재시도할 수 있게 합니다.
+
+### 16.0.8 Redis 데이터 보존과 AOF
+
+운영 Compose의 Redis는 다음 설정을 사용합니다.
+
+```yaml
+command: redis-server --appendonly yes --appendfsync everysec
+volumes:
+  - redis-data:/data
+```
+
+- `--appendonly yes`: Redis 명령을 AOF(Append Only File)에 기록합니다.
+- `--appendfsync everysec`: 최대 약 1초 주기로 AOF를 디스크에 동기화하도록 요청합니다.
+- `redis-data:/data`: 컨테이너가 교체되어도 Docker volume에 Redis 데이터를 남깁니다.
+
+AOF는 Redis가 재시작했을 때 count와 dirty set을 복구하는 장치입니다. AOF가 RDS를 대신하거나 RDS에 이미 반영되지 않은 값을 영구적으로 보장하는 것은 아닙니다. AOF와 volume이 함께 사라지면 Redis에만 있던 증가분은 잃을 수 있으므로 최종 영구 기준은 여전히 RDS입니다.
+
+### 16.0.9 이 절을 읽은 뒤 코드에서 확인할 연결점
+
+```text
+application.yaml
+→ app.view-count.enabled와 Redis 접속·key·flush 주기 설정
+
+ViewCountProperties
+→ 설정값 binding과 key/주기 검증
+
+ViewCountUpdater
+→ PostService가 Redis/DB 구현을 몰라도 같은 increment 계약을 사용
+
+RedisViewCountStore
+→ count String 증가와 dirty Set 등록
+
+RedisViewCountFlushScheduler
+→ Redisson 분산 락을 얻은 한 backend만 flush
+
+ViewCountPersistenceService / PostViewCountRepository
+→ snapshot을 RDS에 최대값으로 반영
+```
+
+이제부터는 위 용어를 다시 정의하는 대신 각 실제 코드 블록에서 어떤 Redis key를 어떤 명령으로 바꾸는지, 그 값이 어느 메서드에서 다음 단계로 전달되는지를 확인합니다.
+
+
+## 16.1 15장에서 Redis로 넘어오는 연결
 
 게시글 조회수를 Redis에서 원자적으로 증가시키고 여러 백엔드 인스턴스가 안전하게 RDS에 반영하는 전체 흐름을 학습한다.
 
@@ -16,11 +216,11 @@
 → 값이 그대로면 dirty 해제
 ```
 
-### 9.1.1 이 장의 실제 코드 읽기 순서
+### 16.1.1 이 장의 실제 코드 읽기 순서
 
 ```text
 GET /posts/{postId}
-→ PostService가 RDS의 두 조회수 값 중 큰 값을 baseline으로 선택
+→ PostService가 PostViewCount의 RDS 영구값을 baseline으로 선택
 → ViewCountUpdater interface
 → Redis 활성: RedisViewCountStore.increment()
 → Lua가 count key 초기화·증가와 dirty set 등록을 원자적으로 실행
@@ -37,7 +237,391 @@ GET /posts/{postId}
 
 Redis를 끈 환경에서는 같은 interface에 `DatabaseViewCountUpdater`가 주입되어 RDS를 직접 증가시킨다. 따라서 Controller와 `PostService`는 저장소가 Redis인지 DB인지 알 필요가 없다. 요청 흐름과 Scheduler 흐름은 서로 다른 thread와 transaction에서 실행되므로 반드시 나누어 읽는다.
 
-## 9.2 구현체를 바꾸는 인터페이스
+### 16.1.2 상세 화면이 API 호출을 시작하는 위치
+
+확인 파일: `frontend/src/pages/posts/PostDetailPage.jsx`
+
+연결되는 백엔드 파일: `backend/src/main/java/kr/adapterz/springdatajpa/controller/PostController.java`, `backend/src/main/java/kr/adapterz/springdatajpa/service/PostService.java`
+
+```jsx
+useEffect(() => {
+    const controller = new AbortController();
+    setPost(null);
+    setComments([]);
+    setLoadError(null);
+
+    postApi.getPost(postId, { signal: controller.signal })
+        .then((result) => {
+            setPost(result);
+            setComments(result.comments);
+            setLoadError(null);
+        })
+        .catch((requestError) => {
+            if (controller.signal.aborted || requestError?.name === "AbortError") {
+                return;
+            }
+            setLoadError(requestError);
+        });
+
+    return () => {
+        controller.abort();
+    };
+}, [postId, retryVersion]);
+```
+
+이 코드는 Redis를 직접 호출하지 않습니다. 화면은 상세 API만 호출하고, 백엔드가 조회수를 Redis에 저장하는지는 알지 못합니다. 응답의 `result.viewCount`가 Redis 증가 결과라면 이 값이 `post` state로 들어갑니다. `AbortController`와 `useEffect`의 일반 문법은 15장에서 이미 설명했으므로 여기서는 Redis 연결 지점만 확인합니다.
+
+### 16.1.3 API module과 Controller의 연결
+
+확인 파일: `frontend/src/api/postApi.js`
+
+```javascript
+async getPost(postId, { signal } = {}) {
+    return normalizeDetailPost(await request(`/posts/${postId}`, { signal }));
+}
+```
+
+`postId`는 URL parameter에서 온 값이고 `request`는 공통 HTTP 처리를 담당합니다. `normalizeDetailPost`는 서버 JSON을 화면용 객체로 바꾸며, Redis와 통신하는 코드는 없습니다.
+
+백엔드 Controller의 실제 연결:
+
+```java
+@GetMapping("/{postId}")
+public PostViewResponseDto getPostView(
+        @PathVariable("postId") Long postId,
+        @AuthenticationPrincipal CustomUserDetails userDetails
+) {
+    return postService.getPostView(postId, userDetails.getUserId());
+}
+```
+
+`@PathVariable`은 URL의 ID를 `Long`으로 바꾸고, `@AuthenticationPrincipal`은 JWT Filter가 SecurityContext에 저장한 로그인 사용자를 받습니다. Controller는 구현체를 선택하지 않고 Service 반환값을 HTTP response body로 돌려줍니다.
+
+### 16.1.4 Service에서 조회수 증가 결과가 DTO로 전달되는 위치
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/PostService.java`
+
+```java
+long baselineViewCount = post.getPostViewCount().getViewCount();
+long updatedViewCount = viewCountUpdater.increment(
+        postId,
+        baselineViewCount
+);
+
+return new PostViewResponseDto(
+        post,
+        post.getPostCounter(),
+        updatedViewCount,
+        commentResponseDtos,
+        isLiked,
+        isReported,
+        isMine
+);
+```
+
+`viewCountUpdater`의 선언 타입은 `ViewCountUpdater`이고 실제 Bean은 설정에 따라 달라집니다. `increment`의 반환값을 DTO 생성자에 전달하므로, Redis 활성화 시 상세 응답은 RDS에 아직 flush되지 않은 Redis 최신값을 사용할 수 있습니다.
+
+현재 소스에서 baseline은 `PostViewCount.viewCount` 하나입니다. `PostCounter`에는 조회수 field가 없으므로 두 Entity의 조회수 중 큰 값을 선택하는 흐름은 현재 구현에 없습니다.
+
+### 16.1.5 연결 흐름 요약
+
+```text
+PostDetailPage.jsx
+→ postApi.getPost(postId)
+→ request("/posts/{postId}")
+→ GET /posts/{postId}
+→ PostController.getPostView()
+→ PostService.getPostView()
+→ post.getPostViewCount().getViewCount()
+→ ViewCountUpdater.increment()
+→ PostViewResponseDto.viewCount
+→ JSON response
+→ PostDetailPage의 post state
+```
+
+## 16.2 조회수 저장 구조
+
+확인 파일:
+
+- `backend/src/main/java/kr/adapterz/springdatajpa/entity/Post.java`
+- `backend/src/main/java/kr/adapterz/springdatajpa/entity/PostViewCount.java`
+- `backend/src/main/java/kr/adapterz/springdatajpa/dto/post/PostViewResponseDto.java`
+- `backend/src/main/java/kr/adapterz/springdatajpa/dto/post/PostListResponseDto.java`
+
+### 16.2.1 Post와 PostViewCount 연결
+
+```java
+@OneToOne(
+        mappedBy = "post",
+        fetch = FetchType.LAZY,
+        cascade = CascadeType.ALL,
+        orphanRemoval = true,
+        optional = false
+)
+private PostViewCount postViewCount;
+
+public Post(User user, String postTitle, String postContent) {
+    this.user = user;
+    this.postTitle = postTitle;
+    this.postContent = postContent;
+
+    postCounter = new PostCounter(this);
+    postViewCount = new PostViewCount(this);
+    createdAt = LocalDateTime.now();
+    deleted = false;
+}
+```
+
+Post 생성자에서 `PostViewCount`를 함께 만들기 때문에 게시글과 조회수 row가 함께 생깁니다. `cascade`와 `orphanRemoval`은 이 연관 객체의 생명주기를 Post에 묶습니다.
+
+### 16.2.2 PostViewCount의 영구값
+
+```java
+@Entity
+@Table(name = "post_view_counts")
+public class PostViewCount {
+
+    @Id
+    @Column(name = "post_id")
+    private Long postId;
+
+    @MapsId
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "post_id")
+    private Post post;
+
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
+    public PostViewCount(Post post) {
+        this.post = post;
+        this.viewCount = 0L;
+    }
+}
+```
+
+`@MapsId`는 Post의 ID와 `post_view_counts.post_id`를 같은 shared primary key로 사용하게 합니다. 이 `viewCount`가 RDS에 마지막으로 저장된 영구 기준값이며 Redis의 임시 최신값과 구분해야 합니다.
+
+### 16.2.3 상세 DTO와 목록 DTO의 차이
+
+상세 응답은 Service가 계산한 증가 결과를 받습니다.
+
+```java
+public PostViewResponseDto(
+        Post post,
+        PostCounter counter,
+        long viewCount,
+        List<CommentResponseDto> comments,
+        Boolean isLiked,
+        Boolean isReported,
+        Boolean isMine
+) {
+    this.postId = post.getPostId();
+    this.version = post.getVersion();
+    this.title = post.getPostTitle();
+    this.content = post.getPostContent();
+    this.imageUrls = getImageUrls(post);
+    this.likeCount = counter.getLikeCount();
+    this.reportCount = counter.getReportCount();
+    this.commentCount = counter.getReplyCount();
+    this.viewCount = viewCount;
+    this.createdAt = post.getCreatedAt();
+    this.isMine = isMine;
+    this.isLiked = isLiked;
+    this.isReported = isReported;
+    this.comments = comments;
+}
+```
+
+목록 응답은 Entity의 DB 값만 읽습니다.
+
+```java
+public PostListResponseDto(Post post, PostCounter counter) {
+    this.postId = post.getPostId();
+    this.title = post.getPostTitle();
+    this.likeCount = counter.getLikeCount();
+    this.reportCount = counter.getReportCount();
+    this.commentCount = counter.getReplyCount();
+    this.viewCount = post.getPostViewCount().getViewCount();
+    this.createdAt = post.getCreatedAt();
+}
+```
+
+따라서 Redis flush 전에는 상세와 목록의 조회수가 다를 수 있습니다.
+
+```text
+상세 조회 → Redis에서 1 증가한 최신값 응답
+목록 조회 → RDS PostViewCount의 마지막 영구값만 응답
+Scheduler flush 후 → RDS가 최신 snapshot으로 갱신
+```
+
+## 16.3 Redis 설정과 Bean 선택
+
+확인 파일:
+
+- `backend/src/main/resources/application.yaml`
+- `backend/src/main/resources/application-local.yaml`
+- `backend/src/main/resources/application-prod.yaml`
+- `backend/src/test/resources/application-test.yaml`
+- `backend/src/main/java/kr/adapterz/springdatajpa/config/ViewCountProperties.java`
+- `backend/src/main/java/kr/adapterz/springdatajpa/SpringdatajpaApplication.java`
+
+### 16.3.1 base application.yaml
+
+```yaml
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
+      timeout: ${REDIS_COMMAND_TIMEOUT:1s}
+
+app:
+  view-count:
+    enabled: ${VIEW_COUNT_REDIS_ENABLED:true}
+    count-key-prefix: "bamboo:{post-view}:count:"
+    dirty-set-key: "bamboo:{post-view}:dirty"
+    flush-lock-key: "bamboo:{post-view}:flush-lock"
+    flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s}
+```
+
+`${NAME:default}`는 NAME 환경변수가 있으면 그 값을 사용하고, 없으면 콜론 뒤 기본값을 사용합니다. 예를 들어 REDIS_HOST가 없을 때 host는 localhost입니다. connect-timeout의 2초도 입력값이 없을 때 사용하는 기본값입니다.
+
+### 16.3.2 profile별 차이
+
+local의 관련 설정:
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+  jpa:
+    hibernate:
+      ddl-auto: create
+  flyway:
+    enabled: false
+```
+
+local은 H2와 Hibernate schema 생성으로 실행합니다. Redis enabled는 base YAML의 기본값 true를 사용할 수 있습니다.
+
+prod의 관련 설정:
+
+```yaml
+spring:
+  datasource:
+    url: ${DB_URL}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+    locations: classpath:db/migration
+    validate-on-migrate: true
+```
+
+prod는 MySQL/RDS에 연결하고 Flyway migration을 사용합니다. Redis host와 enabled 값은 Compose가 base YAML의 placeholder에 환경변수로 주입합니다.
+
+test의 관련 설정:
+
+```yaml
+spring:
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfigurationV4
+
+app:
+  view-count:
+    enabled: false
+```
+
+test profile은 Redisson 자동 설정을 제외하고 DB 구현체를 선택합니다. 따라서 일반 테스트는 Redis 서버 없이 H2와 `DatabaseViewCountUpdater`로 실행됩니다.
+
+### 16.3.3 애플리케이션 시작과 설정 Bean
+
+```java
+@SpringBootApplication
+@ConfigurationPropertiesScan
+@EnableScheduling
+public class SpringdatajpaApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringdatajpaApplication.class, args);
+    }
+}
+```
+
+`@ConfigurationPropertiesScan`이 `ViewCountProperties`를 Bean으로 등록하고, `@EnableScheduling`이 뒤의 `@Scheduled` flush 메서드를 활성화합니다. 설정이 병합된 뒤 `@ConditionalOnProperty` 조건에 따라 enabled 값에 맞는 구현체가 생성됩니다.
+
+### 16.3.4 enabled에 따른 구현체 선택
+
+```java
+@ConditionalOnProperty(
+        prefix = "app.view-count",
+        name = "enabled",
+        havingValue = "true"
+)
+public class RedisViewCountStore implements ViewCountUpdater {
+}
+
+@ConditionalOnProperty(
+        prefix = "app.view-count",
+        name = "enabled",
+        havingValue = "false"
+)
+public class DatabaseViewCountUpdater implements ViewCountUpdater {
+}
+```
+
+`enabled=false`이면 DatabaseViewCountUpdater만, `enabled=true`이면 RedisViewCountStore만 조건을 만족합니다. 이 설정은 애플리케이션 시작 시 Bean 선택을 결정하는 것이며 Redis 장애 때 두 Bean 사이를 동적으로 전환하는 기능은 아닙니다.
+
+## 16.4 DB 조회수 구현과 Redis 구현의 공통 계약
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/ViewCountUpdater.java`, `backend/src/main/java/kr/adapterz/springdatajpa/service/DatabaseViewCountUpdater.java`, `backend/src/main/java/kr/adapterz/springdatajpa/repository/PostViewCountRepository.java`
+
+### 16.4.1 DB 구현이 호출하는 조회수 query
+
+실제 코드:
+
+```java
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query(
+        value = """
+                UPDATE post_view_counts
+                SET view_count = GREATEST(
+                        view_count,
+                        :baselineViewCount
+                    ) + 1
+                WHERE post_id = :postId
+                """,
+        nativeQuery = true
+)
+int incrementViewCount(
+        @Param("postId") Long postId,
+        @Param("baselineViewCount") long baselineViewCount
+);
+```
+
+이 query는 `view_count`와 Service가 읽은 `baselineViewCount` 중 큰 값에 1을 더합니다. DB 구현이 Redis 구현과 같은 `increment(postId, baselineViewCount)` 계약을 구현하는 이유는 Controller·Service가 저장 기술에 따라 분기하지 않게 하기 위해서입니다. `@Modifying`은 SELECT가 아닌 UPDATE query임을 표시하고, 반환값은 실제 변경된 row 수입니다. row 수가 1이 아니면 해당 게시글의 조회수 row가 없거나 비정상 상태이므로 `CounterUpdateException`으로 처리합니다.
+
+### 16.4.2 이 단계의 데이터 전달
+
+```text
+PostService.getPostView()
+→ ViewCountUpdater.increment(postId, baselineViewCount)
+→ enabled=false: DatabaseViewCountUpdater
+→ PostViewCountRepository.incrementViewCount()
+→ updated row count 확인
+→ findById()로 증가된 값 반환
+
+enabled=true:
+→ RedisViewCountStore.increment()
+→ Redis Lua 결과 반환
+```
+
+이 절의 인터페이스와 `DatabaseViewCountUpdater` 전체 구조는 10·11장에서 이미 설명한 내용이므로, 여기서는 Redis 구현이 같은 계약을 사용해야 하는 이유와 반환값이 상세 DTO로 전달되는 지점만 다시 확인합니다.
+
 
 실제 코드:
 
@@ -96,7 +680,9 @@ public class RedisViewCountStore implements ViewCountUpdater { // Redis 기반 �
 }
 ```
 
-## 9.3 Redis 키 구조
+## 16.5 Redis count key와 dirty set
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/config/ViewCountProperties.java`, `backend/src/main/java/kr/adapterz/springdatajpa/service/RedisViewCountStore.java`
 
 공통 설정:
 
@@ -216,7 +802,9 @@ public record ViewCountProperties( // 조회수 관련 설정을 immutable data 
 }
 ```
 
-## 9.4 실제 코드 발췌: 증가 Lua 스크립트
+## 16.6 Redis 조회수 증가와 Lua script
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/RedisViewCountStore.java`
 
 ```lua
 local count_type = redis.call('TYPE', KEYS[1]).ok
@@ -285,7 +873,7 @@ redis.call('SADD', KEYS[2], ARGV[2]) -- RDS 반영 대상 set에 게시글 ID를
 return updated -- Java와 사용자 응답에 사용할 증가된 조회수를 반환한다.
 ```
 
-## 9.5 실제 코드 발췌: Java에서 Lua 실행
+### 16.6.1 Java에서 Lua 실행
 
 ```java
 @Override
@@ -384,7 +972,7 @@ public long increment(Long postId, long baselineViewCount) { // 게시글 ID와 
 }
 ```
 
-## 9.6 DB 기준값이 필요한 이유
+## 16.7 Redis 오류와 DB 비활성화의 차이
 
 Redis가 재시작되거나 키가 사라질 수 있다.
 
@@ -399,7 +987,7 @@ DB 기준값 100으로 SET 후 INCR
 → 101
 ```
 
-`PostService`는 기존 `PostCounter`와 새 `PostViewCount` 중 큰 값을 기준으로 전달한다. 마이그레이션 중 두 저장 위치의 값이 다를 수 있기 때문이다.
+`PostService`는 현재 `PostViewCount.viewCount` 하나를 baseline으로 전달한다. 현재 `PostCounter`에는 조회수 field가 없으므로 두 Entity 중 큰 값을 선택하는 로직은 존재하지 않는다.
 
 설정으로 Redis 기능 자체를 끈 경우에는 “Redis 오류 fallback”과 달리 `DatabaseViewCountUpdater`가 RDS를 직접 증가시킨다. 실제 원문:
 
@@ -455,7 +1043,9 @@ public long increment(Long postId, long baselineViewCount) { // RDS에서 기준
 }
 ```
 
-## 9.7 실제 코드 발췌: Flush Scheduler
+## 16.8 Scheduler와 Redis 분산 락
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/RedisViewCountFlushScheduler.java`, `backend/src/main/java/kr/adapterz/springdatajpa/config/ViewCountProperties.java`
 
 ```java
 @Scheduled(
@@ -641,7 +1231,7 @@ private void releaseIfOwned(RLock lock, boolean acquired) { // 현재 실행이 
 }
 ```
 
-## 9.8 Snapshot 저장과 dirty 확인
+## 16.9 Snapshot과 dirty 제거 조건
 
 ```java
 long snapshotViewCount = snapshot.getAsLong();
@@ -727,7 +1317,9 @@ end
 return 0 -- 값이 달라졌으면 새 증가분을 다음 주기에 저장하도록 dirty를 유지한다.
 ```
 
-## 9.9 실제 코드 발췌: RDS 최대값 반영
+## 16.10 Redis 값을 DB에 반영
+
+확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/ViewCountPersistenceService.java`, `backend/src/main/java/kr/adapterz/springdatajpa/repository/PostViewCountRepository.java`
 
 ```java
 @Transactional
@@ -799,7 +1391,24 @@ end
 return 0 -- 새 조회가 count key를 만들었다면 새 증가분 보존을 위해 dirty를 유지한다.
 ```
 
-## 9.10 Redis AOF와 Docker volume
+## 16.11 Redis Docker Compose와 AOF
+
+확인 파일:
+
+- `backend/deploy/compose.yaml`
+- `backend/deploy/.env.example`
+- `tools/loadtest/compose.yaml`
+
+`backend/deploy/.env.example`에서 Compose가 backend container에 전달할 Redis 관련 값을 확인합니다.
+
+```dotenv
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_CONNECT_TIMEOUT=2s
+REDIS_COMMAND_TIMEOUT=1s
+VIEW_COUNT_REDIS_ENABLED=true
+VIEW_COUNT_FLUSH_INTERVAL=5s
+```
 
 Compose 실제 설정:
 
@@ -827,6 +1436,30 @@ redis:
   networks:
     - backend-network
 ```
+
+blue/green backend의 Redis 연결 환경변수 발췌:
+
+```yaml
+backend-blue:
+  environment:
+    REDIS_HOST: ${REDIS_HOST:-redis}
+    REDIS_PORT: ${REDIS_PORT:-6379}
+    REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s}
+    REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s}
+    VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true}
+    VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s}
+
+backend-green:
+  environment:
+    REDIS_HOST: ${REDIS_HOST:-redis}
+    REDIS_PORT: ${REDIS_PORT:-6379}
+    REDIS_CONNECT_TIMEOUT: ${REDIS_CONNECT_TIMEOUT:-2s}
+    REDIS_COMMAND_TIMEOUT: ${REDIS_COMMAND_TIMEOUT:-1s}
+    VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true}
+    VIEW_COUNT_FLUSH_INTERVAL: ${VIEW_COUNT_FLUSH_INTERVAL:-5s}
+```
+
+두 backend는 서로 다른 컨테이너이지만 같은 Compose network에서 service 이름 `redis`로 동일한 Redis 컨테이너에 접근합니다. 따라서 두 Scheduler가 같은 dirty set과 flush lock을 공유하고, `RLock`이 인스턴스 사이에서 동작할 수 있습니다. `tools/loadtest/compose.yaml`의 Redis는 `profiles: [redis]`로 선택적으로 실행되며, 실제 load test 환경에서도 같은 AOF 설정과 `redis-data` volume을 사용합니다.
 
 ```text
 AOF
@@ -881,7 +1514,7 @@ int persistMaxViewCount( // 변경된 row 수를 반환한다.
 );
 ```
 
-## 9.11 장애별 동작
+### 16.11.1 장애별 동작
 
 | 장애 | 현재 동작 |
 |---|---|
@@ -922,7 +1555,332 @@ redis:                         # Redis 서비스 정의를 시작한다.
     - backend-network          # backend container가 service 이름 redis로 접근할 공유 network다.
 ```
 
-## 9.12 핵심 축약본
+## 16.12 Redis 테스트 실행 구조
+
+확인할 실제 파일:
+
+- `backend/build.gradle`
+- `backend/src/test/resources/application-test.yaml`
+
+### 16.12.1 Gradle task의 분리
+
+실제 코드:
+
+```groovy
+tasks.named('test') {
+    systemProperty 'spring.profiles.active', 'test'
+    useJUnitPlatform {
+        excludeTags 'redis-integration', 'mysql-integration'
+    }
+    finalizedBy jacocoTestReport
+}
+
+tasks.register('redisTest', Test) {
+    description = 'Runs integration tests against a Testcontainers Redis server.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'redis-integration'
+    }
+    shouldRunAfter test
+}
+
+tasks.register('mysqlTest', Test) {
+    description = 'Runs schema and locking integration tests against a Testcontainers MySQL server.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'mysql-integration'
+    }
+    shouldRunAfter test
+}
+
+check.dependsOn jacocoTestCoverageVerification
+check.dependsOn tasks.named('redisTest')
+check.dependsOn tasks.named('mysqlTest')
+```
+
+실행 관계:
+
+```text
+./gradlew test
+→ test profile 활성화
+→ redis-integration·mysql-integration 태그 제외
+→ 일반 테스트 실행
+→ jacocoTestReport 실행
+
+./gradlew redisTest
+→ redis-integration 태그만 실행
+→ Redis Testcontainers 필요
+
+./gradlew check
+→ 일반 test와 JaCoCo 검증
+→ redisTest
+→ mysqlTest
+```
+
+따라서 `./gradlew test`만 성공해도 실제 Redis container 테스트까지 통과했다는 뜻은 아닙니다. `check`까지 실행해야 Redis·MySQL integration task가 의존 관계에 포함됩니다. 이 문서에서는 task 설정을 확인했으며, 문서 작성 시 Gradle task 자체를 실행했다고 주장하지 않습니다.
+
+### 16.12.2 test profile이 Redis를 끄는 이유
+
+```yaml
+app:
+  view-count:
+    enabled: false
+```
+
+일반 테스트는 외부 Redis 서버의 실행 여부에 좌우되지 않도록 DB 구현체를 선택합니다. Redis 동작 자체는 별도 `redis-integration` 태그와 Testcontainers 테스트에서 실제 Redis를 띄워 확인합니다.
+
+## 16.13 Redis 단위 테스트
+
+단위 테스트는 실제 Redis 서버 대신 Mockito mock을 주입해 Java 코드가 올바른 명령·인자·fallback을 선택하는지 확인합니다.
+
+이 단계에서 확인할 범위는 다음과 같습니다.
+
+- `ViewCountPropertiesTest`: YAML binding, key 생성, 양수 postId, 양수 flush interval
+- `RedisViewCountStoreTest`: baseline 전달, 음수 baseline 거부, null 결과, Redis 연결 오류, 고아 dirty 제거
+- `RedisViewCountFlushSchedulerTest`: 락 획득 실패, snapshot 저장 순서, DB 저장 실패 시 dirty 유지, count key 부재 처리
+
+### 16.13.1 ViewCountPropertiesTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/config/ViewCountPropertiesTest.java`
+
+실제 코드 발췌:
+
+```java
+@ActiveProfiles("test")
+@SpringBootTest
+class ViewCountPropertiesTest {
+
+    @Autowired
+    private ViewCountProperties boundProperties;
+
+    @Test
+    void application_YAML의_조회수_설정을_객체로_변환한다() {
+        assertThat(boundProperties.enabled()).isFalse();
+        assertThat(boundProperties.countKey(42L))
+                .isEqualTo("bamboo:{post-view}:count:42");
+        assertThat(boundProperties.flushInterval())
+                .isEqualTo(Duration.ofSeconds(5));
+    }
+
+    @Test
+    void 게시글_ID는_양수여야_한다() {
+        ViewCountProperties properties = properties();
+
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> properties.countKey(0L))
+                .withMessage("postId must be positive");
+    }
+}
+```
+
+`@SpringBootTest`가 YAML binding 결과를 실제 ApplicationContext에서 읽고, `countKey(42L)`와 양수 검증을 확인합니다. 이 테스트는 Redis 서버에 명령을 보내지 않습니다.
+
+### 16.13.2 RedisViewCountStoreTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/RedisViewCountStoreTest.java`
+
+```java
+@ExtendWith(MockitoExtension.class)
+class RedisViewCountStoreTest {
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Test
+    void Redis가_결과를_반환하지_않으면_DB_기준값을_반환한다() {
+        when(redisTemplate.execute(
+                ArgumentMatchers.<RedisScript<Long>>any(),
+                ArgumentMatchers.<List<String>>any(),
+                any(String.class),
+                any(String.class)
+        )).thenReturn(null);
+
+        long viewCount = store.increment(42L, 100L);
+
+        assertThat(viewCount).isEqualTo(100L);
+    }
+
+    @Test
+    void Redis_연결에_실패하면_DB_기준값을_반환한다() {
+        when(redisTemplate.execute(
+                ArgumentMatchers.<RedisScript<Long>>any(),
+                ArgumentMatchers.<List<String>>any(),
+                any(String.class),
+                any(String.class)
+        )).thenThrow(new RedisConnectionFailureException(
+                "Redis is unavailable"
+        ));
+
+        long viewCount = store.increment(42L, 100L);
+
+        assertThat(viewCount).isEqualTo(100L);
+    }
+}
+```
+
+이 테스트는 `redisTemplate.execute()`가 null을 반환하거나 Redis 연결 예외를 던졌을 때 baseline을 반환하는 현재 코드를 증명합니다. “Redis 장애 시 DB 구현체로 전환한다”는 것을 검증하는 테스트가 아닙니다.
+
+### 16.13.3 RedisViewCountFlushSchedulerTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/RedisViewCountFlushSchedulerTest.java`
+
+```java
+@Test
+void 분산_락을_얻지_못하면_반영_작업을_건너뛴다() {
+    when(redissonClient.getLock(
+            "bamboo:{post-view}:flush-lock"
+    )).thenReturn(lock);
+    when(lock.tryLock()).thenReturn(false);
+
+    scheduler.flushDirtyViewCounts();
+
+    verifyNoInteractions(
+            redisViewCountStore,
+            persistenceService
+    );
+    verify(lock, never()).unlock();
+}
+```
+
+Mock scheduler 테스트는 락 실패 시 Redis dirty 조회와 DB 저장이 실행되지 않는지 확인합니다. 다른 테스트는 snapshot 저장 후 acknowledge 순서, DB 저장 실패 시 dirty 유지, count key가 없을 때 persistence service를 호출하지 않는지를 검증합니다.
+
+## 16.14 실제 Redis·AOF·동시성 테스트
+
+이 절은 Mockito가 아니라 Docker/Testcontainers와 H2를 사용해 여러 객체가 실제로 상호작용하는지를 확인합니다.
+
+### 16.14.1 RedisViewCountStoreIntegrationTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/RedisViewCountStoreIntegrationTest.java`
+
+```java
+@Tag("redis-integration")
+@Testcontainers
+class RedisViewCountStoreIntegrationTest {
+
+    @Container
+    private static final GenericContainer<?> REDIS =
+            new GenericContainer<>(
+                    DockerImageName.parse("redis:7.4-alpine")
+            )
+                    .withExposedPorts(6379)
+                    .waitingFor(Wait.forListeningPort());
+}
+```
+
+`@Tag` 때문에 일반 `test` task에서는 제외되고 `redisTest`에서 선택됩니다. 이 테스트는 실제 Redis에서 baseline 보정·200회 동시 증가·snapshot dirty 유지·고아 dirty 정리·분산 락을 확인합니다.
+
+200회 동시성 테스트의 핵심 부분:
+
+```java
+int requestCount = 200;
+CountDownLatch startSignal = new CountDownLatch(1);
+
+try (ExecutorService executor =
+             Executors.newFixedThreadPool(20)) {
+    for (int index = 0; index < requestCount; index++) {
+        results.add(executor.submit(() -> {
+            startSignal.await();
+            return store.increment(42L, 100L);
+        }));
+    }
+
+    startSignal.countDown();
+}
+```
+
+`CountDownLatch`는 모든 작업이 같은 시점에 증가를 시작하도록 하고, `ExecutorService`는 20개 worker thread를 사용합니다. 최종 Redis String이 `300`인지 확인하므로 100 baseline에서 200번 증가가 유실되지 않았는지 검증합니다.
+
+### 16.14.2 RedisAofRestartIntegrationTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/RedisAofRestartIntegrationTest.java`
+
+```java
+.withCommand(
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--appendfsync",
+        "everysec"
+)
+```
+
+테스트는 조회수 101과 dirty member를 만든 뒤 Redis container를 재시작하고 `redis-cli GET`과 `SISMEMBER`로 두 값이 복구되는지 확인합니다. 이는 AOF 복구를 검증하는 테스트이지 RDS에 이미 flush된 값을 검증하는 테스트가 아닙니다.
+
+### 16.14.3 PostViewCountRepositoryIntegrationTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/repository/PostViewCountRepositoryIntegrationTest.java`
+
+이 테스트는 `@ActiveProfiles("test")`, `@SpringBootTest`, `@Transactional`로 H2에서 실행됩니다.
+
+```java
+postViewCountRepository.incrementViewCount(post.getPostId(), 100L);
+postViewCountRepository.incrementViewCount(post.getPostId(), 50L);
+
+PostViewCount savedViewCount =
+        postViewCountRepository.findById(post.getPostId())
+                .orElseThrow();
+
+assertThat(savedViewCount.getViewCount()).isEqualTo(102L);
+```
+
+첫 호출은 `max(0,100)+1=101`, 두 번째 호출은 `max(101,50)+1=102`가 되는지 확인합니다. 별도의 snapshot 저장 테스트는 150을 저장한 뒤 120을 저장해도 DB가 150으로 유지되는지 확인합니다.
+
+### 16.14.4 PostConcurrencyIntegrationTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/PostConcurrencyIntegrationTest.java`
+
+이 테스트는 `application-test.yaml`의 `enabled=false`를 사용하므로 Redis integration 테스트가 아닙니다. `PostService.getPostView()`가 DB updater를 사용할 때도 30개 동시 요청의 증가가 유실되지 않는지를 H2에서 확인합니다.
+
+```java
+@Test
+void 동시에_게시글을_조회해도_조회수가_요청_수만큼_증가한다()
+        throws Exception {
+    int requestCount = 30;
+
+    runConcurrently(
+            requestCount,
+            ignored -> postService.getPostView(postId, viewerId)
+    );
+
+    long separatedViewCount = postViewCountRepository.findById(postId)
+            .orElseThrow()
+            .getViewCount();
+
+    assertThat(separatedViewCount).isEqualTo(requestCount);
+}
+```
+
+같은 파일의 좋아요·신고 동시성 테스트는 조회수 Redis를 검증하는 테스트가 아니라, 같은 counter row를 수정하는 다른 업무의 동시성 보장도 함께 확인합니다. 게시글 수정 테스트는 같은 내용이면 version을 증가시키지 않고, 다른 내용이면 한 요청만 성공하는 현재 Post optimistic locking 규칙을 검증합니다.
+
+### 16.14.5 PostServiceTest
+
+파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/PostServiceTest.java`
+
+```java
+@Mock
+private ViewCountUpdater viewCountUpdater;
+
+@Test
+void 게시글_상세_조회_시_본인_게시글과_댓글의_isMine이_true로_반환된다() {
+    when(viewCountUpdater.increment(postId, 0L))
+            .thenReturn(1L);
+
+    PostViewResponseDto response =
+            postService.getPostView(postId, loginUserId);
+
+    assertThat(response.getViewCount()).isEqualTo(1);
+    verify(viewCountUpdater).increment(postId, 0L);
+}
+```
+
+이 테스트는 실제 Redis·DB 구현을 선택하지 않고 ViewCountUpdater mock이 반환한 값을 Service가 PostViewResponseDto.viewCount에 전달하는지를 검증합니다. 따라서 Redis Lua의 원자성은 이 테스트가 아니라 RedisViewCountStoreIntegrationTest가 검증합니다.
+
+
+## 16.15 핵심 축약본
 
 ```text
 요청 경로:
@@ -935,7 +1893,7 @@ DB 기준값 → Redis 원자적 INCR → dirty 표시
 ```
 
 
-## 9.13 스킵할 코드
+## 16.16 스킵할 코드
 
 - 로그 메시지 문구
 - `OptionalLong`의 Java 문법 세부
@@ -945,7 +1903,7 @@ DB 기준값 → Redis 원자적 INCR → dirty 표시
 다만 두 Lua 스크립트, 분산 락, snapshot 이후 조건부 dirty 해제는 스킵하지 않는다.
 
 
-## 9.13.1 이 장에서 필요한 Redis·Lua·다형성 문법
+## 16.16.1 이 장에서 필요한 Redis·Lua·다형성 문법
 
 ### interface 다형성
 
@@ -1059,7 +2017,7 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 - Redis 구현이 선택된 상태에서 `DataAccessException`이 발생하면 구현체를 교체하지 않는다. 그 요청은 baseline만 반환하므로 조회 증가분이 보존되지 않는다.
 - `@ConditionalOnProperty`는 application 시작 시 Bean 구성을 결정하며 요청 중 장애를 감지해 동적으로 다른 Bean으로 전환하는 기능이 아니다.
 
-## 9.14 이해 확인
+## 16.17 이해 확인
 
 1. `ViewCountUpdater` 인터페이스를 둔 이유는 무엇인가?
 2. Redis 활성 여부에 따라 구현체는 어떻게 선택되는가?
@@ -1076,6 +2034,13 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 13. snapshot count key가 사라졌지만 dirty ID가 남아 있으면 왜 Java에서 바로 제거하지 않고 Lua로 다시 확인하는가?
 14. AOF `everysec`와 volume을 사용하면 최근 조회수 유실 가능성이 완전히 사라지는가?
 
-## 9.15 오답노트
+## 16.18 오답노트
 
 이 장의 이해 확인에서 틀리거나 핵심이 부족한 문제를 여기에 누적한다.
+
+## 16.19 진행률
+
+- 이 문서까지 확인한 고유 파일: **162/213개**
+- 진행률: **76.1%**
+- 이번 문서에서 새로 집계한 구현 파일: `ViewCountProperties.java`, `RedisViewCountStore.java`, `RedisViewCountFlushScheduler.java`, `ViewCountPersistenceService.java`
+- `Post`, `PostService`, `PostViewCountRepository`와 Redis 테스트 파일은 이미 다른 단계에서 집계했거나 18번 테스트 문서에서 집계하므로 중복하지 않습니다.

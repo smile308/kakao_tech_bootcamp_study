@@ -22,7 +22,7 @@ class FlywayBaselineMigrationTest {
 
         flyway.migrate();
 
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("5");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("6");
 
         try (
                 Connection connection = DriverManager.getConnection(jdbcUrl, "sa", "");
@@ -34,7 +34,7 @@ class FlywayBaselineMigrationTest {
             assertThat(tableExists(statement, "post_counters")).isTrue();
             assertThat(tableExists(statement, "post_images")).isTrue();
             assertThat(tableExists(statement, "post_likes")).isTrue();
-            assertThat(tableExists(statement, "post_likes_seq")).isTrue();
+            assertThat(tableExists(statement, "post_likes_seq")).isFalse();
             assertThat(tableExists(statement, "post_reports")).isTrue();
             assertThat(tableExists(statement, "post_view_counts")).isTrue();
             assertThat(tableExists(statement, "auth_sessions")).isTrue();
@@ -64,6 +64,15 @@ class FlywayBaselineMigrationTest {
                     SELECT COUNT(*)
                     FROM flyway_schema_history
                     WHERE script = 'V5__remove_post_is_fixed.sql'
+                    """)) {
+                resultSet.next();
+                assertThat(resultSet.getInt(1)).isEqualTo(1);
+            }
+
+            try (ResultSet resultSet = statement.executeQuery("""
+                    SELECT COUNT(*)
+                    FROM flyway_schema_history
+                    WHERE script = 'V6__use_identity_for_post_likes.sql'
                     """)) {
                 resultSet.next();
                 assertThat(resultSet.getInt(1)).isEqualTo(1);

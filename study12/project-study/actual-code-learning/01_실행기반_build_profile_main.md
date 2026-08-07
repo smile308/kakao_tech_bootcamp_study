@@ -190,3 +190,10 @@ JVM → main() → SpringApplication.run()
 ## 다음 단계
 
 다음 문서에서 `User.java → UserRequestDto.java → UserResponseDto.java → UserRepository.java` 순서로 회원가입 데이터가 Entity, DTO, Repository 사이를 어떻게 이동하는지 확인한다.
+
+## 진행 상태
+
+- 이 문서까지 확인한 고유 파일: **12/213개**
+- 진행률: **5.6%**
+- 계산 기준: 00번 문서의 파일별 누적 진행률표. wrapper와 설정 파일도 역할을 확인했으므로 집계했으며, 내부 구현을 반복 정독한 것은 아닙니다.
+- 다음 도달 지점: 02번 회원가입 문서 완료 시 19/213 (8.9%)

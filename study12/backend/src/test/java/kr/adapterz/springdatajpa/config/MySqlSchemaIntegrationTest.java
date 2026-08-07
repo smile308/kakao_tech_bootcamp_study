@@ -112,7 +112,6 @@ class MySqlSchemaIntegrationTest {
                       'post_counters',
                       'post_images',
                       'post_likes',
-                      'post_likes_seq',
                       'post_reports',
                       'post_view_counts'
                   )
@@ -124,7 +123,7 @@ class MySqlSchemaIntegrationTest {
                   AND success = TRUE
                 """, Integer.class);
 
-        assertThat(currentTableCount).isEqualTo(10);
+        assertThat(currentTableCount).isEqualTo(9);
         assertThat(baselineHistoryCount).isEqualTo(1);
         Integer legacyViewColumnCount = jdbcTemplate.queryForObject("""
                 SELECT COUNT(*)

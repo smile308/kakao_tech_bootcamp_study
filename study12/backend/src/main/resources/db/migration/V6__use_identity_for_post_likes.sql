@@ -1,0 +1,4 @@
+ALTER TABLE post_likes
+    MODIFY COLUMN post_like_id BIGINT NOT NULL AUTO_INCREMENT;
+
+DROP TABLE IF EXISTS post_likes_seq;

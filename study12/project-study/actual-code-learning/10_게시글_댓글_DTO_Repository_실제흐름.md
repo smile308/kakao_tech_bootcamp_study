@@ -1250,6 +1250,24 @@ CommentDeleteRequestDto.commentId
 `98_Redis_조회수_처리.md`는 Redis 구현의 별도 보관 자료이며, 이 문서의 DTO·Repository
 계약을 이해한 뒤 실제 Redis 학습 차례가 되었을 때 사용합니다.
 
+### User 보조 DTO 6개는 왜 이 문서에서 집계했는가
+
+회원가입에서 이미 Request/Response DTO의 공통 Lombok·검증 구조를 설명했으므로 아래
+파일은 전체 구조를 반복하지 않고 실제 field와 Controller/Service 연결을 확인했습니다.
+따라서 “읽지 않은 파일”이 아니라 “중복 문법은 스킵하고 사용 위치를 확인한 파일”입니다.
+
+| 파일 | 핵심 field·역할 | 실제 사용 위치 |
+|---|---|---|
+| `UserInfoResponseDto.java` | userId, email, nickname, profileImage를 User에서 복사 | `UserController.getMyInfo` → `UserService.getMyInfo` |
+| `UserDeleteResponseDto.java` | remove_success 메시지 응답 | `UserController.deleteUser` → `UserService.deleteUser` |
+| `UserPatchRequestDto.java` | nickname, profileImage 입력과 nickname 검증 | `UserController.patchUser` → `UserService.patchUser` |
+| `UserPatchResponseDto.java` | fix_success 메시지 응답 | `patchUser`의 반환값 |
+| `UserPasswordRequestDto.java` | currentPassword, password, passwordCheck와 검증 | `UserController.setPassword` → `UserService.setPassword` |
+| `UserPasswordResponseDto.java` | fix_success 메시지 응답 | `setPassword`의 반환값 |
+
+이 묶음에서 새로 설명할 문법은 없고, `@Valid`가 붙은 두 Request DTO의 검증이 Controller
+진입 시 실행된다는 점과 Response DTO가 JSON body가 된다는 점만 앞의 DTO 규칙으로 연결합니다.
+
 ---
 
 ## 10.14 최종 이해 checkpoint
@@ -1361,7 +1379,7 @@ CommentDeleteRequestDto.commentId
 
 ## 진행 상태
 
-- 공식 파일 진행도: **55/213개 = 약 25.8%**
+- 공식 파일 진행도: **90/213개 = 약 42.3%**
 - 이번 문서 보완에서 전체 원문을 추가·확인한 파일: `PostViewResponseDto.java`
 - 이미 다른 문서의 조회수 흐름에서 확인된 파일: `PostViewResponseDto.java`는 중복 집계하지 않음
 - 현재 흐름 이해 checkpoint: 진행 중
