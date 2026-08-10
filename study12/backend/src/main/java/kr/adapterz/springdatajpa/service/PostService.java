@@ -213,6 +213,8 @@ public class PostService {
             Long postId,
             Long loginUserId
     ) {
+        getActivePostForInteraction(postId);
+        getPostCounterForUpdate(postId);
         Post post = getActivePostForUpdate(postId);
         User reporter = getLoginUser(loginUserId);
         User writer = getUserForUpdate(post.getUser().getUserId());

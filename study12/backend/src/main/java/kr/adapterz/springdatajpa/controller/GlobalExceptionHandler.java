@@ -1,5 +1,7 @@
 package kr.adapterz.springdatajpa.controller;
 
+import jakarta.persistence.LockTimeoutException;
+import jakarta.persistence.PessimisticLockException;
 import kr.adapterz.springdatajpa.dto.ErrorResponseDto;
 import kr.adapterz.springdatajpa.exception.DataNullException;
 import kr.adapterz.springdatajpa.exception.InvalidRequestException;
@@ -9,6 +11,7 @@ import kr.adapterz.springdatajpa.exception.PostVersionConflictException;
 import kr.adapterz.springdatajpa.exception.CounterUpdateException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -61,6 +64,17 @@ public class GlobalExceptionHandler {
             CounterUpdateException e
     ) {
         return error(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    @ExceptionHandler({
+            PessimisticLockingFailureException.class,
+            PessimisticLockException.class,
+            LockTimeoutException.class
+    })
+    public ResponseEntity<ErrorResponseDto> handlePessimisticLockFailure(
+            RuntimeException e
+    ) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "COUNTER_UPDATE_FAILED");
     }
 
     private ResponseEntity<ErrorResponseDto> error(HttpStatus status, String rawCode) {

@@ -1,13 +1,16 @@
 package kr.adapterz.springdatajpa.config;
 
 import jakarta.persistence.EntityManager;
+import kr.adapterz.springdatajpa.dto.comment.CommentPostRequestDto;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.PostCounter;
 import kr.adapterz.springdatajpa.entity.User;
-import kr.adapterz.springdatajpa.repository.LikeRepository;
+import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostCounterRepository;
+import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
+import kr.adapterz.springdatajpa.service.CommentService;
 import kr.adapterz.springdatajpa.service.PostService;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -89,10 +93,16 @@ class MySqlSchemaIntegrationTest {
     private PostCounterRepository postCounterRepository;
 
     @Autowired
-    private LikeRepository likeRepository;
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private PostReportRepository postReportRepository;
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private CommentService commentService;
 
     @Autowired
     private EntityManager entityManager;
@@ -175,7 +185,67 @@ class MySqlSchemaIntegrationTest {
                 postCounterRepository.findById(postId).orElseThrow();
 
         assertThat(savedCounter.getLikeCount()).isEqualTo(userIds.size());
-        assertThat(likeRepository.count()).isEqualTo(userIds.size());
+        assertThat(countLikesForPost(postId)).isEqualTo(userIds.size());
+    }
+
+    @Test
+    void 같은_게시글에_신고_좋아요_댓글이_동시에_들어와도_락_순서가_일치한다()
+            throws Exception {
+        User writer = userRepository.saveAndFlush(
+                createUser("mixed-writer@test.com", "혼합작성자")
+        );
+        Post post = postRepository.saveAndFlush(
+                new Post(writer, "혼합 동시성 테스트", "혼합 락 순서 검증 본문")
+        );
+        User reporter = userRepository.saveAndFlush(
+                createUser("mixed-reporter@test.com", "혼합신고자")
+        );
+        User liker = userRepository.saveAndFlush(
+                createUser("mixed-liker@test.com", "혼합좋아요자")
+        );
+        User commenter = userRepository.saveAndFlush(
+                createUser("mixed-commenter@test.com", "혼합댓글자")
+        );
+        Long postId = post.getPostId();
+        Long reporterId = reporter.getUserId();
+        Long likerId = liker.getUserId();
+        Long commenterId = commenter.getUserId();
+        entityManager.clear();
+
+        runConcurrently(
+                List.of(reporterId, likerId, commenterId),
+                userId -> {
+                    if (userId.equals(reporterId)) {
+                        postService.reportPost(postId, reporterId);
+                    } else if (userId.equals(likerId)) {
+                        postService.likePost(postId, likerId);
+                    } else {
+                        commentService.commentPost(
+                                postId,
+                                commenterId,
+                                createCommentRequest()
+                        );
+                    }
+                }
+        );
+
+        PostCounter savedCounter =
+                postCounterRepository.findById(postId).orElseThrow();
+
+        assertThat(savedCounter.getReportCount()).isEqualTo(1);
+        assertThat(savedCounter.getLikeCount()).isEqualTo(1);
+        assertThat(savedCounter.getReplyCount()).isEqualTo(1);
+        assertThat(countLikesForPost(postId)).isEqualTo(1);
+        assertThat(commentRepository.count()).isEqualTo(1);
+        assertThat(postReportRepository.count()).isEqualTo(1);
+    }
+
+    private int countLikesForPost(Long postId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM post_likes WHERE post_id = ?",
+                Integer.class,
+                postId
+        );
     }
 
     private User createUser(String email, String nickname) {
@@ -190,7 +260,7 @@ class MySqlSchemaIntegrationTest {
 
     private void runConcurrently(
             List<Long> userIds,
-            ConcurrentLike concurrentLike
+            ConcurrentTask concurrentTask
     ) throws Exception {
         ExecutorService executorService =
                 Executors.newFixedThreadPool(userIds.size());
@@ -210,7 +280,7 @@ class MySqlSchemaIntegrationTest {
                                 );
                             }
 
-                            concurrentLike.run(userId);
+                            concurrentTask.run(userId);
                             return null;
                         })
                 );
@@ -233,7 +303,13 @@ class MySqlSchemaIntegrationTest {
     }
 
     @FunctionalInterface
-    private interface ConcurrentLike {
+    private interface ConcurrentTask {
         void run(Long userId);
+    }
+
+    private CommentPostRequestDto createCommentRequest() {
+        CommentPostRequestDto request = new CommentPostRequestDto();
+        ReflectionTestUtils.setField(request, "commentContent", "동시성 댓글");
+        return request;
     }
 }

@@ -32,9 +32,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import org.mockito.InOrder;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -173,6 +175,11 @@ class PostServiceTest {
         User reporter = createUser(reporterId);
         Post post = createPost(postId, writer);
 
+        when(postRepository.findActivePostForInteraction(postId))
+                .thenReturn(Optional.of(post));
+
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
 
         when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
@@ -201,6 +208,11 @@ class PostServiceTest {
         ).containsExactlyInAnyOrder("message", "postId", "reportCount");
 
         verify(postReportRepository).save(any(PostReport.class));
+
+        InOrder lockOrder = inOrder(postRepository, postCounterRepository);
+        lockOrder.verify(postRepository).findActivePostForInteraction(postId);
+        lockOrder.verify(postCounterRepository).findByPostIdForUpdate(postId);
+        lockOrder.verify(postRepository).findActivePostForUpdate(postId);
     }
 
     @Test
@@ -208,7 +220,7 @@ class PostServiceTest {
         Long postId = 1L;
         Long reporterId = 2L;
 
-        when(postRepository.findActivePostForUpdate(postId))
+        when(postRepository.findActivePostForInteraction(postId))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> postService.reportPost(postId, reporterId))
@@ -226,6 +238,12 @@ class PostServiceTest {
 
         User writer = createUser(writerId);
         Post post = createPost(postId, writer);
+
+        when(postRepository.findActivePostForInteraction(postId))
+                .thenReturn(Optional.of(post));
+
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
 
         when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
@@ -247,6 +265,12 @@ class PostServiceTest {
 
         User writer = createUser(loginUserId);
         Post post = createPost(postId, writer);
+
+        when(postRepository.findActivePostForInteraction(postId))
+                .thenReturn(Optional.of(post));
+
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
 
         when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
@@ -273,6 +297,12 @@ class PostServiceTest {
         User writer = createUser(writerId);
         User reporter = createUser(reporterId);
         Post post = createPost(postId, writer);
+
+        when(postRepository.findActivePostForInteraction(postId))
+                .thenReturn(Optional.of(post));
+
+        when(postCounterRepository.findByPostIdForUpdate(postId))
+                .thenReturn(Optional.of(post.getPostCounter()));
 
         when(postRepository.findActivePostForUpdate(postId))
                 .thenReturn(Optional.of(post));
