@@ -5,10 +5,9 @@ import kr.adapterz.springdatajpa.dto.comment.CommentPostRequestDto;
 import kr.adapterz.springdatajpa.entity.Post;
 import kr.adapterz.springdatajpa.entity.PostCounter;
 import kr.adapterz.springdatajpa.entity.User;
-import kr.adapterz.springdatajpa.repository.CommentRepository;
 import kr.adapterz.springdatajpa.repository.PostCounterRepository;
-import kr.adapterz.springdatajpa.repository.PostReportRepository;
 import kr.adapterz.springdatajpa.repository.PostRepository;
+import kr.adapterz.springdatajpa.repository.PostViewCountRepository;
 import kr.adapterz.springdatajpa.repository.UserRepository;
 import kr.adapterz.springdatajpa.service.CommentService;
 import kr.adapterz.springdatajpa.service.PostService;
@@ -28,7 +27,9 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -93,13 +94,10 @@ class MySqlSchemaIntegrationTest {
     private PostCounterRepository postCounterRepository;
 
     @Autowired
-    private CommentRepository commentRepository;
-
-    @Autowired
-    private PostReportRepository postReportRepository;
-
-    @Autowired
     private PostService postService;
+
+    @Autowired
+    private PostViewCountRepository postViewCountRepository;
 
     @Autowired
     private CommentService commentService;
@@ -189,6 +187,107 @@ class MySqlSchemaIntegrationTest {
     }
 
     @Test
+    void MySQL에서_게시글을_동시에_조회해도_조회수가_요청_수만큼_증가한다()
+            throws Exception {
+        int requestCount = 30;
+        User writer = userRepository.saveAndFlush(
+                createUser("mysql-view-writer@test.com", "MySQL조회작성자")
+        );
+        User viewer = userRepository.saveAndFlush(
+                createUser("mysql-view-viewer@test.com", "MySQL조회자")
+        );
+        Post post = postRepository.saveAndFlush(
+                new Post(writer, "MySQL 조회수 테스트", "MySQL 조회수 경합 검증")
+        );
+        Long postId = post.getPostId();
+        Long viewerId = viewer.getUserId();
+        List<Long> viewerIds = new ArrayList<>();
+
+        for (int index = 0; index < requestCount; index++) {
+            viewerIds.add(viewerId);
+        }
+
+        entityManager.clear();
+
+        runConcurrently(
+                viewerIds,
+                ignored -> postService.getPostView(postId, viewerId)
+        );
+
+        long viewCount = postViewCountRepository.findById(postId)
+                .orElseThrow()
+                .getViewCount();
+        assertThat(viewCount).isEqualTo(requestCount);
+    }
+
+    @Test
+    void MySQL에서_같은_작성자의_여러_게시글이_동시에_신고되어도_누적_수가_유실되지_않는다()
+            throws Exception {
+        int requestCount = 5;
+        User writer = userRepository.saveAndFlush(
+                createUser("mysql-report-writer@test.com", "MySQL신고작성자")
+        );
+        List<Post> posts = new ArrayList<>();
+
+        for (int index = 0; index < requestCount; index++) {
+            posts.add(
+                    postRepository.save(
+                            new Post(
+                                    writer,
+                                    "MySQL 신고 테스트 " + index,
+                                    "MySQL 신고 누적 경합 검증"
+                            )
+                    )
+            );
+        }
+        postRepository.flush();
+
+        List<User> reporters = new ArrayList<>();
+        for (int index = 0; index < requestCount; index++) {
+            reporters.add(
+                    createUser(
+                            "mysql-report-user-" + index + "@test.com",
+                            "MySQL신고자" + index
+                    )
+            );
+        }
+        reporters = userRepository.saveAllAndFlush(reporters);
+
+        Map<Long, Long> postIdByReporterId = new HashMap<>();
+        for (int index = 0; index < requestCount; index++) {
+            postIdByReporterId.put(
+                    reporters.get(index).getUserId(),
+                    posts.get(index).getPostId()
+            );
+        }
+        Long writerId = writer.getUserId();
+        List<Long> reporterIds = reporters.stream()
+                .map(User::getUserId)
+                .toList();
+        entityManager.clear();
+
+        runConcurrently(
+                reporterIds,
+                reporterId -> postService.reportPost(
+                        postIdByReporterId.get(reporterId),
+                        reporterId
+                )
+        );
+
+        User savedWriter = userRepository.findById(writerId).orElseThrow();
+        assertThat(savedWriter.getReceivedReportCount()).isEqualTo(requestCount);
+
+        for (Post post : posts) {
+            Long postId = post.getPostId();
+            PostCounter savedCounter =
+                    postCounterRepository.findById(postId).orElseThrow();
+
+            assertThat(savedCounter.getReportCount()).isEqualTo(1);
+            assertThat(countReportsForPost(postId)).isEqualTo(1);
+        }
+    }
+
+    @Test
     void 같은_게시글에_신고_좋아요_댓글이_동시에_들어와도_락_순서가_일치한다()
             throws Exception {
         User writer = userRepository.saveAndFlush(
@@ -236,13 +335,29 @@ class MySqlSchemaIntegrationTest {
         assertThat(savedCounter.getLikeCount()).isEqualTo(1);
         assertThat(savedCounter.getReplyCount()).isEqualTo(1);
         assertThat(countLikesForPost(postId)).isEqualTo(1);
-        assertThat(commentRepository.count()).isEqualTo(1);
-        assertThat(postReportRepository.count()).isEqualTo(1);
+        assertThat(countCommentsForPost(postId)).isEqualTo(1);
+        assertThat(countReportsForPost(postId)).isEqualTo(1);
     }
 
     private int countLikesForPost(Long postId) {
         return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM post_likes WHERE post_id = ?",
+                Integer.class,
+                postId
+        );
+    }
+
+    private int countCommentsForPost(Long postId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM comments WHERE post_id = ?",
+                Integer.class,
+                postId
+        );
+    }
+
+    private int countReportsForPost(Long postId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM post_reports WHERE post_id = ?",
                 Integer.class,
                 postId
         );

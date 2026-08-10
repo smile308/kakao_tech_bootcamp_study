@@ -56,7 +56,9 @@ public class RedisViewCountFlushScheduler {
 
     private void flushWhileHoldingLock() {
         try {
-            for (Long postId : redisViewCountStore.findDirtyPostIds()) {
+            for (Long postId : redisViewCountStore.findDirtyPostIds(
+                    properties.maxPostsPerFlush()
+            )) {
                 flushOne(postId);
             }
         } catch (DataAccessException exception) {

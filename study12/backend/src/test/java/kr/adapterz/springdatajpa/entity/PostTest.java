@@ -65,26 +65,6 @@ class PostTest {
     }
 
     @Test
-    void 게시글_카운트와_삭제_상태가_정상_변경된다() {
-        Post post = new Post(createUser(), "title", "content");
-
-        post.addReply();
-        post.deleteReply();
-        post.like();
-        post.delete();
-        post.report();
-
-        assertAll(
-                () -> assertThat(post.getReplyCount()).isZero(),
-                () -> assertThat(post.getLikeCount()).isEqualTo(1),
-                () -> assertThat(post.getReportCount()).isEqualTo(1),
-                () -> assertThat(post.isDeleted()).isTrue()
-        );
-        post.likeCancle();
-        assertThat(post.getLikeCount()).isEqualTo(0);
-    }
-
-    @Test
     void 여러_이미지_교체_시_null과_공백_이미지는_제외된다() {
         Post post = new Post(createUser(), "title", "content");
 

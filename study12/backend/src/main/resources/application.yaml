@@ -20,6 +20,7 @@ app:
     dirty-set-key: "bamboo:{post-view}:dirty"
     flush-lock-key: "bamboo:{post-view}:flush-lock"
     flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s}
+    max-posts-per-flush: ${VIEW_COUNT_MAX_POSTS_PER_FLUSH:100}
 
 jwt:
   access-expiration-millis: ${JWT_ACCESS_EXPIRATION_MILLIS:600000}

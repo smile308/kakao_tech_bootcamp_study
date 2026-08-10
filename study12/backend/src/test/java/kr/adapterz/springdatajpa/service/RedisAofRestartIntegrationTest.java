@@ -75,7 +75,8 @@ class RedisAofRestartIntegrationTest {
                 "bamboo:{post-view}:count:",
                 DIRTY_SET_KEY,
                 "bamboo:{post-view}:flush-lock",
-                Duration.ofSeconds(5)
+                Duration.ofSeconds(5),
+                100
         );
         store = new RedisViewCountStore(redisTemplate, properties);
     }

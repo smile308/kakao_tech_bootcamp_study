@@ -10,7 +10,8 @@ public record ViewCountProperties(
         String countKeyPrefix,
         String dirtySetKey,
         String flushLockKey,
-        Duration flushInterval
+        Duration flushInterval,
+        int maxPostsPerFlush
 ) {
 
     public ViewCountProperties {
@@ -20,6 +21,10 @@ public record ViewCountProperties(
 
         if (flushInterval == null || flushInterval.isZero() || flushInterval.isNegative()) {
             throw new IllegalArgumentException("flushInterval must be positive");
+        }
+
+        if (maxPostsPerFlush < 1) {
+            throw new IllegalArgumentException("maxPostsPerFlush must be positive");
         }
     }
 

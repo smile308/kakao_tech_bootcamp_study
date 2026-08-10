@@ -2,6 +2,7 @@ package kr.adapterz.springdatajpa.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
+import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.PostFixRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostDeleteRequestDto;
 import kr.adapterz.springdatajpa.dto.post.PostPageResponseDto;
@@ -71,6 +72,9 @@ class PostServiceTest {
     @Mock
     private PostReportRepository postReportRepository;
 
+    @Mock
+    private PostViewReadService postViewReadService;
+
     @Test
     void 게시글_목록의_page가_음수이면_Invalid_Page_예외가_발생한다() {
         assertThatThrownBy(() -> postService.getPostList(-1, 10))
@@ -107,15 +111,15 @@ class PostServiceTest {
         Long postId = 1L;
         Long loginUserId = 1L;
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.empty());
+        when(postViewReadService.read(postId, loginUserId))
+                .thenThrow(new DataNullException("No_Post"));
 
         assertThatThrownBy(() -> postService.getPostView(postId,loginUserId))
                 .isInstanceOf(DataNullException.class)
                 .hasMessage("No_Post");
 
         verify(viewCountUpdater, never()).increment(postId, 0L);
-        verify(commentRepository, never()).findByPostWithUser(any(Post.class));
+        verifyNoInteractions(viewCountUpdater);
     }
 
     @Test
@@ -130,8 +134,8 @@ class PostServiceTest {
             post.report();
         }
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
+        when(postViewReadService.read(postId, loginUserId))
+                .thenThrow(new DataNullException("No_Post"));
 
         assertThatThrownBy(
                 () -> postService.getPostView(postId, loginUserId)
@@ -140,8 +144,7 @@ class PostServiceTest {
                 .hasMessage("No_Post");
 
         verify(viewCountUpdater, never()).increment(postId, 0L);
-        verify(userRepository, never())
-                .findByUserIdAndDeletedFalse(loginUserId);
+        verifyNoInteractions(viewCountUpdater);
     }
 
     @Test
@@ -150,10 +153,8 @@ class PostServiceTest {
         Long loginUserId = 2L;
         Post post = createPost(postId, createUser(1L));
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
-        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
-                .thenReturn(Optional.empty());
+        when(postViewReadService.read(postId, loginUserId))
+                .thenThrow(new AuthException("No_User"));
 
         assertThatThrownBy(
                 () -> postService.getPostView(postId, loginUserId)
@@ -162,7 +163,7 @@ class PostServiceTest {
                 .hasMessage("No_User");
 
         verify(viewCountUpdater, never()).increment(postId, 0L);
-        verify(commentRepository, never()).findByPostWithUser(post);
+        verifyNoInteractions(viewCountUpdater);
     }
 
     @Test
@@ -607,20 +608,20 @@ class PostServiceTest {
         Comment otherComment =
                 createComment(11L, otherUser, post);
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
-
-        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
-                .thenReturn(Optional.of(loginUser));
-
-        when(commentRepository.findByPostWithUser(post))
-                .thenReturn(List.of(myComment, otherComment));
-
-        when(likeRepository.existsByPostAndUser(post, loginUser))
-                .thenReturn(false);
-
-        when(postReportRepository.existsByPostAndUser(post, loginUser))
-                .thenReturn(false);
+        List<CommentResponseDto> comments = List.of(
+                new CommentResponseDto(myComment, loginUser, true),
+                new CommentResponseDto(otherComment, otherUser, false)
+        );
+        when(postViewReadService.read(postId, loginUserId))
+                .thenReturn(new PostViewReadService.PostViewData(
+                        post,
+                        post.getPostCounter(),
+                        0L,
+                        comments,
+                        false,
+                        false,
+                        true
+                ));
         when(viewCountUpdater.increment(postId, 0L))
                 .thenReturn(1L);
 
@@ -645,14 +646,7 @@ class PostServiceTest {
         assertThat(response.getViewCount()).isEqualTo(1);
         verify(viewCountUpdater).increment(postId, 0L);
 
-        verify(postRepository)
-                .findByPostIdAndDeletedFalse(postId);
-
-        verify(userRepository)
-                .findByUserIdAndDeletedFalse(loginUserId);
-
-        verify(commentRepository)
-                .findByPostWithUser(post);
+        verify(postViewReadService).read(postId, loginUserId);
     }
 
     @Test
@@ -666,20 +660,16 @@ class PostServiceTest {
 
         Post post = createPost(postId, writer);
 
-        when(postRepository.findByPostIdAndDeletedFalse(postId))
-                .thenReturn(Optional.of(post));
-
-        when(userRepository.findByUserIdAndDeletedFalse(loginUserId))
-                .thenReturn(Optional.of(loginUser));
-
-        when(commentRepository.findByPostWithUser(post))
-                .thenReturn(List.of());
-
-        when(likeRepository.existsByPostAndUser(post, loginUser))
-                .thenReturn(false);
-
-        when(postReportRepository.existsByPostAndUser(post, loginUser))
-                .thenReturn(false);
+        when(postViewReadService.read(postId, loginUserId))
+                .thenReturn(new PostViewReadService.PostViewData(
+                        post,
+                        post.getPostCounter(),
+                        0L,
+                        List.of(),
+                        false,
+                        false,
+                        false
+                ));
         when(viewCountUpdater.increment(postId, 0L))
                 .thenReturn(1L);
 

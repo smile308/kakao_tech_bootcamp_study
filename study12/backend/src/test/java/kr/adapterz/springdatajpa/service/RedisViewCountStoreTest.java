@@ -37,7 +37,8 @@ class RedisViewCountStoreTest {
                 "bamboo:{post-view}:count:",
                 "bamboo:{post-view}:dirty",
                 "bamboo:{post-view}:flush-lock",
-                Duration.ofSeconds(5)
+                Duration.ofSeconds(5),
+                100
         );
         store = new RedisViewCountStore(redisTemplate, properties);
     }

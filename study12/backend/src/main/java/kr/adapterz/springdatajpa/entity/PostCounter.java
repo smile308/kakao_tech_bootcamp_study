@@ -43,22 +43,6 @@ public class PostCounter {
         this.replyCount = 0;
     }
 
-    public void addReply() {
-        replyCount++;
-    }
-
-    public void deleteReply() {
-        replyCount--;
-    }
-
-    public void like() {
-        likeCount++;
-    }
-
-    public void cancelLike() {
-        likeCount--;
-    }
-
     public void report() {
         reportCount++;
     }

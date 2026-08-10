@@ -81,7 +81,8 @@ class RedisViewCountStoreIntegrationTest {
                 "bamboo:{post-view}:count:",
                 DIRTY_SET_KEY,
                 "bamboo:{post-view}:flush-lock",
-                Duration.ofSeconds(5)
+                Duration.ofSeconds(5),
+                100
         );
         store = new RedisViewCountStore(redisTemplate, properties);
     }
@@ -174,7 +175,7 @@ class RedisViewCountStoreIntegrationTest {
     void 저장한_스냅샷보다_조회수가_증가하면_dirty_표시를_유지한다() {
         long firstSnapshot = store.increment(42L, 100L);
 
-        assertThat(store.findDirtyPostIds()).containsExactly(42L);
+        assertThat(store.findDirtyPostIds(100)).containsExactly(42L);
         assertThat(store.findViewCountSnapshot(42L))
                 .isEqualTo(OptionalLong.of(101L));
 
@@ -184,13 +185,13 @@ class RedisViewCountStoreIntegrationTest {
                 store.acknowledgeIfUnchanged(42L, firstSnapshot);
 
         assertThat(staleSnapshotAcknowledged).isFalse();
-        assertThat(store.findDirtyPostIds()).containsExactly(42L);
+        assertThat(store.findDirtyPostIds(100)).containsExactly(42L);
 
         boolean latestSnapshotAcknowledged =
                 store.acknowledgeIfUnchanged(42L, 102L);
 
         assertThat(latestSnapshotAcknowledged).isTrue();
-        assertThat(store.findDirtyPostIds()).isEmpty();
+        assertThat(store.findDirtyPostIds(100)).isEmpty();
     }
 
     @Test
@@ -198,12 +199,12 @@ class RedisViewCountStoreIntegrationTest {
         redisTemplate.opsForSet().add(DIRTY_SET_KEY, "42");
 
         assertThat(store.removeDirtyIfCountMissing(42L)).isTrue();
-        assertThat(store.findDirtyPostIds()).isEmpty();
+        assertThat(store.findDirtyPostIds(100)).isEmpty();
 
         store.increment(42L, 100L);
 
         assertThat(store.removeDirtyIfCountMissing(42L)).isFalse();
-        assertThat(store.findDirtyPostIds()).containsExactly(42L);
+        assertThat(store.findDirtyPostIds(100)).containsExactly(42L);
         assertThat(redisTemplate.opsForValue().get(COUNT_KEY))
                 .isEqualTo("101");
     }

@@ -107,21 +107,6 @@ public class Post {
         postImages.add(postImage);
     }
 
-    public void addReply(){
-        postCounter.addReply();
-    }
-    public void deleteReply(){
-        postCounter.deleteReply();
-    }
-
-    public void like(){
-        postCounter.like();
-    }
-
-    public void likeCancle(){
-        postCounter.cancelLike();
-    }
-
     public void delete(){deleted=true;}
 
     public void report() {

@@ -44,7 +44,8 @@ class RedisViewCountFlushSchedulerTest {
                 "bamboo:{post-view}:count:",
                 "bamboo:{post-view}:dirty",
                 "bamboo:{post-view}:flush-lock",
-                Duration.ofSeconds(5)
+                Duration.ofSeconds(5),
+                100
         );
         scheduler = new RedisViewCountFlushScheduler(
                 redisViewCountStore,
@@ -57,7 +58,7 @@ class RedisViewCountFlushSchedulerTest {
     @Test
     void Redis_스냅샷을_MySQL에_저장한_뒤_dirty_표시를_제거한다() {
         arrangeLockAcquired();
-        when(redisViewCountStore.findDirtyPostIds())
+        when(redisViewCountStore.findDirtyPostIds(100))
                 .thenReturn(Set.of(42L));
         when(redisViewCountStore.findViewCountSnapshot(42L))
                 .thenReturn(OptionalLong.of(150L));
@@ -80,7 +81,7 @@ class RedisViewCountFlushSchedulerTest {
     @Test
     void MySQL_저장에_실패하면_dirty_표시를_제거하지_않는다() {
         arrangeLockAcquired();
-        when(redisViewCountStore.findDirtyPostIds())
+        when(redisViewCountStore.findDirtyPostIds(100))
                 .thenReturn(Set.of(42L));
         when(redisViewCountStore.findViewCountSnapshot(42L))
                 .thenReturn(OptionalLong.of(150L));
@@ -98,7 +99,7 @@ class RedisViewCountFlushSchedulerTest {
     @Test
     void Redis_조회수_키가_없으면_MySQL에_반영하지_않는다() {
         arrangeLockAcquired();
-        when(redisViewCountStore.findDirtyPostIds())
+        when(redisViewCountStore.findDirtyPostIds(100))
                 .thenReturn(Set.of(42L));
         when(redisViewCountStore.findViewCountSnapshot(42L))
                 .thenReturn(OptionalLong.empty());

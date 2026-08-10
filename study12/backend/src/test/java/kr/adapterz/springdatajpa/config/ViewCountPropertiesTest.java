@@ -28,6 +28,7 @@ class ViewCountPropertiesTest {
                 .isEqualTo("bamboo:{post-view}:flush-lock");
         assertThat(boundProperties.flushInterval())
                 .isEqualTo(Duration.ofSeconds(5));
+        assertThat(boundProperties.maxPostsPerFlush()).isEqualTo(100);
     }
 
     @Test
@@ -55,9 +56,24 @@ class ViewCountPropertiesTest {
                         "bamboo:{post-view}:count:",
                         "bamboo:{post-view}:dirty",
                         "bamboo:{post-view}:flush-lock",
-                        Duration.ZERO
+                        Duration.ZERO,
+                        100
                 ))
                 .withMessage("flushInterval must be positive");
+    }
+
+    @Test
+    void 한_주기_처리_게시글_수는_양수여야_한다() {
+        assertThatIllegalArgumentException()
+                .isThrownBy(() -> new ViewCountProperties(
+                        true,
+                        "bamboo:{post-view}:count:",
+                        "bamboo:{post-view}:dirty",
+                        "bamboo:{post-view}:flush-lock",
+                        Duration.ofSeconds(5),
+                        0
+                ))
+                .withMessage("maxPostsPerFlush must be positive");
     }
 
     private ViewCountProperties properties() {
@@ -66,7 +82,8 @@ class ViewCountPropertiesTest {
                 "bamboo:{post-view}:count:",
                 "bamboo:{post-view}:dirty",
                 "bamboo:{post-view}:flush-lock",
-                Duration.ofSeconds(5)
+                Duration.ofSeconds(5),
+                100
         );
     }
 }

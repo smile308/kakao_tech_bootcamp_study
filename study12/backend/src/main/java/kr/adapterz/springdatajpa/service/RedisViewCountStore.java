@@ -1,15 +1,18 @@
 package kr.adapterz.springdatajpa.service;
 
 import java.util.List;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.OptionalLong;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import kr.adapterz.springdatajpa.config.ViewCountProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
@@ -114,17 +117,24 @@ public class RedisViewCountStore implements ViewCountUpdater {
         }
     }
 
-    public Set<Long> findDirtyPostIds() {
-        Set<String> members = redisTemplate.opsForSet()
-                .members(properties.dirtySetKey());
-
-        if (members == null || members.isEmpty()) {
-            return Set.of();
+    public Set<Long> findDirtyPostIds(int limit) {
+        if (limit < 1) {
+            throw new IllegalArgumentException("limit must be positive");
         }
 
-        return members.stream()
-                .map(Long::valueOf)
-                .collect(Collectors.toUnmodifiableSet());
+        Set<Long> dirtyPostIds = new LinkedHashSet<>();
+        ScanOptions options = ScanOptions.scanOptions()
+                .count(limit)
+                .build();
+
+        try (Cursor<String> cursor = redisTemplate.opsForSet()
+                .scan(properties.dirtySetKey(), options)) {
+            while (cursor.hasNext() && dirtyPostIds.size() < limit) {
+                dirtyPostIds.add(Long.valueOf(cursor.next()));
+            }
+        }
+
+        return Collections.unmodifiableSet(dirtyPostIds);
     }
 
     public OptionalLong findViewCountSnapshot(Long postId) {

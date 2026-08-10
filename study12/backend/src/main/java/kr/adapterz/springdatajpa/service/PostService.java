@@ -2,7 +2,6 @@ package kr.adapterz.springdatajpa.service;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
-import kr.adapterz.springdatajpa.dto.comment.CommentResponseDto;
 import kr.adapterz.springdatajpa.dto.post.*;
 import kr.adapterz.springdatajpa.entity.*;
 import kr.adapterz.springdatajpa.exception.DataNullException;
@@ -21,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
@@ -37,6 +37,7 @@ public class PostService {
     private final LikeRepository likeRepository;
     private final PostReportRepository postReportRepository;
     private final PostCounterRepository postCounterRepository;
+    private final PostViewReadService postViewReadService;
     private final ViewCountUpdater viewCountUpdater;
     private final EntityManager entityManager;
 
@@ -85,39 +86,23 @@ public class PostService {
         return postResponseDto;
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
-        Post post = getViewablePost(postId);
-        User loginUser = getLoginUser(loginUserId);
-
-        List<Comment> comments = commentRepository.findByPostWithUser(post);
-        List<CommentResponseDto> commentResponseDtos = new ArrayList<>();
-
-        for (Comment comment : comments) {
-            boolean isMyComment=comment.getUser().getUserId().equals(loginUserId);
-            CommentResponseDto commentResponseDto =
-                    new CommentResponseDto(comment, comment.getUser(),isMyComment);
-            commentResponseDtos.add(commentResponseDto);
-        }
-
-        boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser);
-        boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser);
-        boolean isMine = post.getUser().getUserId().equals(loginUserId);
-
-        long baselineViewCount = post.getPostViewCount().getViewCount();
+        PostViewReadService.PostViewData postViewData =
+                postViewReadService.read(postId, loginUserId);
         long updatedViewCount = viewCountUpdater.increment(
                 postId,
-                baselineViewCount
+                postViewData.baselineViewCount()
         );
 
         return new PostViewResponseDto(
-                post,
-                post.getPostCounter(),
+                postViewData.post(),
+                postViewData.counter(),
                 updatedViewCount,
-                commentResponseDtos,
-                isLiked,
-                isReported,
-                isMine
+                postViewData.comments(),
+                postViewData.liked(),
+                postViewData.reported(),
+                postViewData.mine()
         );
     }
 
@@ -248,16 +233,6 @@ public class PostService {
     private Post getActivePost(Long postId) {
         return postRepository.findByPostIdAndDeletedFalse(postId)
                 .orElseThrow(() -> new DataNullException("No_Post"));
-    }
-
-    private Post getViewablePost(Long postId) {
-        Post post = getActivePost(postId);
-
-        if (post.isBlockedByReports()) {
-            throw new DataNullException("No_Post");
-        }
-
-        return post;
     }
 
     private Post getActivePostForUpdate(Long postId) {
