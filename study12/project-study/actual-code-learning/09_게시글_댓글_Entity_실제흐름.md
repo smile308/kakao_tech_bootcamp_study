@@ -33,7 +33,7 @@ DB에 보관하는 영구 값이라는 점만 연결합니다.
 
 ```text
 상세 조회: PostService.getPostView
-→ Post와 PostCounter·PostViewCount 조회
+→ PostViewReadService.read에서 Post와 PostCounter·PostViewCount 조회
 → ViewCountUpdater.increment
 → PostViewResponseDto
 
@@ -639,7 +639,7 @@ bulk update는 DB가 현재 column 값에 `+ 1` 또는 `- 1`을 적용하므로 
 
 - 파일: `/Users/miles/Documents/GitHub/KTB4_Miles_Week12_Back/src/main/java/kr/adapterz/springdatajpa/entity/PostViewCount.java`
 - 생성자 호출: `Post` 생성자에서 항상 생성합니다.
-- 조회자: `PostService.getPostView`가 `post.getPostViewCount().getViewCount()`로 baseline을 읽습니다.
+- 조회자: `PostViewReadService.read`가 `post.getPostViewCount().getViewCount()`로 baseline을 읽고 `PostService.getPostView`가 조회수 증가 구현체에 전달합니다.
 - 변경자: 이 Entity의 field를 직접 증가시키는 production method는 현재 파일에 없습니다. `ViewCountUpdater` 구현과 `PostViewCountRepository`가 조회수 저장 흐름을 담당합니다.
 - 반환 사용: baseline은 `viewCountUpdater.increment(postId, baselineViewCount)`의 두 번째 인자로 전달됩니다.
 

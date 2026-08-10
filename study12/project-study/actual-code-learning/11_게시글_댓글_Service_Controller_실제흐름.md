@@ -198,11 +198,68 @@ Redis 구현이 선택된 환경에서는 이 class가 Bean으로 선택되지 �
 
 ---
 
+### 11.3.3 `PostViewReadService.java` 상세 조회 읽기 경계
+
+실제 파일:
+
+`/Users/miles/Documents/GitHub/KTB4_Miles_Week12_Back/src/main/java/kr/adapterz/springdatajpa/service/PostViewReadService.java`
+
+8월 10일 `조회수 레디스 트랜잭션 분리` 커밋에서 게시글 상세 조회의 DB 읽기 부분이
+`PostService`에서 이 Service로 분리되었다. `read()`는 게시글·로그인 사용자·댓글·좋아요·신고
+상태와 DB 기준 조회수를 `PostViewData` record로 묶어 반환한다.
+
+```java
+@Transactional(readOnly = true) // 상세 화면에 필요한 DB 읽기만 별도 read-only transaction에서 수행한다.
+public PostViewData read(Long postId, Long loginUserId) {
+    Post post = postRepository.findByPostIdAndDeletedFalse(postId) // 삭제되지 않은 게시글을 조회한다.
+            .orElseThrow(() -> new DataNullException("No_Post")); // 없으면 상세 흐름을 중단한다.
+
+    if (post.isBlockedByReports()) { // 신고 누적으로 차단된 게시글인지 확인한다.
+        throw new DataNullException("No_Post"); // 차단된 글도 외부에서는 없는 글처럼 처리한다.
+    }
+
+    User loginUser = userRepository.findByUserIdAndDeletedFalse(loginUserId) // 인증 ID의 활성 사용자를 조회한다.
+            .orElseThrow(() -> new AuthException("No_User")); // 사용자가 없으면 인증 오류로 끝낸다.
+
+    List<Comment> comments = commentRepository.findByPostWithUser(post); // 댓글과 작성자를 함께 읽는다.
+    List<CommentResponseDto> commentResponseDtos = new ArrayList<>(); // 응답용 댓글 목록을 만든다.
+    for (Comment comment : comments) { // 각 댓글에 현재 사용자의 댓글인지 표시한다.
+        boolean isMyComment = comment.getUser().getUserId().equals(loginUserId);
+        commentResponseDtos.add(new CommentResponseDto(comment, comment.getUser(), isMyComment));
+    }
+
+    boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser); // 현재 사용자의 좋아요 여부다.
+    boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser); // 현재 사용자의 신고 여부다.
+    boolean isMine = post.getUser().getUserId().equals(loginUserId); // 현재 사용자가 작성자인지 계산한다.
+
+    return new PostViewData( // PostService가 조회수 증가 후 응답 DTO를 만들 수 있도록 결과를 묶는다.
+            post,
+            post.getPostCounter(),
+            post.getPostViewCount().getViewCount(),
+            commentResponseDtos,
+            isLiked,
+            isReported,
+            isMine
+    );
+}
+```
+
+호출자는 `PostService.getPostView()`다. 이 메서드가 반환한 `baselineViewCount`는 Redis 또는
+DB 구현체의 `ViewCountUpdater.increment()` 두 번째 인자로 전달되고, 나머지 값은
+`PostViewResponseDto` 생성에 사용된다. `PostViewData`는 Java `record`이므로 각 component의
+접근자(`post()`, `comments()` 등)가 자동으로 제공된다.
+
 ## 11.4 `PostService.java` 전체 코드
 
 실제 파일:
 
-`/Users/miles/Documents/GitHub/kakao_tech_bootcamp_study/study12/backend/src/main/java/kr/adapterz/springdatajpa/service/PostService.java`
+`/Users/miles/Documents/GitHub/KTB4_Miles_Week12_Back/src/main/java/kr/adapterz/springdatajpa/service/PostService.java`
+
+주의: 아래 전체 원문 블록은 이 문서가 처음 작성될 때의 보존용 원문이며 8월 10일
+커밋 전 상태다. 현재 학습에서는 바로 앞의 `PostViewReadService` 설명과 아래의
+`getPostView`, `reportPost`, private method 보정 블록을 현재 source로 사용한다. 특히
+`getViewablePost()`와 상세 조회 내부의 댓글·좋아요 조회 코드는 현재 `PostViewReadService`
+로 이동했고, 신고 시작부의 lock 순서도 변경됐다.
 
 ```java
 package kr.adapterz.springdatajpa.service;
@@ -624,31 +681,35 @@ public PostResponseDto createPost(Long loginUserId, PostRequestDto request) {
 Service가 생성 후 반환한다는 흐름만 확정합니다.
 
 ```java
-@Transactional // 조회수 증가 구현이 DB를 사용할 수 있으므로 읽기 전용으로 고정하지 않는다.
+@Transactional(propagation = Propagation.NOT_SUPPORTED) // 기존 transaction을 중단하고 Redis 호출을 DB 읽기 transaction 밖에서 실행한다.
 public PostViewResponseDto getPostView(Long postId, Long loginUserId) {
-    Post post = getViewablePost(postId); // 삭제·신고 차단 글이 아닌지 확인한다.
-    User loginUser = getLoginUser(loginUserId); // 좋아요·신고·댓글 소유권 비교용 User를 읽는다.
-    List<Comment> comments = commentRepository.findByPostWithUser(post); // 댓글과 작성자 정보를 조회한다.
-    List<CommentResponseDto> commentResponseDtos = new ArrayList<>(); // 댓글 응답 목록을 만든다.
-    for (Comment comment : comments) { // 조회된 댓글마다 현재 사용자와의 관계를 계산한다.
-        boolean isMyComment = comment.getUser().getUserId().equals(loginUserId); // 내 댓글 여부를 계산한다.
-        commentResponseDtos.add(new CommentResponseDto(comment, comment.getUser(), isMyComment)); // DTO로 변환한다.
-    }
-    boolean isLiked = likeRepository.existsByPostAndUser(post, loginUser); // 현재 사용자의 좋아요 여부다.
-    boolean isReported = postReportRepository.existsByPostAndUser(post, loginUser); // 현재 사용자의 신고 여부다.
-    boolean isMine = post.getUser().getUserId().equals(loginUserId); // 글 작성자 본인 여부다.
-    long baselineViewCount = post.getPostViewCount().getViewCount(); // DB 영구값을 현재 기준으로 읽는다.
-    long updatedViewCount = viewCountUpdater.increment(postId, baselineViewCount); // 활성 조회수 구현에 증가를 위임한다.
-    return new PostViewResponseDto(post, post.getPostCounter(), updatedViewCount,
-            commentResponseDtos, isLiked, isReported, isMine); // Controller 응답 DTO를 완성한다.
+    PostViewReadService.PostViewData postViewData = // 읽기 전용 Service가 모은 상세 데이터를 받는다.
+            postViewReadService.read(postId, loginUserId);
+    long updatedViewCount = viewCountUpdater.increment( // Redis 또는 DB 구현체에 조회수 증가를 위임한다.
+            postId,
+            postViewData.baselineViewCount()
+    );
+    return new PostViewResponseDto( // 읽기 결과와 증가된 조회수를 하나의 응답 DTO로 조합한다.
+            postViewData.post(),
+            postViewData.counter(),
+            updatedViewCount,
+            postViewData.comments(),
+            postViewData.liked(),
+            postViewData.reported(),
+            postViewData.mine()
+    );
 }
 ```
 
 이 method의 호출자는 `PostController.getPostView()`이고 `postId`는 URL path,
-`loginUserId`는 Security principal에서 옵니다. `getViewablePost()`가 `No_Post`를
-던지면 댓글·좋아요 조회와 조회수 증가가 모두 실행되지 않습니다. 반대로 조회 가능한
-게시글이면 댓글 목록, 현재 사용자의 상태, 조회수 증가 결과를 하나의
-`PostViewResponseDto`에 모아 Controller로 반환합니다.
+`loginUserId`는 Security principal에서 옵니다. 먼저 `PostViewReadService.read()`가
+`@Transactional(readOnly = true)` transaction에서 DB 읽기를 끝내고, 그 결과의 기준 조회수가
+`ViewCountUpdater.increment()`로 전달됩니다. `NOT_SUPPORTED`는 기존 transaction을 잠시
+중단한다는 뜻이지 `read()`가 transaction 없이 실행된다는 뜻이 아닙니다. 별도 Service의
+proxy 호출이 `read()`에 새 read-only transaction을 시작합니다. 코드상 Redis 호출은 그 DB
+읽기 transaction이 끝난 뒤 실행되므로 DB connection을 외부 저장소 호출 동안 유지하지 않는
+경계가 만들어집니다. 이 경계를 선택한 작성자의 운영상 동기는 커밋 메시지만으로는 확정할
+수 없습니다.
 
 ### 11.4.4 수정·삭제: 권한·version·soft delete 순서
 
@@ -743,13 +804,18 @@ public LikeCancelResponseDto cancelLike(Long postId, Long loginUserId) {
 }
 ```
 
-신고는 게시글 counter와 작성자 User의 누적 신고 수를 동시에 변경하므로 두 row를
-`findActivePostForUpdate()`와 `findByUserIdForUpdate()`로 lock합니다.
+신고는 게시글 counter와 작성자 User의 누적 신고 수를 동시에 변경하므로 게시글의 상호작용
+가능 여부를 먼저 확인하고, `PostCounter`를 잠근 뒤 `Post`를 `PESSIMISTIC_WRITE`로 잠급니다.
+그 다음 신고자와 작성자를 조회하고 작성자 User row를 잠급니다. 이 순서는 좋아요·댓글과
+같은 게시글 counter를 먼저 잠그는 순서를 맞추기 위한 구조로 해석할 수 있지만, 모든 운영
+interleaving의 무교착을 이 코드만으로 증명할 수는 없습니다.
 
 ```java
 @Transactional // 신고 이력과 두 counter 변경을 하나로 묶는다.
 public PostReportResponseDto reportPost(Long postId, Long loginUserId) {
-    Post post = getActivePostForUpdate(postId); // 신고 가능한 글을 lock과 함께 조회한다.
+    getActivePostForInteraction(postId); // 삭제되지 않고 상호작용 가능한 게시글인지 먼저 확인한다.
+    getPostCounterForUpdate(postId); // 같은 게시글의 counter lock 순서를 먼저 확보한다.
+    Post post = getActivePostForUpdate(postId); // 게시글 본문 row를 write lock으로 조회한다.
     User reporter = getLoginUser(loginUserId); // 신고자 Entity를 조회한다.
     User writer = getUserForUpdate(post.getUser().getUserId()); // 작성자 신고 누적 row를 lock한다.
     if (writer.getUserId().equals(reporter.getUserId())) { // 자기 글 신고인지 확인한다.
@@ -768,12 +834,14 @@ public PostReportResponseDto reportPost(Long postId, Long loginUserId) {
 ### 11.4.6 private method가 public 흐름에서 맡는 역할
 
 ```java
-private Post getViewablePost(Long postId) {
-    Post post = getActivePost(postId); // 먼저 soft delete 여부를 검사한다.
-    if (post.isBlockedByReports()) { // 신고 기준을 넘은 글인지 확인한다.
-        throw new DataNullException("No_Post"); // 외부에는 조회 불가 글처럼 처리한다.
-    }
-    return post; // 검사를 통과한 managed Entity를 호출자에게 반환한다.
+private Post getActivePostForInteraction(Long postId) {
+    return postRepository.findActivePostForInteraction(postId) // 상호작용 가능한 게시글을 조회한다.
+            .orElseThrow(() -> new DataNullException("No_Post")); // 없거나 차단되면 업무 흐름을 중단한다.
+}
+
+private PostCounter getPostCounterForUpdate(Long postId) {
+    return postCounterRepository.findByPostIdForUpdate(postId) // counter row에 비관적 write lock을 건다.
+            .orElseThrow(CounterUpdateException::new); // counter가 없으면 갱신 실패로 처리한다.
 }
 
 private void validatePostModificationPermission(Post post, Long loginUserId) {
@@ -797,9 +865,11 @@ private void validateCounterUpdate(int updatedRowCount) {
 ```
 
 private method는 Controller가 직접 호출하지 않습니다. 같은 `PostService`의 public method가
-검증·조회 순서를 재사용하기 위해 호출합니다. `orElseThrow()`가 발생시키는 예외는 각
-public method 밖으로 전파되고, Controller까지 올라간 뒤 `GlobalExceptionHandler`가 HTTP
-status와 error body로 변환합니다.
+검증·조회·lock 순서를 재사용하기 위해 호출합니다. 상세 조회의 게시글 차단 검사는 이제
+`PostViewReadService.read()` 안에 있으므로 `PostService`에 `getViewablePost()` private method는
+현재 존재하지 않습니다. `orElseThrow()`가 발생시키는 예외는 각 public method 밖으로
+전파되고, Controller까지 올라간 뒤 `GlobalExceptionHandler`가 HTTP status와 error body로
+변환합니다.
 
 ### 11.4.7 PostService 전체 연결 요약
 
@@ -818,9 +888,9 @@ createPost
 → save
 
 getPostView
-→ viewable Post·User 조회
-→ comments·like·report 상태 조회
-→ ViewCountUpdater.increment
+→ PostViewReadService.read의 read-only DB transaction
+→ comments·like·report 상태와 baseline 조회수 수집
+→ ViewCountUpdater.increment (read transaction 밖)
 → PostViewResponseDto
 
 fixPost
@@ -838,8 +908,8 @@ deletePost
 ### 11.4.8 좋아요·신고의 동시성 요약
 
 좋아요는 counter row를 `PESSIMISTIC_WRITE`로 잠근 뒤 Like를 저장하고 counter를
-bulk update합니다. 신고는 게시글과 작성자 User를 각각 lock한 뒤 신고 row와 두 종류의
-신고 count를 변경합니다.
+bulk update합니다. 신고는 상호작용 가능 여부 확인 → PostCounter lock → Post write lock →
+작성자 User lock 순서로 신고 row와 두 종류의 신고 count를 변경합니다.
 
 `validateCounterUpdate(int)`가 반환 row 수를 확인하는 이유는 query가 기대한 정확한
 대상 하나를 바꿨는지 확인하기 위해서입니다.
@@ -1377,6 +1447,11 @@ version 불일치
 counter row 수 이상
 → CounterUpdateException
 → 500
+
+비관적 lock 획득 실패·timeout
+→ GlobalExceptionHandler.handlePessimisticLockFailure
+→ COUNTER_UPDATE_FAILED
+→ 503
 ```
 
 ---
@@ -1397,13 +1472,13 @@ counter row 수 이상
 ## 11.10 checkpoint 모범 답안
 
 1. `postId`는 `@PathVariable`, page·size는 `@RequestParam`, JSON은 `@RequestBody`, 인증 사용자 ID는 `@AuthenticationPrincipal`에서 오며 Controller가 DTO·값을 Service에 전달합니다.
-2. 기본 조회는 `readOnly = true`로 처리하지만, 게시글 생성·상세 조회수·수정·삭제·좋아요·신고는 Entity 또는 DB를 변경하므로 method의 일반 `@Transactional`이 필요합니다.
+2. 상세 DB 읽기는 `PostViewReadService.read()`의 read-only transaction으로 분리하고 `PostService.getPostView()`는 `Propagation.NOT_SUPPORTED`로 그 transaction 밖에서 조회수 구현체를 호출합니다. 생성·수정·삭제·좋아요·신고는 별도 쓰기 transaction을 사용합니다.
 3. 본인 글인지 확인하고, 신고 차단된 글의 변경을 막고, client version과 DB version이 같은지 확인해 권한 침해·차단 글 수정·오래된 화면의 덮어쓰기를 막습니다.
 4. `saveAndFlush`로 unique constraint 오류를 현재 try/catch에서 잡고, counter bulk update로 숫자를 DB에서 변경하며, 같은 transaction으로 Like row와 count를 함께 처리하기 위해 사용합니다.
-5. 같은 게시글의 report count와 같은 작성자의 누적 report count를 동시에 변경해도 증가분이 유실되지 않도록 각각의 row를 잠급니다.
+5. 게시글 counter를 먼저 잠근 뒤 게시글 본문과 작성자 User를 잠그는 순서를 좋아요·댓글 흐름과 맞추려는 구조입니다. 작성자의 누적 신고 수 변경은 User row lock으로 보호합니다.
 6. 다른 게시글의 댓글 ID를 현재 URL에 넣거나 남의 댓글을 수정·삭제하는 조작을 막기 위해 댓글이 URL의 Post에 속하는지 확인합니다.
 7. Comment row와 `replyCount`가 서로 다른 값을 가지지 않도록 하나의 transaction에서 함께 처리합니다.
-8. `increment(Long postId, long baselineViewCount)`라는 공통 계약을 제공합니다. PostService는 Redis key·Lua·connection을 알 필요가 없습니다.
+8. `PostViewReadService.read()`가 상세 읽기 데이터를 모으고, `increment(Long postId, long baselineViewCount)`가 Redis·DB 구현체 중 선택된 조회수 증가 계약을 제공합니다. PostService는 Redis key·Lua·connection을 알 필요가 없습니다.
 9. 대상 row가 없거나 여러 row가 바뀌면 기대한 한 건의 변경이 보장되지 않으므로 `CounterUpdateException`으로 transaction을 실패시킵니다.
 10. Controller는 HTTP 입력·인증 principal·응답 연결을 담당하고 Service가 transaction·검증·lock·Entity 변경 순서를 담당하도록 책임을 분리하기 위해 직접 Entity method를 호출하지 않습니다.
 
@@ -1411,8 +1486,8 @@ counter row 수 이상
 
 ## 11.11 진행 상태
 
-- 공식 파일 진행도: `96/214(약 44.9%)`
-- 이번 문서에서 확인한 파일: `ViewCountUpdater.java`, `DatabaseViewCountUpdater.java`, `PostService.java`, `CommentService.java`, `PostController.java`, `CommentController.java`
+- 공식 파일 진행도: `97/217(약 44.7%)`
+- 이번 문서에서 확인한 파일: `ViewCountUpdater.java`, `DatabaseViewCountUpdater.java`, `PostViewReadService.java`, `PostService.java`, `CommentService.java`, `PostController.java`, `CommentController.java`
 - 문서 작성 상태: 완료
 - 사용자 이해 checkpoint: 진행 중
 - 다음 학습 시작점: frontend 실행 기반·라우팅 흐름(`package.json` → `main.jsx` → `AppRoutes.jsx`)

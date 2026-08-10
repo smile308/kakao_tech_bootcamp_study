@@ -1,0 +1,37 @@
+Counter interference test started
+started_at=2026-08-10T13:21:43+0900
+target_version=study12_table-only
+test_profile=mixed-normal
+data_variant=comments100
+result_set=table-only-isolation-20260810
+run_id=run-02
+post_id=1
+authentication_preflight=HTTP_200
+token_exp_epoch=1786339194
+token_remaining_seconds_at_start=3492
+required_token_seconds=105
+initial_comment_counter=100
+initial_comment_rows=100
+view_count_storage=post_view_counts
+redis_view_count_enabled=false
+initial_mysql_view_count=12000
+initial_redis_view_count=not-applicable
+initial_effective_view_count=12000
+k6_console_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__k6-console.txt
+k6_summary_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__k6-summary.json
+mysql_locks_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__mysql-locks.txt
+run_metadata_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__run-metadata.txt
+Counter interference test finished
+finished_at=2026-08-10T13:22:58+0900
+k6_status=0
+observer_status=0
+final_comment_counter=100
+final_comment_rows=100
+final_mysql_view_count=23870
+final_redis_view_count=not-applicable
+final_effective_view_count=23870
+view_count_delta=11870
+k6_console_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__k6-console.txt
+k6_summary_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__k6-summary.json
+mysql_locks_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__mysql-locks.txt
+run_metadata_file=results/table-only-isolation-20260810/study12_table-only__post-counter-interference-comments100__mixed-normal__run-02__run-metadata.txt

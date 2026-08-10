@@ -49,7 +49,7 @@ Set
 | `SET key value` | String | Redis 값이 없거나 DB 기준보다 작을 때 기준값 쓰기 |
 | `INCR key` | String(정수 문자열) | 조회수 1 증가 후 증가한 값 반환 |
 | `SADD key member` | Set | dirty set에 게시글 ID 추가 |
-| `SMEMBERS key` | Set | flush 대상 ID 목록 읽기 |
+| `SCAN key COUNT n` | Set | flush 대상 ID를 한 주기 처리량만큼 순회 |
 | `SREM key member` | Set | RDS 반영이 끝난 ID를 dirty set에서 제거 |
 | `TYPE key` | 모든 key | count key가 String인지, dirty key가 Set인지 확인 |
 | `EXISTS key` | 모든 key | count key가 아직 존재하는지 확인 |
@@ -301,6 +301,10 @@ public PostViewResponseDto getPostView(
 
 확인 파일: `backend/src/main/java/kr/adapterz/springdatajpa/service/PostService.java`
 
+8월 10일 커밋 이후에는 아래 `baselineViewCount`가 `PostService`에서 직접 읽히지 않는다.
+`PostViewReadService.read()`가 반환한 record component를 사용한다. 기존 발췌는 분리 전
+흐름을 설명한 보존용이고, 현재 호출 순서는 16.1.5와 같다.
+
 ```java
 long baselineViewCount = post.getPostViewCount().getViewCount();
 long updatedViewCount = viewCountUpdater.increment(
@@ -321,6 +325,17 @@ return new PostViewResponseDto(
 
 `viewCountUpdater`의 선언 타입은 `ViewCountUpdater`이고 실제 Bean은 설정에 따라 달라집니다. `increment`의 반환값을 DTO 생성자에 전달하므로, Redis 활성화 시 상세 응답은 RDS에 아직 flush되지 않은 Redis 최신값을 사용할 수 있습니다.
 
+현재 `PostService`의 실제 조합은 다음과 같다.
+
+```java
+PostViewReadService.PostViewData data = postViewReadService.read(postId, loginUserId); // read-only DB transaction 결과를 받는다.
+long updatedViewCount = viewCountUpdater.increment(postId, data.baselineViewCount()); // DB read transaction 밖에서 조회수를 증가시킨다.
+return new PostViewResponseDto( // record component와 증가 결과를 API DTO로 옮긴다.
+        data.post(), data.counter(), updatedViewCount,
+        data.comments(), data.liked(), data.reported(), data.mine()
+);
+```
+
 현재 소스에서 baseline은 `PostViewCount.viewCount` 하나입니다. `PostCounter`에는 조회수 field가 없으므로 두 Entity의 조회수 중 큰 값을 선택하는 흐름은 현재 구현에 없습니다.
 
 ### 16.1.5 연결 흐름 요약
@@ -332,7 +347,7 @@ PostDetailPage.jsx
 → GET /posts/{postId}
 → PostController.getPostView()
 → PostService.getPostView()
-→ post.getPostViewCount().getViewCount()
+→ PostViewReadService.read()에서 post·댓글·상태·DB baseline 수집
 → ViewCountUpdater.increment()
 → PostViewResponseDto.viewCount
 → JSON response
@@ -1087,7 +1102,7 @@ green backend lock 실패 → 이번 주기 건너뜀
 ```java
 private void flushWhileHoldingLock() {
     try {
-        for (Long postId : redisViewCountStore.findDirtyPostIds()) {
+        for (Long postId : redisViewCountStore.findDirtyPostIds(properties.maxPostsPerFlush())) {
             flushOne(postId);
         }
     } catch (DataAccessException exception) {
@@ -1144,7 +1159,40 @@ private void releaseIfOwned(RLock lock, boolean acquired) {
 }
 ```
 
-각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 전체 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 `removeDirtyIfCountMissing()`가 count key의 부재를 Redis 안에서 다시 확인한 뒤 고아 dirty member를 제거한다.
+각 게시글의 `flushOne()`은 RuntimeException을 개별적으로 잡으므로 한 게시글 저장 실패가 뒤의 다른 게시글 flush까지 중단시키지 않는다. 반면 dirty set 조회에서 `DataAccessException`이 나면 이번 주기 전체를 건너뛴다. snapshot key가 없으면 `removeDirtyIfCountMissing()`가 count key의 부재를 Redis 안에서 다시 확인한 뒤 고아 dirty member를 제거한다.
+
+#### 한 주기 처리량 제한
+
+8월 10일 커밋에서 `ViewCountProperties.maxPostsPerFlush`가 추가됐다.
+`application.yaml`의 `VIEW_COUNT_MAX_POSTS_PER_FLUSH` 환경변수가 없으면 100이고,
+`flushWhileHoldingLock()`은 이 값을 `findDirtyPostIds(limit)`에 전달한다.
+
+```java
+public Set<Long> findDirtyPostIds(int limit) {
+    if (limit < 1) { // 잘못된 처리량 설정을 즉시 거부한다.
+        throw new IllegalArgumentException("limit must be positive");
+    }
+
+    Set<Long> dirtyPostIds = new LinkedHashSet<>(); // Redis에서 읽은 ID와 순서를 임시 보관한다.
+    ScanOptions options = ScanOptions.scanOptions() // Set 전체를 한 번에 복사하지 않는 SCAN 옵션을 만든다.
+            .count(limit) // Redis에 요청하는 스캔량의 힌트를 설정한다.
+            .build();
+
+    try (Cursor<String> cursor = redisTemplate.opsForSet()
+            .scan(properties.dirtySetKey(), options)) { // dirty set을 cursor로 순회한다.
+        while (cursor.hasNext() && dirtyPostIds.size() < limit) { // 이번 주기 최대 limit개만 수집한다.
+            dirtyPostIds.add(Long.valueOf(cursor.next())); // Redis 문자열 ID를 Long으로 변환한다.
+        }
+    }
+
+    return Collections.unmodifiableSet(dirtyPostIds); // Scheduler가 목록을 수정하지 못하게 반환한다.
+}
+```
+
+`COUNT`는 Redis가 한 번에 참고하는 스캔량의 힌트이고, Java의 `size() < limit` 조건이
+이번 호출의 상한을 실제로 보장한다. 따라서 dirty set에 100개보다 많은 ID가 있으면 남은
+ID는 다음 Scheduler 주기에 남는다. 이 변경으로 매 주기마다 dirty set 전체를 `SMEMBERS`로
+가져와 한 번에 처리한다는 설명은 현재 코드와 맞지 않는다.
 
 ### Flush Scheduler
 
@@ -1174,7 +1222,7 @@ public void flushDirtyViewCounts() { // dirty 조회수를 RDS에 반영하는 �
 ```java
 private void flushWhileHoldingLock() { // 분산 락 소유 중 dirty set 전체를 처리한다.
     try { // dirty set 조회 자체의 Redis 접근 실패를 처리한다.
-        for (Long postId : redisViewCountStore.findDirtyPostIds()) { // dirty 게시글 ID를 하나씩 순회한다.
+        for (Long postId : redisViewCountStore.findDirtyPostIds(properties.maxPostsPerFlush())) { // 이번 주기 상한 안에서 dirty 게시글 ID를 순회한다.
             flushOne(postId); // 게시글 하나의 snapshot 저장을 시도한다.
         }
     } catch (DataAccessException exception) { // dirty set을 읽지 못한 Redis 접근 오류를 잡는다.
@@ -1833,30 +1881,34 @@ assertThat(savedViewCount.getViewCount()).isEqualTo(102L);
 
 파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/PostConcurrencyIntegrationTest.java`
 
-이 테스트는 `application-test.yaml`의 `enabled=false`를 사용하므로 Redis integration 테스트가 아닙니다. `PostService.getPostView()`가 DB updater를 사용할 때도 30개 동시 요청의 증가가 유실되지 않는지를 H2에서 확인합니다.
+이 테스트는 `application-test.yaml`의 `enabled=false`를 사용하므로 Redis integration 테스트가 아닙니다. 8월 10일 테스트 수정 커밋에서 조회수 30회와 여러 게시글 신고 시나리오는 이 파일에서 제거되어 `MySqlSchemaIntegrationTest`로 이동했습니다. 현재 이 파일은 좋아요·댓글·게시글 수정·삭제 동시성 같은 H2 Service 흐름을 확인합니다.
 
-```java
-@Test
-void 동시에_게시글을_조회해도_조회수가_요청_수만큼_증가한다()
-        throws Exception {
-    int requestCount = 30;
+같은 파일의 좋아요·댓글 동시성 테스트는 조회수 Redis를 검증하는 테스트가 아니라, 같은
+counter row를 수정하는 다른 업무의 동시성 보장을 확인합니다. 게시글 수정 테스트는 같은
+내용이면 version을 증가시키지 않고, 다른 내용이면 한 요청만 성공하는 현재 Post optimistic
+locking 규칙을 검증합니다.
 
-    runConcurrently(
-            requestCount,
-            ignored -> postService.getPostView(postId, viewerId)
-    );
+### 16.14.5 MySqlSchemaIntegrationTest로 이동한 동시성 검증
 
-    long separatedViewCount = postViewCountRepository.findById(postId)
-            .orElseThrow()
-            .getViewCount();
+`MySqlSchemaIntegrationTest`에는 이제 다음 두 시나리오가 있다.
 
-    assertThat(separatedViewCount).isEqualTo(requestCount);
-}
+```text
+30개 동시 PostService.getPostView()
+→ application-test의 enabled=false
+→ DatabaseViewCountUpdater
+→ MySQL PostViewCount 최종값 30
+
+같은 작성자의 게시글 5개에 동시 신고
+→ 각 PostCounter.reportCount == 1
+→ 각 post_reports 행 == 1
+→ 작성자 receivedReportCount == 5
 ```
 
-같은 파일의 좋아요·신고 동시성 테스트는 조회수 Redis를 검증하는 테스트가 아니라, 같은 counter row를 수정하는 다른 업무의 동시성 보장도 함께 확인합니다. 게시글 수정 테스트는 같은 내용이면 version을 증가시키지 않고, 다른 내용이면 한 요청만 성공하는 현재 Post optimistic locking 규칙을 검증합니다.
+같은 파일의 혼합 동시성 테스트는 신고·좋아요·댓글을 같은 게시글에 동시에 실행하고,
+counter 세 종류와 해당 게시글의 실제 row 수를 확인한다. 이제 전체 table row 수가 아니라
+`post_id`로 범위를 제한해 해당 게시글의 결과만 검증한다.
 
-### 16.14.5 PostServiceTest
+### 16.14.6 PostServiceTest
 
 파일: `backend/src/test/java/kr/adapterz/springdatajpa/service/PostServiceTest.java`
 
@@ -1898,7 +1950,7 @@ DB 기준값 → Redis 원자적 INCR → dirty 표시
 - 로그 메시지 문구
 - `OptionalLong`의 Java 문법 세부
 - 락 해제 중 예외 로그의 반복 구조
-- `findDirtyPostIds()`의 stream 변환과 단순 Redis GET wrapper 내부
+- `findDirtyPostIds(int)`의 Cursor 순회 자체는 반복 문법을 스킵할 수 있지만, `limit` 검증·SCAN 상한·다음 주기로 남는 dirty ID라는 설계 차이는 확인한다.
 
 다만 두 Lua 스크립트, 분산 락, snapshot 이후 조건부 dirty 해제는 스킵하지 않는다.
 
@@ -2040,7 +2092,7 @@ MySQL 함수 `GREATEST`는 인자 중 큰 값을 반환한다. `nativeQuery = tr
 
 ## 16.19 진행률
 
-- 이 문서까지 확인한 고유 파일: **162/214개**
-- 진행률: **76.1%**
+- 이 문서까지 확인한 고유 파일: **163/217개**
+- 진행률: **75.1%**
 - 이번 문서에서 새로 집계한 구현 파일: `ViewCountProperties.java`, `RedisViewCountStore.java`, `RedisViewCountFlushScheduler.java`, `ViewCountPersistenceService.java`
 - `Post`, `PostService`, `PostViewCountRepository`와 Redis 테스트 파일은 이미 다른 단계에서 집계했거나 18번 테스트 문서에서 집계하므로 중복하지 않습니다.

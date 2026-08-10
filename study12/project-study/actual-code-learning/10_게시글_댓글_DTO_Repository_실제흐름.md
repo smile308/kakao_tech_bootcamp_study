@@ -364,8 +364,9 @@ public class PostPageResponseDto {
 
 `/Users/miles/Documents/GitHub/kakao_tech_bootcamp_study/study12/backend/src/main/java/kr/adapterz/springdatajpa/dto/post/PostViewResponseDto.java`
 
-이 DTO는 게시글 상세 endpoint의 응답 구조다. `PostService.getPostView()`가 게시글 Entity,
-Counter, 조회수, 댓글 목록, 현재 사용자의 좋아요·신고·소유 여부를 모아 생성자에 전달하고,
+이 DTO는 게시글 상세 endpoint의 응답 구조다. `PostViewReadService.read()`가 게시글 Entity,
+ Counter, DB 기준 조회수, 댓글 목록, 현재 사용자의 좋아요·신고·소유 여부를 모으고,
+`PostService.getPostView()`가 조회수 증가 결과와 함께 생성자에 전달하고,
 `PostController.getPostView()`가 반환한 객체를 Jackson이 JSON body로 직렬화한다.
 
 ```java
@@ -445,8 +446,9 @@ public class PostViewResponseDto {
 #### 이 DTO의 값 이동
 
 ```text
-PostService.getPostView
-→ Post·PostCounter·CommentResponseDto·조회수·현재 사용자 상태 준비
+PostViewReadService.read
+→ Post·PostCounter·CommentResponseDto·DB 기준 조회수·현재 사용자 상태 준비
+→ PostService.getPostView에서 ViewCountUpdater.increment 실행
 → new PostViewResponseDto(...)
 → PostController.getPostView 반환
 → Spring MVC/Jackson이 getter 값을 JSON body로 직렬화

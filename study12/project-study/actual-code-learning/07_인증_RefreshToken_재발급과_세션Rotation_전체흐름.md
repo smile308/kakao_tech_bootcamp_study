@@ -1219,7 +1219,7 @@ rotation 반환값을 생략하지 않았습니다.
 
 ## 진행 상태
 
-- 공식 파일 진행도: **52/214 (약 24.3%)**
+- 공식 파일 진행도: **52/217 (약 24.0%)**
 - 이번 문서에서 새로 추가 집계한 파일: **0개**. Refresh 관련 파일은 04~06장 static source 대조에서 이미 공식 집계했으며, 이 장에서는 그 파일들을 Refresh 실행 순서로 재배치해 연결했습니다.
 - 이번 문서에서 확인한 핵심 파일: `api.js`, `postApi.js`, `PostDetailPage.jsx`, `JwtAuthenticationFilter.java`, `SecurityConfig.java`, `SessionOriginInterceptor.java`, `SessionController.java`, `SessionService.java`, `RefreshTokenProvider.java`, `AuthSessionRepository.java`, `AuthSession.java`, `SessionRefreshResponseDto.java`, `RefreshCookieProvider.java`, `GlobalExceptionHandler.java`, `SessionServiceTest.java`, `RefreshTokenProviderTest.java`, `AuthSessionTest.java`, `ControllerDelegationTest.java`
 - 문서 작성 상태: **완료**

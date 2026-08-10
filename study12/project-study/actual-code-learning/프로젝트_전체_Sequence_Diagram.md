@@ -229,7 +229,7 @@ Redis 상세 흐름은 `98_Redis_조회수_처리.md`에 보관되어 있습니�
 
 ```mermaid
 sequenceDiagram
-    participant Detail as PostService.getPostView
+    participant Detail as PostViewReadService.read / PostService.getPostView
     participant Updater as ViewCountUpdater
     participant Redis as RedisViewCountStore
     participant Lua as Redis Lua Script

@@ -66,6 +66,7 @@ services:
       DB_PASSWORD: bamboo-loadtest-password
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      VIEW_COUNT_REDIS_ENABLED: ${VIEW_COUNT_REDIS_ENABLED:-true}
 
       SPRING_FLYWAY_ENABLED: "false"
       SPRING_JPA_HIBERNATE_DDL_AUTO: create

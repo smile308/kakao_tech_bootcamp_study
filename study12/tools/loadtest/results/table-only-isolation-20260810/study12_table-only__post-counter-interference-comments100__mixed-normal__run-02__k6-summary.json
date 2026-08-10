@@ -1,0 +1,207 @@
+{
+    "root_group": {
+        "name": "",
+        "path": "",
+        "id": "d41d8cd98f00b204e9800998ecf8427e",
+        "groups": {},
+        "checks": {
+                "view status is 200": {
+                    "name": "view status is 200",
+                    "path": "::view status is 200",
+                    "id": "3efad7f101f6c9e12fe07eaed65e25bf",
+                    "passes": 11870,
+                    "fails": 0
+                },
+                "comment create status is 201": {
+                    "name": "comment create status is 201",
+                    "path": "::comment create status is 201",
+                    "id": "344245ec289751e102df8fd9a1c01058",
+                    "passes": 301,
+                    "fails": 0
+                },
+                "comment delete status is 204": {
+                    "name": "comment delete status is 204",
+                    "path": "::comment delete status is 204",
+                    "id": "80a0dc53ce386173162899c96863d333",
+                    "passes": 301,
+                    "fails": 0
+                }
+            }
+    },
+    "metrics": {
+        "http_req_blocked": {
+            "max": 23.58925,
+            "avg": 0.023345179041051618,
+            "min": 0.001125,
+            "med": 0.003458,
+            "p(90)": 0.008375,
+            "p(95)": 0.011875,
+            "p(99)": 0.19573888999999983
+        },
+        "iterations": {
+            "count": 12171,
+            "rate": 202.82407147776246
+        },
+        "http_req_duration": {
+            "max": 1990.932501,
+            "avg": 49.672076414447986,
+            "min": 2.132208,
+            "med": 5.682688,
+            "p(90)": 95.8961965,
+            "p(95)": 241.41096684999945,
+            "p(99)": 818.1437561099999
+        },
+        "data_received": {
+            "rate": 3724220.005025108,
+            "count": 223481766
+        },
+        "comment_create_status_201": {
+            "count": 301,
+            "rate": 5.016025430515693
+        },
+        "vus_max": {
+            "value": 160,
+            "min": 98,
+            "max": 160
+        },
+        "http_req_receiving": {
+            "med": 0.1312915,
+            "p(90)": 0.33169560000000003,
+            "p(95)": 0.5035963499999996,
+            "p(99)": 1.3753327799999997,
+            "max": 24.060125,
+            "avg": 0.1990130878768443,
+            "min": 0.014083
+        },
+        "http_reqs": {
+            "count": 12472,
+            "rate": 207.84009690827816
+        },
+        "data_sent": {
+            "count": 3773175,
+            "rate": 62878.21180659818
+        },
+        "http_req_connecting": {
+            "p(99)": 0.11263485999999974,
+            "max": 23.53125,
+            "avg": 0.013623202854393843,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0
+        },
+        "http_req_tls_handshaking": {
+            "max": 0,
+            "avg": 0,
+            "min": 0,
+            "med": 0,
+            "p(90)": 0,
+            "p(95)": 0,
+            "p(99)": 0
+        },
+        "http_req_sending": {
+            "avg": 0.03392637091084037,
+            "min": 0.003334,
+            "med": 0.0143545,
+            "p(90)": 0.034412800000000014,
+            "p(95)": 0.052370799999999954,
+            "p(99)": 0.1953611099999999,
+            "max": 43.403541
+        },
+        "dropped_iterations": {
+            "count": 131,
+            "rate": 2.183054257134737
+        },
+        "vus": {
+            "min": 1,
+            "max": 145,
+            "value": 1
+        },
+        "checks": {
+            "passes": 12472,
+            "fails": 0,
+            "thresholds": {
+                "rate>0.99": false
+            },
+            "value": 1
+        },
+        "comment_create_duration": {
+            "p(90)": 74.576333,
+            "p(95)": 236.653333,
+            "p(99)": 833.224834,
+            "max": 1731.270459,
+            "avg": 49.83780745847174,
+            "min": 2.409167,
+            "med": 4.748125
+        },
+        "comment_lifecycle_duration": {
+            "p(95)": 387,
+            "p(99)": 1705,
+            "max": 2313,
+            "avg": 89.67109634551495,
+            "min": 4,
+            "med": 11,
+            "p(90)": 136
+        },
+        "comment_lifecycle_failed": {
+            "passes": 0,
+            "fails": 301,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_failed": {
+            "passes": 0,
+            "fails": 12472,
+            "thresholds": {
+                "rate<0.01": false
+            },
+            "value": 0
+        },
+        "http_req_waiting": {
+            "p(90)": 95.36617150000004,
+            "p(95)": 241.23914009999936,
+            "p(99)": 818.0272463599999,
+            "max": 1990.536209,
+            "avg": 49.439136955660565,
+            "min": 2.107042,
+            "med": 5.485167000000001
+        },
+        "comment_delete_duration": {
+            "avg": 39.35840518936879,
+            "min": 2.132208,
+            "med": 5.240833,
+            "p(90)": 46.883667,
+            "p(95)": 126.02425,
+            "p(99)": 645.157917,
+            "max": 1208.656043
+        },
+        "iteration_duration": {
+            "p(95)": 247.48558349999988,
+            "p(99)": 875.2384668999999,
+            "max": 2312.969751,
+            "avg": 51.1169889116748,
+            "min": 2.309667,
+            "med": 6.076833,
+            "p(90)": 98.119125
+        },
+        "comment_delete_status_204": {
+            "count": 301,
+            "rate": 5.016025430515693
+        },
+        "http_req_duration{expected_response:true}": {
+            "avg": 49.672076414447986,
+            "min": 2.132208,
+            "med": 5.682688,
+            "p(90)": 95.8961965,
+            "p(95)": 241.41096684999945,
+            "p(99)": 818.1437561099999,
+            "max": 1990.932501
+        },
+        "view_status_200": {
+            "count": 11870,
+            "rate": 197.8080460472468
+        }
+    }
+}

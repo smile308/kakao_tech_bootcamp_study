@@ -122,12 +122,14 @@ app:
     dirty-set-key: "bamboo:{post-view}:dirty"
     flush-lock-key: "bamboo:{post-view}:flush-lock"
     flush-interval: ${VIEW_COUNT_FLUSH_INTERVAL:5s}
+    max-posts-per-flush: ${VIEW_COUNT_MAX_POSTS_PER_FLUSH:100}
 ~~~
 
 - `profiles.default: local`: active profile이 없을 때 local을 사용한다.
 - `profiles.group.test: local`: test profile이 local profile도 함께 적용하도록 한다.
 - `${NAME:default}`: 환경변수 NAME이 있으면 그 값을 쓰고, 없을 때만 default를 쓴다.
 - `app.view-count`: `ViewCountProperties`가 `@ConfigurationProperties(prefix = "app.view-count")`로 받는다.
+- `max-posts-per-flush`: 한 Scheduler 주기에서 Redis dirty set을 최대 몇 개의 게시글 ID까지 읽을지 정한다. 환경변수가 없으면 100이다.
 - Redis key와 flush 설정의 실제 사용 위치는 Redis service에서 확인한다.
 
 YAML은 들여쓰기가 부모-자식 구조를 결정한다. `spring.data.redis.host`는 세 단계 map의 값이지 Java 변수 선언이 아니다.
@@ -191,9 +193,16 @@ JVM → main() → SpringApplication.run()
 
 다음 문서에서 `User.java → UserRequestDto.java → UserResponseDto.java → UserRepository.java` 순서로 회원가입 데이터가 Entity, DTO, Repository 사이를 어떻게 이동하는지 확인한다.
 
+## 8월 10일 커밋 반영
+
+현재 backend의 `application.yaml`에는 `VIEW_COUNT_MAX_POSTS_PER_FLUSH` placeholder가 추가되어
+있다. 값이 없을 때만 `100`을 사용하며, 이 값은 `ViewCountProperties.maxPostsPerFlush`로
+binding된 뒤 `RedisViewCountFlushScheduler`가 `findDirtyPostIds(limit)`에 전달한다. 이
+설정은 dirty 게시글 전체를 한 번에 처리하지 않고 한 주기 처리량을 제한하는 역할이다.
+
 ## 진행 상태
 
-- 이 문서까지 확인한 고유 파일: **12/214개**
-- 진행률: **5.6%**
+- 이 문서까지 확인한 고유 파일: **12/217개**
+- 진행률: **5.5%**
 - 계산 기준: 00번 문서의 파일별 누적 진행률표. wrapper와 설정 파일도 역할을 확인했으므로 집계했으며, 내부 구현을 반복 정독한 것은 아닙니다.
-- 다음 도달 지점: 02번 회원가입 문서 완료 시 19/214 (8.9%)
+- 다음 도달 지점: 02번 회원가입 문서 완료 시 19/217 (8.8%)

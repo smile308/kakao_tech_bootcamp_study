@@ -1401,7 +1401,7 @@ transaction commit, bulk UPDATE SQL, Cookie header, Spring Security principal �
 
 ## 진행 상태
 
-- 공식 파일 진행률: **52/214 (약 24.3%)**
+- 공식 파일 진행률: **52/217 (약 24.0%)**
 - 이번 문서에서 새로 집계한 파일: **0개**. 인증 관련 파일은 04~07장에서 이미 공식 집계했고,
   이 문서는 로그아웃·계정 변경·Origin/CORS 실행 흐름으로 재배치해 연결했습니다.
 - 이번 문서에서 대조한 핵심 파일: `AppHeader.jsx`, `PasswordEditPage.jsx`, `ProfileEditPage.jsx`,
