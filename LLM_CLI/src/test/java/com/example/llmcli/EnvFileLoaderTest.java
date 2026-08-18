@@ -19,10 +19,10 @@ class EnvFileLoaderTest {
     @Test
     void environment_variable_has_priority_over_env_file() throws Exception {
         Path envFile = temporaryDirectory.resolve(".env.local");
-        Files.writeString(envFile, "OPENAI_API_KEY=file-key\n");
+        Files.writeString(envFile, "OPENROUTER_API_KEY=file-key\n");
 
         Optional<String> key = EnvFileLoader.resolve(
-                Map.of("OPENAI_API_KEY", "environment-key"),
+                Map.of("OPENROUTER_API_KEY", "environment-key"),
                 envFile
         );
 
@@ -32,7 +32,7 @@ class EnvFileLoaderTest {
     @Test
     void reads_key_from_env_file_when_environment_variable_is_absent() throws Exception {
         Path envFile = temporaryDirectory.resolve(".env.local");
-        Files.writeString(envFile, "# local key\nOPENAI_API_KEY=\"file-key\"\n");
+        Files.writeString(envFile, "# local key\nOPENROUTER_API_KEY=\"file-key\"\n");
 
         Optional<String> key = EnvFileLoader.resolve(Map.of(), envFile);
 

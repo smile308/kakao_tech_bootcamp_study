@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public final class EnvFileLoader {
 
-    private static final String API_KEY_NAME = "OPENAI_API_KEY";
+    private static final String API_KEY_NAME = "OPENROUTER_API_KEY";
 
     private EnvFileLoader() {
     }

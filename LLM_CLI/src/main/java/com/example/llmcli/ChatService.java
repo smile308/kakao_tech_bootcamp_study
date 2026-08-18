@@ -85,7 +85,7 @@ public final class ChatService {
 
     private Response createResponse(List<ResponseInputItem> inputs) {
         ResponseCreateParams parameters = ResponseCreateParams.builder()
-                .model(ChatModel.GPT_5_6_LUNA)
+                .model(ChatModel.of("openrouter/free"))
                 .reasoning(Reasoning.builder().effort(ReasoningEffort.NONE).build())
                 .inputOfResponse(inputs)
                 .maxToolCalls(MAX_TOOL_CALLS)

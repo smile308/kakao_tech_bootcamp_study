@@ -22,7 +22,7 @@ public final class Main {
         Path projectRoot = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         Optional<String> apiKey = EnvFileLoader.loadApiKey(projectRoot.resolve(".env.local"));
         if (apiKey.isEmpty()) {
-            System.err.println("API 키를 찾지 못했습니다. 환경변수 OPENAI_API_KEY 또는 .env.local을 확인해 주세요.");
+            System.err.println("API 키를 찾지 못했습니다. 환경변수 OPENROUTER_API_KEY 또는 .env.local을 확인해 주세요.");
             return;
         }
 
@@ -34,6 +34,7 @@ public final class Main {
         List<ConversationMessage> history = new ArrayList<>(loaded.messages());
 
         OpenAIClient client = OpenAIOkHttpClient.builder()
+                .baseUrl("https://openrouter.ai/api/v1")
                 .apiKey(apiKey.get())
                 .build();
 
