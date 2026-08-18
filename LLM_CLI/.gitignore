@@ -1,0 +1,4 @@
+.env.local
+data/conversation.json
+target/
+*.log
